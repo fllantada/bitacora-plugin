@@ -1,0 +1,15 @@
+{
+  "description": "Keeps the stable shim ~/.local/bin/bitacora-api pointing at the installed plugin version's api.sh",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/ensure-shim.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

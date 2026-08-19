@@ -1,0 +1,7 @@
+# ~/.config/bitacora/config.local — one line per project, permissions 600, never in git.
+# `bitacora-api alta <code>` (from your invitation email) writes your line for you.
+#
+# <project-slug>=<your-api-key>
+#
+# Optional: point the client somewhere else (default is https://bitacora.dev-fran.com)
+# url=http://localhost:4321

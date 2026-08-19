@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "bitacora-plugin",
+  "description": "The bitácora (project logbook) plugin marketplace — install the collaborator plugin to work with a logbook you were invited to",
+  "owner": {
+    "name": "Fran Llantada"
+  },
+  "plugins": [
+    {
+      "name": "bitacora-colaborador",
+      "description": "The /bitacora skill for project collaborators — bitacora-api client + the collaborator's craft, kept in sync with the engine by construction",
+      "author": {
+        "name": "Fran Llantada"
+      },
+      "source": "./bitacora-colaborador"
+    }
+  ]
+}
