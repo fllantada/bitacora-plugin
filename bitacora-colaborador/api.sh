@@ -85,8 +85,8 @@ if [ "${1:-}" = "alta" ]; then
     chmod 600 "$DESTINO"
   fi
   printf '%s=%s\n' "$PROYECTO_ALTA" "$TOKEN_ALTA" >>"$DESTINO"
-  echo "Listo: la llave de «$PROYECTO_ALTA» quedó guardada en $DESTINO."
-  echo "Firmás como «$TITULAR_ALTA». Probala:  bitacora-api -p $PROYECTO_ALTA tablero"
+  echo "Listo: la llave de «${PROYECTO_ALTA}» quedó guardada en $DESTINO."
+  echo "Firmás como «${TITULAR_ALTA}». Probala:  bitacora-api -p $PROYECTO_ALTA tablero"
   exit 0
 fi
 
@@ -117,7 +117,7 @@ fi
 
 TOKEN="$(valor_de "$PROYECTO" || true)"
 if [ -z "$TOKEN" ]; then
-  echo "No hay token para «$PROYECTO». Se declara en $CONFIG:" >&2
+  echo "No hay token para «${PROYECTO}». Se declara en $CONFIG:" >&2
   echo "  $PROYECTO=…   (el token de su tenant en la app)" >&2
   exit 1
 fi
@@ -162,7 +162,7 @@ if [ "${1:-}" = "abrir" ]; then
     echo "$URL_ABRIR"
     exit 0
   fi
-  echo "El tablero de «$PROYECTO» se está abriendo en tu navegador."
+  echo "El tablero de «${PROYECTO}» se está abriendo en tu navegador."
   exit 0
 fi
 
@@ -248,7 +248,7 @@ vaciar_cola() {
 
     llave="$(valor_de "${proyecto:-$PROYECTO}" || true)"
     if [ -z "$llave" ]; then
-      echo "Descartado de la cola: no hay token para «$proyecto» ($metodo $ruta)" >&2
+      echo "Descartado de la cola: no hay token para «${proyecto}» ($metodo $ruta)" >&2
       continue
     fi
 
