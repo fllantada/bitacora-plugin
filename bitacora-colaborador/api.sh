@@ -125,6 +125,23 @@ fi
 BASE="${BITACORA_URL:-$(valor_de url || true)}"
 BASE="${BASE:-https://bitacora.dev-fran.com}"
 
+# --- la renovación: pedir el código nuevo con la llave actual como prueba ------
+#
+# Funciona también con la llave VENCIDA — va por su propia puerta, sin Bearer.
+# El código llega al email registrado del titular; `bitacora-api alta <código>`
+# lo canjea y guarda la llave rotada.
+if [ "${1:-}" = "renovar" ]; then
+  RESPUESTA="$(curl -fsS --max-time 20 -H "Content-Type: application/json" \
+    -d "$(jq -cn --arg t "$TOKEN" '{token:$t}')" "$BASE/api/renovar")" || {
+    echo "El pedido falló: la llave fue revocada, o hubo demasiados intentos seguidos." >&2
+    exit 1
+  }
+  EMAIL_RENOVACION="$(printf '%s' "$RESPUESTA" | jq -r .email)"
+  echo "Listo: te mandamos el código a $EMAIL_RENOVACION."
+  echo "Abrí el email y corré:  bitacora-api alta <código>"
+  exit 0
+fi
+
 # --- el transporte ------------------------------------------------------------
 
 leer() {
@@ -441,8 +458,9 @@ Archivos y bajas:
   bitacora-api borrar /api/lineas/<slug>     (se niega si todavía cuelga algo)
   bitacora-api pendientes                    (sube lo que quedó sin red)
 
-El alta (para quien recibió una invitación por email):
-  bitacora-api alta <código>                 (canjea el código por la llave y la guarda)
+El alta y la renovación de la llave:
+  bitacora-api alta <código>                 (canjea el código del email por la llave y la guarda)
+  bitacora-api renovar                       (la llave vence sola: esto manda el código nuevo a tu email)
 USO
   exit 1
   ;;

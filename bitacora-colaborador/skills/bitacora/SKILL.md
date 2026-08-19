@@ -27,6 +27,24 @@ bitacora-api alta <code>
 That stores `<project>=<key>` in `~/.config/bitacora/config.local` (permissions 600,
 never in git). The email also has your sign-in link for the web app.
 
+## Key renewal — self-service, two commands
+
+Your key expires on its own every few months. You never have to track the date:
+
+- **Before it expires**, an email arrives automatically ("Your … logbook key needs
+  renewal") with a fresh claim code — just run the `bitacora-api alta <code>` line it
+  contains, and the key rotates in place. Done.
+- **If it already expired**, the API tells you exactly that, and the fix is:
+
+```bash
+bitacora-api renovar        # sends a fresh code to your registered email
+bitacora-api alta <code>    # exchange it — the renewed key is stored for you
+```
+
+`renovar` works with the expired key as proof (it goes through its own door), and the
+code only ever lands in your inbox — holding the key alone is never enough to steal a
+renewal. Nothing else changes: same access, same name, fresh key.
+
 ## The client
 
 ```bash
