@@ -142,6 +142,30 @@ if [ "${1:-}" = "renovar" ]; then
   exit 0
 fi
 
+# --- abrir: el tablero en el navegador, sin fricción de login ------------------
+#
+# La llave pide un enlace de entrada fresco de un solo uso y lo abre. En la URL viaja
+# ese código efímero, jamás la llave; al abrirse queda la cookie de siempre.
+if [ "${1:-}" = "abrir" ]; then
+  RESPUESTA="$(curl -fsS --max-time 20 -X POST -H "Authorization: Bearer $TOKEN" \
+    "$BASE/api/abrir")" || {
+    echo "No se pudo pedir el enlace de entrada. ¿La llave sigue viva? Probá: bitacora-api renovar" >&2
+    exit 1
+  }
+  URL_ABRIR="$(printf '%s' "$RESPUESTA" | jq -r .url)"
+  if command -v open >/dev/null 2>&1; then
+    open "$URL_ABRIR"
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$URL_ABRIR"
+  else
+    echo "Abrí esto en tu navegador (vale unos minutos, un solo uso):"
+    echo "$URL_ABRIR"
+    exit 0
+  fi
+  echo "El tablero de «$PROYECTO» se está abriendo en tu navegador."
+  exit 0
+fi
+
 # --- el transporte ------------------------------------------------------------
 
 leer() {
@@ -423,6 +447,7 @@ El sistema del proyecto — la tríada. Primera lectura al llegar:
   bitacora-api glosario                     · bitacora-api termino <palabra>
 
 El trabajo:
+  bitacora-api abrir                        (el tablero en tu navegador, sin login: enlace fresco de un solo uso)
   bitacora-api tablero
   bitacora-api lineas
   bitacora-api linea <slug|alias>

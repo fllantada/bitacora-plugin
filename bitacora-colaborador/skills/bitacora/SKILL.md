@@ -45,6 +45,41 @@ bitacora-api alta <code>    # exchange it — the renewed key is stored for you
 code only ever lands in your inbox — holding the key alone is never enough to steal a
 renewal. Nothing else changes: same access, same name, fresh key.
 
+## When invoked bare — open the board, then talk with the project
+
+`/bitacora` with nothing else is an invitation to **talk with the project**. Do this,
+in order:
+
+1. **Resolve the project** (cwd, or `-p`; if nothing resolves, list the projects in
+   `~/.config/bitacora/config.local` and ask which one).
+2. **Open the board in their browser**: run `$API abrir` — it fetches a fresh one-time
+   sign-in link and opens the project's board, no login friction. The person now SEES
+   the board while you talk.
+3. **Read the project yourself, quietly**: `$API contexto` (the glossary, stack and
+   flows — skip if you already read it this session) and `$API tablero`.
+4. **Present a two-line pulse and ask.** Name what's actually alive — the lines at the
+   front, how many decisions are open, the freshest thing that happened — and ask what
+   they'd like to talk about. For example: *"The board is open in your browser. Two
+   lines are moving — the search migration and the pricing page — with three open
+   decisions between them. What would you like to dig into?"* Always offer from the
+   REAL board, never a generic menu.
+
+From there, conversation: answer questions from the logbook's content (search, lines,
+documents, decisions), record what they tell you as entries, open decision points when
+a real trade-off appears. You are the project's memory speaking.
+
+## The rest of the routing
+
+| The user says | What you do |
+|---|---|
+| `/bitacora <line>` | Open that line (`$API linea <slug>`): its brief, open decisions, latest entries and documents. The argument may be an alias — the server resolves it. |
+| `/bitacora <line> <something that happened>` | Write the dated entry (see *Writing entries* below). |
+| `/bitacora <line> decision <what needs deciding>` | Add the point to the line's decision book. |
+| Something that matches nothing | It's probably a line that doesn't exist yet — list the lines and ask, rather than failing. |
+
+Nothing runs on its own: the logbook is written when invoked, never by a hook — a
+record that writes itself stops being judgment and becomes a log.
+
 ## The client
 
 ```bash
