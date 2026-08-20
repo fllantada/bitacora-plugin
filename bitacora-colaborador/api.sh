@@ -284,9 +284,11 @@ exige() {
 
 case "$comando" in
 tablero) leer "/api/tablero" ;;
-lineas) leer "/api/lineas" ;;
-linea)
-  exige 1 "linea <slug|alias>" "$@"
+# El taller dice HILO y la API dice `lineas`: los dos nombres alcanzan lo mismo, para que
+# la palabra que se lee y la que se tipea sean la misma.
+hilos | lineas) leer "/api/lineas" ;;
+hilo | linea)
+  exige 1 "hilo <slug|alias>" "$@"
   leer "/api/lineas/$1"
   ;;
 buscar)
@@ -313,6 +315,17 @@ pieza)
   ;;
 # Lo que falta traducir: lo que no tiene la capa y lo que la tiene vieja.
 por-traducir) leer "/api/traducir?idioma=${1:-en}" ;;
+# Las áreas: los mundos del proyecto, con cuántos hilos vive cada uno.
+#
+# Con un slug detrás contesta por ESA área, sea `areas` o `area`: quien tipeó el plural
+# con un slug quiso una sola, y devolverle la lista entera le daba otra cosa sin avisar.
+areas | area)
+  if [ "$#" -ge 1 ]; then
+    leer "/api/areas/$(uri "$1")"
+  else
+    leer "/api/areas"
+  fi
+  ;;
 secciones) leer "/api/secciones" ;;
 reviews) leer "/api/reviews" ;;
 horas) leer "/api/trabajo" ;;
@@ -347,8 +360,8 @@ superar)
   vaciar_cola
   escribir PATCH "/api/lineas/$1/entradas/$2"
   ;;
-editar-linea)
-  exige 1 "editar-linea <slug>   < {\"estado\":\"resuelta\"}" "$@"
+editar-hilo | editar-linea)
+  exige 1 "editar-hilo <slug>   < {\"estado\":\"resuelta\"} · {\"area\":\"infra\"}" "$@"
   vaciar_cola
   escribir PATCH "/api/lineas/$1"
   ;;
@@ -381,6 +394,17 @@ editar-pieza)
 traducir)
   vaciar_cola
   escribir PUT "/api/traducir"
+  ;;
+# abrir-area  ← {"nombre":"…"}   ·  nace vacía y se llena mudando hilos
+abrir-area)
+  vaciar_cola
+  escribir POST "/api/areas"
+  ;;
+# El renombre toca un registro y ningún hilo: el slug es la dirección, el nombre lo que se lee.
+editar-area)
+  exige 1 "editar-area <slug>   < {\"nombre\":\"…\"} · {\"orden\":2}" "$@"
+  vaciar_cola
+  escribir PATCH "/api/areas/$1"
   ;;
 seccion)
   vaciar_cola
@@ -424,7 +448,7 @@ borrar)
   exige 1 "borrar <ruta-de-la-api>   (el servidor se niega si todavía cuelga algo)" "$@"
   curl -fsS --max-time 20 -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE$1"
   ;;
-abrir-linea)
+abrir-hilo | abrir-linea)
   vaciar_cola
   escribir POST "/api/lineas"
   ;;
@@ -446,11 +470,13 @@ El sistema del proyecto — la tríada. Primera lectura al llegar:
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
 
-El trabajo:
+El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api abrir                        (el tablero en tu navegador, sin login: enlace fresco de un solo uso)
   bitacora-api tablero
-  bitacora-api lineas
-  bitacora-api linea <slug|alias>
+  bitacora-api hilos                        (= lineas)
+  bitacora-api hilo <slug|alias>            (= linea)
+  bitacora-api areas                        (los mundos del proyecto, con sus hilos)
+  bitacora-api area <slug>                  (un área con los hilos que viven ahí; `areas <slug>` es lo mismo)
   bitacora-api buscar <texto>
   bitacora-api documento <linea|seccion|flujo> <contenedor> <slug>
   bitacora-api secciones · bitacora-api horas · bitacora-api adjuntos [linea] · bitacora-api reviews
@@ -461,8 +487,10 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api superar <slug> <id-entrada>  {"superadaPor":"…"}
   bitacora-api decision <slug>              {"titulo":"…","cierraEn":"…","cuerpo":"…","flujos":["…"]}
   bitacora-api cerrar <id>                  {"estado":"resuelta","nota":"qué se decidió"}
-  bitacora-api abrir-linea                  {"slug":"…","nombre":"…","area":"…","decide":"…","brief":"…"}
-  bitacora-api editar-linea <slug>          {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"}
+  bitacora-api abrir-hilo                   {"slug":"…","nombre":"…","area":"…","decide":"…","brief":"…"}
+  bitacora-api editar-hilo <slug>           {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"}
+  bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena mudando hilos)
+  bitacora-api editar-area <slug>           {"nombre":"…"} (renombra) · {"orden":2} (su lugar en el menú)
   bitacora-api fusionar <slug>              {"en":"la-que-queda"}
   bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime"}
   bitacora-api editar-flujo <slug>          {"estado":"construido"} · {"sumarStack":[…]} · {"sumarGlosario":[…]}
@@ -481,6 +509,7 @@ Escritura (el cuerpo JSON entra por stdin):
 Archivos y bajas:
   bitacora-api adjuntar <archivo> linea=<slug> [queEs="…"]
   bitacora-api borrar /api/lineas/<slug>     (se niega si todavía cuelga algo)
+  bitacora-api borrar /api/areas/<slug>      (se niega si algún hilo vive ahí)
   bitacora-api pendientes                    (sube lo que quedó sin red)
 
 El alta y la renovación de la llave:

@@ -57,14 +57,14 @@ in order:
    the board while you talk.
 3. **Read the project yourself, quietly**: `$API contexto` (the glossary, stack and
    flows — skip if you already read it this session) and `$API tablero`.
-4. **Present a two-line pulse and ask.** Name what's actually alive — the lines at the
+4. **Present a two-line pulse and ask.** Name what's actually alive — the threads at the
    front, how many decisions are open, the freshest thing that happened — and ask what
    they'd like to talk about. For example: *"The board is open in your browser. Two
-   lines are moving — the search migration and the pricing page — with three open
+   threads are moving — the search migration and the pricing page — with three open
    decisions between them. What would you like to dig into?"* Always offer from the
    REAL board, never a generic menu.
 
-From there, conversation: answer questions from the logbook's content (search, lines,
+From there, conversation: answer questions from the logbook's content (search, threads,
 documents, decisions), record what they tell you as entries, open decision points when
 a real trade-off appears. You are the project's memory speaking.
 
@@ -72,10 +72,11 @@ a real trade-off appears. You are the project's memory speaking.
 
 | The user says | What you do |
 |---|---|
-| `/bitacora <line>` | Open that line (`$API linea <slug>`): its brief, open decisions, latest entries and documents. The argument may be an alias — the server resolves it. |
-| `/bitacora <line> <something that happened>` | Write the dated entry (see *Writing entries* below). |
-| `/bitacora <line> decision <what needs deciding>` | Add the point to the line's decision book. |
-| Something that matches nothing | It's probably a line that doesn't exist yet — list the lines and ask, rather than failing. |
+| `/bitacora <thread>` | Open that thread (`$API hilo <slug>`): its brief, open decisions, latest entries and documents. The argument may be an alias — the server resolves it. |
+| `/bitacora <thread> <something that happened>` | Write the dated entry (see *Writing entries* below). |
+| `/bitacora <thread> decision <what needs deciding>` | Add the point to the thread's decision book. |
+| `/bitacora area <name>` | Read that area (`$API area <slug>`): its name and the threads living in it, each with its state. What is open to decide there, and its timeline, live on the area's page in the browser. |
+| Something that matches nothing | It's probably a thread that doesn't exist yet — list the threads and ask, rather than failing. |
 
 Nothing runs on its own: the logbook is written when invoked, never by a hook — a
 record that writes itself stops being judgment and becomes a log.
@@ -86,10 +87,12 @@ record that writes itself stops being judgment and becomes a log.
 API=~/.local/bin/bitacora-api
 
 $API -p <project> contexto      # FIRST READ on arrival: language + stack + flows, in one call
-$API -p <project> tablero       # the board: every line of work, freshest first
-$API -p <project> linea <slug>  # one line: its entries, decisions and documents
+$API -p <project> tablero       # the board: every thread of work, grouped by area
+$API -p <project> hilo <slug>   # one thread: its entries, decisions and documents
+$API -p <project> areas         # the project's areas, with how many threads live in each
+$API -p <project> area <slug>   # ONE area: its name and the threads living in it
 $API -p <project> buscar "x"    # search across everything you can see
-$API -p <project> documento linea <line> <doc>   # a document's raw markdown
+$API -p <project> documento linea <thread> <doc>   # a document's raw markdown
 ```
 
 The project resolves from your working directory when it matches; `-p <slug>` sets it
@@ -98,11 +101,11 @@ explicitly and always works. `$API proyecto` says which one resolved.
 Writes take a JSON body on stdin:
 
 ```bash
-$API -p <project> entrada <line-slug> <<'JSON'
+$API -p <project> entrada <thread-slug> <<'JSON'
 {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
 JSON
 
-$API -p <project> decision <line-slug> <<'JSON'
+$API -p <project> decision <thread-slug> <<'JSON'
 {"titulo":"…","cierraEn":"…","cuerpo":"…"}
 JSON
 
@@ -115,13 +118,21 @@ If you are offline, writes queue in `~/.config/bitacora/pendientes.jsonl` and up
 on the next write. Field values like `tipo` and `estado` are in Spanish — they are the
 API's vocabulary.
 
-## The unit is the line
+## The unit is the thread
 
-A **line** (línea) is a topic worked over time — a migration, a feature area, a long
+A **thread** is a topic worked over time — a migration, a feature area, a long
 conversation. Its dimensions: the **analyses** (processed documents), the **decision
 book** (what needs deciding, one point at a time), and the **chronology** (dated
-entries: what happened, when, why in that order). The board orders lines by last touch;
-writing content is what moves a line to the front.
+entries: what happened, when, why in that order).
+
+**Every thread lives in an area**, and the area is how the workshop is navigated: the left
+menu is the list of areas, each one holding its live threads, and every area has its own
+board. Inside an area the order is last touch, so the thread being worked right now sits on
+top of its world. A project small enough to need no areas keeps them all in one group.
+
+The API stores a thread as `lineas` — the collection and the `lineaSlug` field keep the
+name they were born with, and the client accepts both words (`hilo` and `linea`,
+`editar-hilo` and `editar-linea`). Read «thread»; type either.
 
 ## Writing entries — the craft
 
@@ -155,10 +166,10 @@ that history is the project's "how we decided" view.
 ## What is someone else's
 
 - **Supersede, never edit.** When your work makes an existing entry obsolete, mark it
-  (`$API superar <line> <entry-id>` with `{"superadaPor":"…"}`) and write the new one.
+  (`$API superar <thread> <entry-id>` with `{"superadaPor":"…"}`) and write the new one.
   The record stays whole; the mark says history.
 - **Deleting is the owner's.** Your key can't delete anything — if something should
-  never have existed (a duplicate, a line opened by mistake), tell the owner.
+  never have existed (a duplicate, a thread opened by mistake), tell the owner.
 - **The hours panel is the owner's.** It belongs to their client relationship and your
   key doesn't reach it.
 
