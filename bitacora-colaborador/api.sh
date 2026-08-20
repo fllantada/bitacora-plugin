@@ -7,11 +7,12 @@
 # la línea los pone el servidor; si algo de eso se calculara de este lado, habría dos
 # implementaciones que tarde o temprano dirían cosas distintas.
 #
-# El proyecto se resuelve solo: del flag `-p <slug>` si viene, o de dónde estás parado
-# bajo ~/ProyectosDev-Local (<workspace>/<proyecto>/… → <proyecto>; una subcarpeta del
-# semillero webchicas cuenta por su cliente). El token de ese proyecto sale de
-# ~/.config/bitacora/config.local, y el servidor scopea todo al tenant del token: acá
-# no viaja ningún parámetro de proyecto.
+# El proyecto se resuelve solo: del flag `-p <slug>` si viene, o de dónde estás parado —
+# bajo ~/ProyectosDev-Local y bajo cada raíz que config.local declare con `raiz=<path>`
+# (<raíz>/<proyecto>/… → <proyecto>; una subcarpeta del semillero webchicas cuenta por su
+# cliente, y `alias.<carpeta>=<tenant>` traduce la carpeta que no se llama como su
+# tenant). El token de ese proyecto sale de ~/.config/bitacora/config.local, y el servidor
+# scopea todo al tenant del token: acá no viaja ningún parámetro de proyecto.
 #
 # Se invoca por su shim estable ~/.local/bin/bitacora-api — el hook de sesión del
 # plugin lo mantiene apuntando a la versión instalada.
@@ -42,19 +43,40 @@ valor_de() {
   grep -E "^$1=" "$CONFIG" | head -1 | cut -d= -f2-
 }
 
+# Una clave repetible: todas sus líneas, en el orden en que están declaradas.
+valores_de() {
+  [ -f "$CONFIG" ] || return 0
+  grep -E "^$1=" "$CONFIG" | cut -d= -f2-
+}
+
+# Dónde vive el trabajo de esta máquina: `raiz=<path>` en config.local, repetible, más
+# ~/ProyectosDev-Local, que es la de siempre y no hace falta declarar.
+#
+# Es información de la máquina y no del cliente: una raíz nueva es una línea en un archivo
+# local, en vez de un cambio del cliente distribuido con su despliegue detrás.
+raices() {
+  valores_de raiz
+  printf '%s\n' "$HOME/ProyectosDev-Local"
+}
+
 proyecto_del_cwd() {
-  local base="$HOME/ProyectosDev-Local" resto
-  case "$PWD" in
-  "$base"/dev-fran/webchicas/*)
-    resto="${PWD#"$base"/dev-fran/webchicas/}"
-    printf '%s\n' "${resto%%/*}"
-    ;;
-  "$base"/*)
-    resto="${PWD#"$base"/}"
-    printf '%s\n' "${resto%%/*}"
-    ;;
-  *) return 1 ;;
-  esac
+  local base resto
+  while IFS= read -r base; do
+    [ -n "$base" ] || continue
+    case "$PWD" in
+    "$base"/dev-fran/webchicas/*)
+      resto="${PWD#"$base"/dev-fran/webchicas/}"
+      printf '%s\n' "${resto%%/*}"
+      return 0
+      ;;
+    "$base"/*)
+      resto="${PWD#"$base"/}"
+      printf '%s\n' "${resto%%/*}"
+      return 0
+      ;;
+    esac
+  done < <(raices)
+  return 1
 }
 
 # --- el alta: canjear el código de la invitación por la llave -----------------
@@ -460,8 +482,10 @@ pendientes) vaciar_cola ;;
 *)
   cat >&2 <<'USO'
 Uso: bitacora-api [-p <proyecto>] <comando>
-  El proyecto se deduce de dónde estás parado bajo ~/ProyectosDev-Local
-  (webchicas/<cliente> cuenta como <cliente>); -p lo fija a mano.
+  El proyecto se deduce de dónde estás parado, bajo ~/ProyectosDev-Local y bajo cada
+  `raiz=<path>` de config.local (webchicas/<cliente> cuenta como <cliente>, y
+  `alias.<carpeta>=<tenant>` traduce la que no se llama como su tenant);
+  -p lo fija a mano.
   bitacora-api proyecto                      (dice cuál resolvió)
 
 El sistema del proyecto — la tríada. Primera lectura al llegar:

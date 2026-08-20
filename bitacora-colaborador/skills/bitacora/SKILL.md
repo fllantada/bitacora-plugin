@@ -95,8 +95,12 @@ $API -p <project> buscar "x"    # search across everything you can see
 $API -p <project> documento linea <thread> <doc>   # a document's raw markdown
 ```
 
-The project resolves from your working directory when it matches; `-p <slug>` sets it
-explicitly and always works. `$API proyecto` says which one resolved.
+The project resolves from your working directory when it sits under a workspace root —
+`~/ProyectosDev-Local`, plus any `raiz=<path>` line in `~/.config/bitacora/config.local`,
+which is how you add wherever your own projects live. A folder named differently from its
+project is translated with `alias.<folder>=<project>` in the same file. Outside every
+root, `-p <slug>` sets it explicitly and always works. `$API proyecto` says which one
+resolved.
 
 Writes take a JSON body on stdin:
 

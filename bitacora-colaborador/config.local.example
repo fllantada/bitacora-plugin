@@ -5,3 +5,10 @@
 #
 # Optional: point the client somewhere else (default is https://bitacora.dev-fran.com)
 # url=http://localhost:4321
+#
+# Optional: where your projects live, so the client can tell which one you are standing in.
+# ~/ProyectosDev-Local always counts; add one `raiz=` line per extra workspace.
+# raiz=/Users/you/work
+#
+# Optional: a folder named differently from its project.
+# alias.my-folder=the-project
