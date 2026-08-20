@@ -142,11 +142,10 @@ JSON
 
 **A bare phrase still works** and means what it always meant: that text goes into the
 record's original layer. Losing a write because it came half-dressed costs more than
-storing it in the language it was written in. The other layer is added later with that
-record's `PATCH`, which stacks what arrives on top of what was already there — and the only
-queue that exists is the one for documents (`por-traducir`), so nothing will remind you
-about a half-written record: write both layers in the same act, which is also what asserts
-they say the same thing.
+storing it in the language it was written in. Whatever is left without its other layer
+shows up in `por-traducir` — the queue carries records as well as documents — so it can be
+picked up later; writing both in the same act is what asserts they say the same thing, and
+what keeps the board from reading half-and-half in the meantime.
 
 **`escritoEn` is the record's original language**, declared once for the whole record: a
 thread's name and its brief are born together and in the same language. It defaults to the

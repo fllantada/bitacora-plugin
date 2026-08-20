@@ -434,7 +434,9 @@ editar-pieza)
   vaciar_cola
   escribir PATCH "/api/stack/$1"
   ;;
-# traducir  ← {"lineaSlug|seccionSlug|flujoSlug":"…","slug":"…","idioma":"en","cuerpo":"…","hash":"…"}
+# traducir  ← un documento {"linea|seccion|flujo":"…","slug":"…","idioma":"en","cuerpo":"…","hash":"…"}
+#           ← o una ficha  {"tipo":"hilo|area|seccion|flujo|pieza|termino|entrada|punto",
+#                          "llave":"…","idioma":"en","campos":{…},"huella":"…"}
 traducir)
   vaciar_cola
   escribir PUT "/api/traducir"
@@ -526,7 +528,7 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api buscar <texto>
   bitacora-api documento <linea|seccion|flujo> <contenedor> <slug>
   bitacora-api secciones · bitacora-api horas · bitacora-api adjuntos [linea] · bitacora-api reviews
-  bitacora-api por-traducir [idioma]        (lo que falta y lo que quedó viejo)
+  bitacora-api por-traducir [idioma]        (documentos y fichas: lo que falta y lo que quedó viejo)
 
 Escritura (el cuerpo JSON entra por stdin):
   bitacora-api entrada <slug>               {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
@@ -548,6 +550,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
   bitacora-api guardar-documento            el documento entero
   bitacora-api traducir                     {"linea":"…","slug":"…","idioma":"en","cuerpo":"…","hash":"…"}
+  bitacora-api traducir                     {"tipo":"hilo","llave":"…","idioma":"en","campos":{…},"huella":"…"}
                                             (traduce desde el `escritoEn` del documento)
                                             (acepta linea|seccion|flujo, los nombres que da la cola)
   bitacora-api mudar-documento <linea|seccion|flujo> <contenedor> <slug>   {"lineaSlug":"otra"}
