@@ -113,10 +113,24 @@ if [ "${1:-}" = "alta" ]; then
 fi
 
 PROYECTO=""
-if [ "${1:-}" = "-p" ]; then
-  PROYECTO="${2:?Falta el slug después de -p}"
-  shift 2
-else
+# El idioma de lectura: vacío sirve la capa del proyecto, y lo que no la tenga cae a su
+# original. Quien lee en otra lengua lo dice una vez por comando, junto al proyecto.
+IDIOMA=""
+while true; do
+  case "${1:-}" in
+  -p)
+    PROYECTO="${2:?Falta el slug después de -p}"
+    shift 2
+    ;;
+  -i)
+    IDIOMA="${2:?Falta el código de idioma después de -i}"
+    shift 2
+    ;;
+  *) break ;;
+  esac
+done
+
+if [ -z "$PROYECTO" ]; then
   PROYECTO="$(proyecto_del_cwd || true)"
   # Una carpeta puede no llamarse como su tenant (mi-carpeta → mi-tenant):
   # config.local lo declara con `alias.<carpeta>=<tenant>`.
@@ -191,7 +205,15 @@ fi
 # --- el transporte ------------------------------------------------------------
 
 leer() {
-  curl -fsS --max-time 20 -H "Authorization: Bearer $TOKEN" "$BASE$1"
+  local ruta="$1"
+  # El idioma viaja en la query, y algunas rutas ya traen la suya.
+  if [ -n "$IDIOMA" ]; then
+    case "$ruta" in
+    *\?*) ruta="$ruta&idioma=$IDIOMA" ;;
+    *) ruta="$ruta?idioma=$IDIOMA" ;;
+    esac
+  fi
+  curl -fsS --max-time 20 -H "Authorization: Bearer $TOKEN" "$BASE$ruta"
 }
 
 # Lo que viaja en la URL: un slug con espacios o un texto de búsqueda.

@@ -122,6 +122,57 @@ If you are offline, writes queue in `~/.config/bitacora/pendientes.jsonl` and up
 on the next write. Field values like `tipo` and `estado` are in Spanish — they are the
 API's vocabulary.
 
+## Two languages: what you write travels in both
+
+A project declares the languages its material is written in, and `$API -p <project>
+contexto` tells you which. **When it declares more than one, every text you write travels
+in all of them** — not only long prose: the title of an entry, the point you open, the word
+you define. That text is what a reader sees before opening anything, so one language alone
+leaves the workshop split: the interface in theirs, the board in someone else's.
+
+Any text field takes its layers where it used to take a phrase:
+
+```bash
+$API -p <project> entrada <thread-slug> <<'JSON'
+{"tipo":"hallazgo",
+ "titulo":{"en":"Facets are counted per record","es":"Los facets se cuentan por registro"},
+ "cuerpo":{"en":"# …","es":"# …"}}
+JSON
+```
+
+**A bare phrase still works** and means what it always meant: that text goes into the
+record's original layer. Losing a write because it came half-dressed costs more than
+storing it in the language it was written in. The other layer is added later with that
+record's `PATCH`, which stacks what arrives on top of what was already there — and the only
+queue that exists is the one for documents (`por-traducir`), so nothing will remind you
+about a half-written record: write both layers in the same act, which is also what asserts
+they say the same thing.
+
+**`escritoEn` is the record's original language**, declared once for the whole record: a
+thread's name and its brief are born together and in the same language. It defaults to the
+project's first declared language; name it when you write in another one:
+
+```bash
+$API -p <project> entrada <thread-slug> <<'JSON'
+{"escritoEn":"en","tipo":"hallazgo",
+ "titulo":{"en":"Facets are counted per record","es":"Los facets se cuentan por registro"},
+ "cuerpo":{"en":"# …","es":"# …"}}
+JSON
+```
+
+**To READ in your language, the `-i` flag.** It applies to everything the command brings
+back: the board, a thread with its chronology, the glossary, the stack, the flows and the
+search.
+
+```bash
+$API -p <project> -i en tablero     # the whole board, in English
+$API -p <project> -i en contexto    # the triad, in English
+```
+
+Without the flag you get the project's own layer, and whatever lacks the language you asked
+for falls back to its original — honest material in the language it was written in, never a
+blank screen.
+
 ## The unit is the thread
 
 A **thread** is a topic worked over time — a migration, a feature area, a long
