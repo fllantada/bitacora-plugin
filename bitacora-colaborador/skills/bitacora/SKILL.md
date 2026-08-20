@@ -235,5 +235,8 @@ vocabulary wins), the **stack** (each technology with its responsibility), and t
 **flows** (end-to-end journeys, the project's integration tests). A decision taken
 without reading it is taken blind. When you work with a piece or a term that has no
 entry yet, add it — `$API anotar-pieza`, `$API definir` — while it's in front of you.
+A stack piece also carries `documentacion` (the URL of its official docs, shown as a
+link on its card) and `notas` (the basics you need to work with it: version, plan,
+account, the limit that bites) — fill them in when you have them at hand.
 
 Full command list: `bitacora-api` with no arguments prints usage.

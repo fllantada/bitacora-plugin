@@ -542,7 +542,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api fusionar <slug>              {"en":"la-que-queda"}
   bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime"}
   bitacora-api editar-flujo <slug>          {"estado":"construido"} · {"sumarStack":[…]} · {"sumarGlosario":[…]}
-  bitacora-api anotar-pieza                 {"nombre":"…","responsabilidad":"…","donde":"…"}
+  bitacora-api anotar-pieza                 {"nombre":"…","responsabilidad":"…","donde":"…","documentacion":"https://…","notas":"…"}
   bitacora-api editar-pieza <slug>          {"responsabilidad":"…"} · {"sumarAlias":["el CMS"]}
   bitacora-api seccion                      {"tipo":"archivo","nombre":"…","nota":"…"}
   bitacora-api editar-seccion <slug>        {"resumen":"…"} · {"tipo":"fuente"}
