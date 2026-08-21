@@ -339,7 +339,7 @@ buscar)
   exige 1 "buscar <texto>" "$@"
   leer "/api/buscar?q=$(uri "$1")"
   ;;
-# La tríada del proyecto en una llamada: el lenguaje, el stack y los recorridos.
+# La tríada del proyecto en una llamada: el dominio, el stack y los flujos.
 # Es la primera lectura al llegar a un proyecto que no se viene trabajando.
 contexto) leer "/api/contexto" ;;
 glosario) leer "/api/glosario" ;;
@@ -353,6 +353,9 @@ flujo)
   leer "/api/flujos/$1"
   ;;
 stack) leer "/api/stack${1:+?flujos=1}" ;;
+# Los accesos directos del proyecto: las direcciones de afuera a las que se entra todos
+# los días — el engine, el repo, el tablero de tickets, el diseño.
+accesos) leer "/api/enlaces" ;;
 pieza)
   exige 1 "pieza <slug|alias>" "$@"
   leer "/api/stack/$(uri "$1")"
@@ -466,6 +469,11 @@ definir)
   vaciar_cola
   escribir PUT "/api/glosario"
   ;;
+anotar-acceso)
+  # anotar-acceso  ← {"nombre":"…","url":"https://…","nota":"staging"} o una lista de esos
+  vaciar_cola
+  escribir PUT "/api/enlaces"
+  ;;
 review)
   # review  ← {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
   vaciar_cola
@@ -513,10 +521,11 @@ Uso: bitacora-api [-p <proyecto>] <comando>
   bitacora-api proyecto                      (dice cuál resolvió)
 
 El sistema del proyecto — la tríada. Primera lectura al llegar:
-  bitacora-api contexto                     (el lenguaje + el stack + los recorridos, de una)
+  bitacora-api contexto                     (el dominio + el stack + los flujos, de una)
   bitacora-api flujos                       · bitacora-api flujo <slug>
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
+  bitacora-api accesos                      (las direcciones de afuera: engine, repo, tickets, diseño)
 
 El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api abrir                        (el tablero en tu navegador, sin login: enlace fresco de un solo uso)
@@ -547,6 +556,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api seccion                      {"tipo":"archivo","nombre":"…","nota":"…"}
   bitacora-api editar-seccion <slug>        {"resumen":"…"} · {"tipo":"fuente"}
   bitacora-api definir                      {"termino":"…","definicion":"…"}  (o una lista)
+  bitacora-api anotar-acceso                {"nombre":"Engine API","url":"https://…","nota":"staging"}
   bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
   bitacora-api guardar-documento            el documento entero
   bitacora-api traducir                     {"linea":"…","slug":"…","idioma":"en","cuerpo":"…","hash":"…"}
@@ -559,6 +569,7 @@ Archivos y bajas:
   bitacora-api adjuntar <archivo> linea=<slug> [queEs="…"]
   bitacora-api borrar /api/lineas/<slug>     (se niega si todavía cuelga algo)
   bitacora-api borrar /api/areas/<slug>      (se niega si algún hilo vive ahí)
+  bitacora-api borrar /api/enlaces/<slug>    (saca un acceso de la columna)
   bitacora-api pendientes                    (sube lo que quedó sin red)
 
 El alta y la renovación de la llave:

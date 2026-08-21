@@ -239,4 +239,10 @@ A stack piece also carries `documentacion` (the URL of its official docs, shown 
 link on its card) and `notas` (the basics you need to work with it: version, plan,
 account, the limit that bites) — fill them in when you have them at hand.
 
+**`$API accesos` lists the project's quick links**: the outside addresses you enter every
+day — the engine, the repo, the ticket board, the design file. They belong to the project
+and not to a thread, and the workshop keeps them one click away in the right-hand column.
+Anote one you had to hunt for with `$API anotar-acceso <<< '{"nombre":"…","url":"https://…","nota":"staging"}'`
+— it is upsert by slug, so fixing a URL that moved is the same call.
+
 Full command list: `bitacora-api` with no arguments prints usage.
