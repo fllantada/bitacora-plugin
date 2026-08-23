@@ -74,7 +74,9 @@ a real trade-off appears. You are the project's memory speaking.
 |---|---|
 | `/bitacora <thread>` | Open that thread (`$API hilo <slug>`): its brief, open decisions, latest entries and documents. The argument may be an alias — the server resolves it. |
 | `/bitacora <thread> <something that happened>` | Write the dated entry (see *Writing entries* below). |
-| `/bitacora <thread> decision <what needs deciding>` | Add the point to the thread's decision book. |
+| `/bitacora <thread> decision <what needs deciding>` | Add the point to the thread's decision book — with its full frame, or the server rejects it. |
+| `/bitacora <thread> we need to <something to do>` | Add the action to the execution front. |
+| `/bitacora what is left to do` | The project's execution front. |
 | `/bitacora area <name>` | Read that area (`$API area <slug>`): its name and the threads living in it, each with its state. What is open to decide there, and its timeline, live on the area's page in the browser. |
 | Something that matches nothing | It's probably a thread that doesn't exist yet — list the threads and ask, rather than failing. |
 
@@ -109,13 +111,24 @@ $API -p <project> entrada <thread-slug> <<'JSON'
 {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
 JSON
 
+# A point goes in WHOLE or not at all — the server rejects one without its frame:
 $API -p <project> decision <thread-slug> <<'JSON'
-{"titulo":"…","cierraEn":"…","cuerpo":"…"}
+{"titulo":"…","bloquea":"what is blocked today while this stays undecided",
+ "opciones":[{"titulo":"…","implica":"what choosing it costs"},
+             {"titulo":"…","implica":"what choosing it costs"}],
+ "recomiendo":0,"recomendacion":"why that one and not the others",
+ "cierraEn":"…","cuerpo":"…"}
 JSON
 
-$API -p <project> cerrar <decision-id> <<'JSON'
-{"estado":"resuelta","cierraEn":"PR #42","nota":"what was decided, in one line"}
+# Something to DO is an action, not a decision. Light door on purpose:
+$API -p <project> accion <thread-slug> <<'JSON'
+{"titulo":"…","cierraEn":"the PR that brings it"}
 JSON
+$API -p <project> acciones          # what is left to do, across the project
+
+$API -p <project> cerrar <id>  <<< '{"estado":"resuelta","nota":"what was decided"}'
+$API -p <project> diferir <id> <<< '{"reabreCuando":"what brings it back to the front"}'
+$API -p <project> hecha <id>   <<< '{"estado":"hecha","nota":"how it closed"}'
 ```
 
 If you are offline, writes queue in `~/.config/bitacora/pendientes.jsonl` and upload
@@ -205,17 +218,63 @@ name they were born with, and the client accepts both words (`hilo` and `linea`,
   (`"fecha":"YYYY-MM-DD"`); measurements typed from memory don't go in prose — name
   the fact in words instead.
 
-## Decisions — one at a time
+## Decisions — one at a time, and each one stands alone
 
-A decision point enters the book only when the trade-off is real: two live options and
-choosing matters. Work them **individually** — origin, position, close — and don't open
-the next until the one on the table is closed. Closing IS rewriting: an open point
-carries its full live context; a closed one gets rewritten short and self-contained,
-so someone reading it in two months understands what was decided and why without any
-of today's context. References (PR numbers, links) go in `cierraEn`.
+**An open decision is an analysis in itself.** It is read on its own and understood on its
+own, without opening any other document — which is why it has its own page and why the
+server **demands its frame** when you open it:
+
+| Field | What it carries |
+|---|---|
+| `bloquea` | What is blocked TODAY while this stays undecided |
+| `opciones[]` | Two at minimum, each with `titulo` and a **developed** `implica` — the server asks for real substance, because an option without its consequences is just a title |
+| `recomiendo` | The position of the option you recommend (`0` is the first) |
+| `recomendacion` | Why that one and not the others, **with the full reasoning** |
+| `cierraEn` | Where it closes: a PR, an entry in the client record, or nothing |
+| `cuerpo` | What triggered the point and where the work is. **The longest of them all** — it is the analysis, and the server measures it |
+
+**Those three carry a minimum length and the server says so when it rejects them.** Don't
+write them with ellipses or leave them for later: a point is what someone reads two months
+from now with none of today's context in their head.
+
+A point without its frame gets a 400 naming what is missing. That friction is the
+mechanism: the book used to fill with points that were a passing thought with a number,
+because opening cost three sentences and closing cost rewriting everything.
+
+A point enters the book only when the trade-off is real: two live options and choosing
+matters. What a doc, a standard or the repo's law settles is not a decision — look it up
+and write the answer. **And something to DO is an action, not a point** — that detour is
+what filled the book. Work them **individually** — origin, position, close — and don't
+open the next until the one on the table is closed.
+
+**Three desks.** `abierta` = something is on us. `diferida` = the point is real and its
+moment is not now; it leaves the front and **requires its `reabreCuando`**, because
+deferring without naming what brings it back is just forgetting. `resuelta` = nothing
+pending. Bringing a point back to the front demands its full frame, whichever way it comes;
+closing and deferring cost one sentence.
+
+Closing IS rewriting: an open point carries its full live context; a closed one gets
+rewritten short and self-contained, so someone reading it in two months understands what
+was decided and why without any of today's context. References (PR numbers, links) go in
+`cierraEn`.
 
 Every state change is recorded in the point's history with your name and the date —
 that history is the project's "how we decided" view.
+
+## Actions — what is left to do
+
+The decision book answers *what is left to decide*; the action book answers *what is left
+to do*. They are independent: a decision may spawn no action, an action may come from no
+decision, and a decision taken months ago may still have its action pending.
+
+**The door is light on purpose** — a title and where it closes. If opening an action cost
+what opening a decision costs, work would keep disguising itself as a decision. The one
+thing required is the named close, because without it nobody can say whether it is done.
+States: `pendiente`, `hecha`, and `descartada` for what stopped applying — marking that one
+`hecha` would lie about work nobody did. Dropping goes through the same door as finishing:
+`$API -p <project> hecha <id> <<< '{"estado":"descartada","nota":"why it stopped applying"}'`.
+`$API -p <project> acciones` returns everything; add a state to see only the front:
+`acciones <thread> pendiente`.
 
 ## What is someone else's
 

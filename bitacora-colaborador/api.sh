@@ -356,6 +356,18 @@ stack) leer "/api/stack${1:+?flujos=1}" ;;
 # Los accesos directos del proyecto: las direcciones de afuera a las que se entra todos
 # los días — el engine, el repo, el tablero de tickets, el diseño.
 accesos) leer "/api/enlaces" ;;
+# Qué falta HACER: del proyecto entero, o de un hilo si se lo nombra. El segundo argumento
+# filtra por estado — `acciones "" pendiente` es el frente del proyecto sin lo ya cerrado.
+acciones)
+  ruta="/api/acciones"
+  sep="?"
+  if [ -n "${1:-}" ]; then
+    ruta="$ruta${sep}linea=$(uri "$1")"
+    sep="&"
+  fi
+  [ -n "${2:-}" ] && ruta="$ruta${sep}estado=$(uri "$2")"
+  leer "$ruta"
+  ;;
 pieza)
   exige 1 "pieza <slug|alias>" "$@"
   leer "/api/stack/$(uri "$1")"
@@ -391,8 +403,27 @@ decision)
   vaciar_cola
   escribir POST "/api/lineas/$1/decisiones"
   ;;
+# El frente de EJECUCIÓN, al lado del de decisión. Puerta liviana: título y adónde cierra.
+# Acá va lo que hay que HACER — que es lo que antes se disfrazaba de decisión.
+accion)
+  exige 1 "accion <hilo>   < {\"titulo\":\"…\",\"cierraEn\":\"…\"}" "$@"
+  vaciar_cola
+  escribir POST "/api/lineas/$1/acciones"
+  ;;
+hecha)
+  exige 1 "hecha <id>   < {\"estado\":\"hecha\",\"nota\":\"…\"}" "$@"
+  vaciar_cola
+  escribir PATCH "/api/acciones/$1"
+  ;;
 cerrar)
   exige 1 "cerrar <id>   < JSON" "$@"
+  vaciar_cola
+  escribir PATCH "/api/decisiones/$1"
+  ;;
+# Sacar un punto del frente sin cerrarlo: sigue vivo y vuelve con su gatillo. Un estado que
+# solo existe si te acordás del JSON es un estado que nadie usa.
+diferir)
+  exige 1 "diferir <id>   < {\"reabreCuando\":\"qué lo devuelve al frente\"}" "$@"
   vaciar_cola
   escribir PATCH "/api/decisiones/$1"
   ;;
@@ -523,6 +554,7 @@ Uso: bitacora-api [-p <proyecto>] <comando>
 El sistema del proyecto — la tríada. Primera lectura al llegar:
   bitacora-api contexto                     (el dominio + el stack + los flujos, de una)
   bitacora-api flujos                       · bitacora-api flujo <slug>
+  bitacora-api acciones [hilo] [estado]     qué falta HACER (sin estado trae también lo cerrado)
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
   bitacora-api accesos                      (las direcciones de afuera: engine, repo, tickets, diseño)
@@ -542,8 +574,15 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
 Escritura (el cuerpo JSON entra por stdin):
   bitacora-api entrada <slug>               {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
   bitacora-api superar <slug> <id-entrada>  {"superadaPor":"…"}
-  bitacora-api decision <slug>              {"titulo":"…","cierraEn":"…","cuerpo":"…","flujos":["…"]}
+  bitacora-api decision <slug>              un punto ENTERO: sin su marco la puerta lo rechaza
+                                            {"titulo":"…","bloquea":"qué se frena hoy",
+                                             "opciones":[{"titulo":"…","implica":"…"},…],
+                                             "recomiendo":0,"recomendacion":"por qué esa",
+                                             "cierraEn":"…","cuerpo":"…","flujos":["…"]}
   bitacora-api cerrar <id>                  {"estado":"resuelta","nota":"qué se decidió"}
+  bitacora-api diferir <id>                 {"reabreCuando":"qué lo devuelve al frente"}
+  bitacora-api accion <hilo>                {"titulo":"…","cierraEn":"la PR que lo trae"}
+  bitacora-api hecha <id>                   {"estado":"hecha","nota":"cómo cerró"}
   bitacora-api abrir-hilo                   {"slug":"…","nombre":"…","area":"…","decide":"…","brief":"…"}
   bitacora-api editar-hilo <slug>           {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"}
   bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena mudando hilos)
