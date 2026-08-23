@@ -582,6 +582,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api cerrar <id>                  {"estado":"resuelta","nota":"qué se decidió"}
   bitacora-api diferir <id>                 {"reabreCuando":"qué lo devuelve al frente"}
   bitacora-api accion <hilo>                {"titulo":"…","cierraEn":"la PR que lo trae"}
+                                            + "decision":"<id>" cuando sale de un punto
   bitacora-api hecha <id>                   {"estado":"hecha","nota":"cómo cerró"}
   bitacora-api abrir-hilo                   {"slug":"…","nombre":"…","area":"…","decide":"…","brief":"…"}
   bitacora-api editar-hilo <slug>           {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"}

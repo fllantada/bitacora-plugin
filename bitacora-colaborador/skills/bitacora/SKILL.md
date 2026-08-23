@@ -122,7 +122,7 @@ JSON
 
 # Something to DO is an action, not a decision. Light door on purpose:
 $API -p <project> accion <thread-slug> <<'JSON'
-{"titulo":"…","cierraEn":"the PR that brings it"}
+{"titulo":"…","cierraEn":"the PR that brings it","decision":"<point-id>"}
 JSON
 $API -p <project> acciones          # what is left to do, across the project
 
@@ -271,7 +271,22 @@ decision, and a decision taken months ago may still have its action pending.
 what opening a decision costs, work would keep disguising itself as a decision. The one
 thing required is the named close, because without it nobody can say whether it is done.
 States: `pendiente`, `hecha`, and `descartada` for what stopped applying — marking that one
-`hecha` would lie about work nobody did. Dropping goes through the same door as finishing:
+`hecha` would lie about work nobody did.
+
+**Moving a point to the execution front takes two steps.** When you find an open point that
+is really work to do —nothing is blocked by it, and the material already settled the
+comparison— the action is born naming the point it came from, and the point closes with the
+note saying it moved. With only one of the two the trail is lost: the action ends up orphaned,
+or the point stays open asking for a decision nobody has to make.
+
+```bash
+$API -p <project> accion <thread> <<'JSON'
+{"titulo":"…","cierraEn":"…","decision":"<point-id>"}
+JSON
+$API -p <project> cerrar <point-id> <<< '{"estado":"resuelta","nota":"Not a decision: it moved to the execution front."}'
+```
+
+Dropping goes through the same door as finishing:
 `$API -p <project> hecha <id> <<< '{"estado":"descartada","nota":"why it stopped applying"}'`.
 `$API -p <project> acciones` returns everything; add a state to see only the front:
 `acciones <thread> pendiente`.
