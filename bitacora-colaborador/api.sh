@@ -9,10 +9,10 @@
 #
 # El proyecto se resuelve solo: del flag `-p <slug>` si viene, o de dónde estás parado —
 # bajo ~/ProyectosDev-Local y bajo cada raíz que config.local declare con `raiz=<path>`
-# (<raíz>/<proyecto>/… → <proyecto>; una subcarpeta del semillero webchicas cuenta por su
-# cliente, y `alias.<carpeta>=<tenant>` traduce la carpeta que no se llama como su
-# tenant). El token de ese proyecto sale de ~/.config/bitacora/config.local, y el servidor
-# scopea todo al tenant del token: acá no viaja ningún parámetro de proyecto.
+# (<raíz>/<proyecto>/… → <proyecto>, y `alias.<carpeta>=<tenant>` traduce la carpeta que
+# no se llama como su tenant). El token de ese proyecto sale de
+# ~/.config/bitacora/config.local, y el servidor scopea todo al tenant del token: acá no
+# viaja ningún parámetro de proyecto.
 #
 # Se invoca por su shim estable ~/.local/bin/bitacora-api — el hook de sesión del
 # plugin lo mantiene apuntando a la versión instalada.
@@ -64,11 +64,6 @@ proyecto_del_cwd() {
   while IFS= read -r base; do
     [ -n "$base" ] || continue
     case "$PWD" in
-    "$base"/dev-fran/webchicas/*)
-      resto="${PWD#"$base"/dev-fran/webchicas/}"
-      printf '%s\n' "${resto%%/*}"
-      return 0
-      ;;
     "$base"/*)
       resto="${PWD#"$base"/}"
       printf '%s\n' "${resto%%/*}"
@@ -327,13 +322,48 @@ exige() {
 }
 
 case "$comando" in
+# La versión instalada contra la última publicada. El mismo push que despliega el
+# servidor publica el plugin, así que lo que el servidor contesta ES lo último que
+# existe. Es lo primero que corre cada invocación de la skill: una sesión abierta
+# sigue con la doctrina con la que arrancó, y sin esto no hay forma de enterarse.
+# Sale 0 aunque haya versión nueva — estar atrás no corta el trabajo, lo avisa.
+version)
+  manifiesto="$(dirname "$0")/.claude-plugin/plugin.json"
+  if [ ! -f "$manifiesto" ]; then
+    # El shim es un symlink al api.sh instalado: el manifiesto vive al lado del real.
+    real="$(readlink -f "$0" 2>/dev/null || true)"
+    [ -n "$real" ] && manifiesto="$(dirname "$real")/.claude-plugin/plugin.json"
+  fi
+  nombre="$(jq -r '.name // "bitacora"' "$manifiesto" 2>/dev/null || echo bitacora)"
+  instalada="$(jq -r '.version // empty' "$manifiesto" 2>/dev/null || true)"
+  publicada="$(leer "/api/version" 2>/dev/null | jq -r --arg n "$nombre" '.[$n] // empty' || true)"
+  if [ "$nombre" = "bitacora-colaborador" ]; then
+    actualizar="claude plugin marketplace update bitacora-plugin && claude plugin update bitacora-colaborador@bitacora-plugin"
+  else
+    actualizar="claude plugin marketplace update bitacora && claude plugin update bitacora@bitacora"
+  fi
+  if [ -z "$publicada" ]; then
+    # El chequeo que no llega al servidor no frena nada: es un aviso, no una puerta.
+    echo "No pude consultar la última versión (sin red, o la llave venció). Seguí con el trabajo:"
+    echo "las escrituras se encolan solas, y si la llave venció el camino es  bitacora-api renovar"
+  elif [ -z "$instalada" ]; then
+    echo "No encuentro el manifiesto instalado; la última publicada es $publicada."
+  elif [ "$instalada" = "$publicada" ]; then
+    echo "Al día: $instalada."
+  else
+    echo "Hay una versión nueva: $publicada (instalada: $instalada)."
+    echo "La doctrina de ESTA sesión es la instalada: puede faltarle lo que la nueva cuenta."
+    echo "Para traerla:  $actualizar"
+    echo "Rige en la próxima sesión, o ya con /reload-plugins."
+  fi
+  ;;
 tablero) leer "/api/tablero" ;;
 # El taller dice HILO y la API dice `lineas`: los dos nombres alcanzan lo mismo, para que
 # la palabra que se lee y la que se tipea sean la misma.
 hilos | lineas) leer "/api/lineas" ;;
 hilo | linea)
   exige 1 "hilo <slug|alias>" "$@"
-  leer "/api/lineas/$1"
+  leer "/api/lineas/$(uri "$1")"
   ;;
 buscar)
   exige 1 "buscar <texto>" "$@"
@@ -350,7 +380,7 @@ termino)
 flujos) leer "/api/flujos" ;;
 flujo)
   exige 1 "flujo <slug>" "$@"
-  leer "/api/flujos/$1"
+  leer "/api/flujos/$(uri "$1")"
   ;;
 stack) leer "/api/stack${1:+?flujos=1}" ;;
 # Los accesos directos del proyecto: las direcciones de afuera a las que se entra todos
@@ -358,7 +388,11 @@ stack) leer "/api/stack${1:+?flujos=1}" ;;
 accesos) leer "/api/enlaces" ;;
 # Qué falta HACER: del proyecto entero, o de un hilo si se lo nombra. El segundo argumento
 # filtra por estado — `acciones "" pendiente` es el frente del proyecto sin lo ya cerrado.
+# Los nombres anteriores al modelo de tipos. Siguen resolviendo contra su colección vieja
+# —una instalación sin actualizar no se queda sin puerta— y avisan por dónde va el trabajo
+# hoy, para que quien los lea no aprenda el vocabulario que se fue.
 acciones)
+  echo "· El trabajo por hacer es un PLAN: bitacora-api abiertos planes" >&2
   ruta="/api/acciones"
   sep="?"
   if [ -n "${1:-}" ]; then
@@ -389,6 +423,59 @@ secciones) leer "/api/secciones" ;;
 reviews) leer "/api/reviews" ;;
 horas) leer "/api/trabajo" ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
+# ─────────────────────────────────────────────────────────────────────────────
+# LOS TIPOS DE UN HILO — analisis · planes · bugs · client-reports · decisiones
+#
+# Un hilo es el ticket y adentro cuelgan cosas de tipo distinto. El tipo se nombra
+# en plural y en la misma palabra que se lee en la app, así lo que se escribe y lo
+# que se navega dicen igual.
+# ─────────────────────────────────────────────────────────────────────────────
+tipo)
+  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones> [estado]" "$@"
+  leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
+  ;;
+abiertos)
+  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones>" "$@"
+  leer "/api/items/$(uri "$1")?abiertos"
+  ;;
+del-hilo)
+  exige 2 "del-hilo <hilo> <tipo>" "$@"
+  leer "/api/hilos/$(uri "$1")/$(uri "$2")"
+  ;;
+# Un ítem entero, con su cuerpo y su historia: es cómo se relee lo que se escribió.
+item)
+  exige 2 "item <tipo> <id>" "$@"
+  leer "/api/items/$(uri "$1")/$(uri "$2")"
+  ;;
+# La capa traducida de un ítem, con la huella del original que tradujo.
+traducir-item)
+  exige 2 "traducir-item <tipo> <id>   < {\"traduccion\":{…}}" "$@"
+  vaciar_cola
+  escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
+  ;;
+analisis | plan | bug | client-report)
+  exige 1 "$comando <hilo>   < JSON" "$@"
+  vaciar_cola
+  case "$comando" in
+    analisis) ruta_tipo=analisis ;;
+    plan) ruta_tipo=planes ;;
+    bug) ruta_tipo=bugs ;;
+    client-report) ruta_tipo=client-reports ;;
+  esac
+  escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
+  ;;
+mover)
+  exige 2 "mover <tipo> <id>   < JSON" "$@"
+  vaciar_cola
+  escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
+  ;;
+# Sin stdin: un DELETE no lleva cuerpo, y esperarlo colgaría la terminal en un Ctrl-D.
+sacar)
+  exige 2 "sacar <tipo> <id>" "$@"
+  curl -fsS --max-time 20 -X DELETE -H "Authorization: Bearer $TOKEN" \
+    "$BASE/api/items/$(uri "$1")/$(uri "$2")"
+  ;;
+
 documento)
   exige 3 "documento <linea|seccion|flujo> <contenedor> <slug>" "$@"
   leer "/api/documentos?$1=$(uri "$2")&slug=$(uri "$3")"
@@ -396,57 +483,63 @@ documento)
 entrada)
   exige 1 "entrada <slug>   < JSON" "$@"
   vaciar_cola
-  escribir POST "/api/lineas/$1/entradas"
+  escribir POST "/api/lineas/$(uri "$1")/entradas"
   ;;
 decision)
   exige 1 "decision <slug>   < JSON" "$@"
   vaciar_cola
-  escribir POST "/api/lineas/$1/decisiones"
+  escribir POST "/api/lineas/$(uri "$1")/decisiones"
   ;;
-# El frente de EJECUCIÓN, al lado del de decisión. Puerta liviana: título y adónde cierra.
-# Acá va lo que hay que HACER — que es lo que antes se disfrazaba de decisión.
+# La puerta vieja de las acciones: el Plan absorbió ese trabajo. Abrir está cerrado y no
+# encola —sin red, guardar el pedido sería guardar algo que el servidor va a rechazar
+# igual—; `hecha` sigue moviendo las que quedaron de antes, con el mismo aviso.
 accion)
-  exige 1 "accion <hilo>   < {\"titulo\":\"…\",\"cierraEn\":\"…\"}" "$@"
-  vaciar_cola
-  escribir POST "/api/lineas/$1/acciones"
+  exige 1 "accion <hilo>   (cerrado: el trabajo por hacer es un plan)" "$@"
+  echo "El trabajo por hacer es un PLAN, que además lleva su análisis:" >&2
+  echo "  bitacora-api plan $1 <<< '{\"titulo\":\"…\",\"cierraEn\":\"…\",\"cuerpo\":{\"es\":\"# …\"}}'" >&2
+  exit 1
   ;;
 hecha)
   exige 1 "hecha <id>   < {\"estado\":\"hecha\",\"nota\":\"…\"}" "$@"
+  echo "· Las acciones son lo anterior al Plan: lo de hoy se mueve con bitacora-api mover planes <id>" >&2
   vaciar_cola
-  escribir PATCH "/api/acciones/$1"
+  escribir PATCH "/api/acciones/$(uri "$1")"
   ;;
+# La decisión nace tomada y no tiene escritorios que mover. `cerrar` queda como la puerta
+# de salida de lo HEREDADO: el punto que quedó abierto en el modelo anterior se cierra
+# diciendo qué se decidió. La decisión nueva entra ya cerrada por `decision`.
 cerrar)
-  exige 1 "cerrar <id>   < JSON" "$@"
+  exige 1 "cerrar <id>   < {\"veredicto\":\"qué se decidió\"}" "$@"
   vaciar_cola
-  escribir PATCH "/api/decisiones/$1"
+  jq -c '. + {estado:"resuelta"}' | escribir PATCH "/api/decisiones/$(uri "$1")"
   ;;
-# Sacar un punto del frente sin cerrarlo: sigue vivo y vuelve con su gatillo. Un estado que
-# solo existe si te acordás del JSON es un estado que nadie usa.
 diferir)
-  exige 1 "diferir <id>   < {\"reabreCuando\":\"qué lo devuelve al frente\"}" "$@"
-  vaciar_cola
-  escribir PATCH "/api/decisiones/$1"
+  exige 1 "diferir <id>   (cerrado: lo que espera su momento es un plan)" "$@"
+  echo "Diferir era del modelo anterior. Lo que espera su momento es un PLAN," >&2
+  echo "con su gatillo escrito en el cuerpo:" >&2
+  echo "  bitacora-api plan <hilo> <<< '{\"titulo\":\"…\",\"cierraEn\":\"…\",\"cuerpo\":{\"es\":\"…\"}}'" >&2
+  exit 1
   ;;
-# Los entregables que cuelgan de un punto. Reemplaza la lista entera, como `alias`.
-entregables)
-  exige 1 "entregables <id-de-punto>   < {\"entregables\":[{\"slug\":\"…\",\"estado\":\"preparacion\"}]}" "$@"
+# Corregir una decisión registrada: su veredicto, su marco, sus textos — o mudarla de hilo.
+corregir)
+  exige 1 "corregir <id>   < {\"veredicto\":\"…\"} · {\"cuerpo\":{…}} · {\"lineaSlug\":\"…\"}" "$@"
   vaciar_cola
-  escribir PATCH "/api/decisiones/$1"
+  escribir PATCH "/api/decisiones/$(uri "$1")"
   ;;
 superar)
   exige 2 "superar <linea> <id-de-entrada>   < {\"superadaPor\":\"…\"}" "$@"
   vaciar_cola
-  escribir PATCH "/api/lineas/$1/entradas/$2"
+  escribir PATCH "/api/lineas/$(uri "$1")/entradas/$(uri "$2")"
   ;;
 editar-hilo | editar-linea)
   exige 1 "editar-hilo <slug>   < {\"estado\":\"resuelta\"} · {\"area\":\"infra\"}" "$@"
   vaciar_cola
-  escribir PATCH "/api/lineas/$1"
+  escribir PATCH "/api/lineas/$(uri "$1")"
   ;;
 fusionar)
   exige 1 "fusionar <slug-que-desaparece>   < {\"en\":\"el-que-queda\"}" "$@"
   vaciar_cola
-  escribir POST "/api/lineas/$1/fusionar"
+  escribir POST "/api/lineas/$(uri "$1")/fusionar"
   ;;
 # abrir-flujo  ← {"nombre":"…","queEs":"…","categoria":"runtime|editorial|ciclo-de-vida|migracion"}
 abrir-flujo)
@@ -456,7 +549,7 @@ abrir-flujo)
 editar-flujo)
   exige 1 "editar-flujo <slug>   < {\"estado\":\"construido\"} · {\"sumarStack\":[\"algolia\"]} · {\"sumarGlosario\":[\"route\"]}" "$@"
   vaciar_cola
-  escribir PATCH "/api/flujos/$1"
+  escribir PATCH "/api/flujos/$(uri "$1")"
   ;;
 # anotar-pieza  ← {"nombre":"…","responsabilidad":"…","donde":"…","comoSeEntra":"…"}
 anotar-pieza)
@@ -466,7 +559,7 @@ anotar-pieza)
 editar-pieza)
   exige 1 "editar-pieza <slug>   < {\"responsabilidad\":\"…\"}" "$@"
   vaciar_cola
-  escribir PATCH "/api/stack/$1"
+  escribir PATCH "/api/stack/$(uri "$1")"
   ;;
 # traducir  ← un documento {"linea|seccion|flujo":"…","slug":"…","idioma":"en","cuerpo":"…","hash":"…"}
 #           ← o una ficha  {"tipo":"hilo|area|seccion|flujo|pieza|termino|entrada|punto",
@@ -484,7 +577,7 @@ abrir-area)
 editar-area)
   exige 1 "editar-area <slug>   < {\"nombre\":\"…\"} · {\"orden\":2}" "$@"
   vaciar_cola
-  escribir PATCH "/api/areas/$1"
+  escribir PATCH "/api/areas/$(uri "$1")"
   ;;
 seccion)
   vaciar_cola
@@ -493,7 +586,7 @@ seccion)
 editar-seccion)
   exige 1 "editar-seccion <slug>   < JSON" "$@"
   vaciar_cola
-  escribir PATCH "/api/secciones/$1"
+  escribir PATCH "/api/secciones/$(uri "$1")"
   ;;
 definir)
   # definir  ← {"termino":"…","definicion":"…"} o una lista de esos
@@ -518,7 +611,7 @@ rato)
 mover-rato)
   exige 1 "mover-rato <id>   < {\"estado\":\"…\"}" "$@"
   vaciar_cola
-  escribir PATCH "/api/trabajo/$1"
+  escribir PATCH "/api/trabajo/$(uri "$1")"
   ;;
 mudar-documento)
   exige 3 "mudar-documento <linea|seccion|flujo> <contenedor> <slug>   < {\"lineaSlug\":\"otra\"}" "$@"
@@ -546,15 +639,15 @@ pendientes) vaciar_cola ;;
   cat >&2 <<'USO'
 Uso: bitacora-api [-p <proyecto>] <comando>
   El proyecto se deduce de dónde estás parado, bajo ~/ProyectosDev-Local y bajo cada
-  `raiz=<path>` de config.local (webchicas/<cliente> cuenta como <cliente>, y
+  `raiz=<path>` de config.local (<raíz>/<proyecto> → <proyecto>, y
   `alias.<carpeta>=<tenant>` traduce la que no se llama como su tenant);
-  -p lo fija a mano.
+  -p lo fija a mano. Lo marcado (dueño) contesta 403 con la llave de un colaborador.
   bitacora-api proyecto                      (dice cuál resolvió)
+  bitacora-api version                       (la instalada contra la última publicada — lo primero de cada invocación)
 
 El sistema del proyecto — la tríada. Primera lectura al llegar:
   bitacora-api contexto                     (el dominio + el stack + los flujos, de una)
   bitacora-api flujos                       · bitacora-api flujo <slug>
-  bitacora-api acciones [hilo] [estado]     qué falta HACER (sin estado trae también lo cerrado)
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
   bitacora-api accesos                      (las direcciones de afuera: engine, repo, tickets, diseño)
@@ -568,22 +661,33 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api area <slug>                  (un área con los hilos que viven ahí; `areas <slug>` es lo mismo)
   bitacora-api buscar <texto>
   bitacora-api documento <linea|seccion|flujo> <contenedor> <slug>
-  bitacora-api secciones · bitacora-api horas · bitacora-api adjuntos [linea] · bitacora-api reviews
+  bitacora-api secciones · bitacora-api horas (dueño) · bitacora-api adjuntos [linea] · bitacora-api reviews
+  bitacora-api del-hilo <hilo> <tipo>       (lo que cuelga de un hilo, de un tipo)
+  bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando hilos)
+  bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
+  bitacora-api abiertos <tipo>              (los que quedaron sin cerrar; el análisis y la decisión no tienen)
+        tipo = analisis | planes | bugs | client-reports | decisiones
   bitacora-api por-traducir [idioma]        (documentos y fichas: lo que falta y lo que quedó viejo)
 
 Escritura (el cuerpo JSON entra por stdin):
+  bitacora-api analisis <hilo>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
+  bitacora-api plan <hilo>                  {"titulo":"…","cierraEn":"…","cuerpo":{"es":"# …"},"flujos":["…"]}
+  bitacora-api bug <hilo>                   {"titulo":"…","cuerpo":{"es":"qué pasa y cómo se reproduce"},"flujos":["…"]}
+        `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
+  bitacora-api client-report <hilo>         {"titulo":"…","cuerpo":{"es":"# …"}}
+  bitacora-api traducir-item <tipo> <id>    {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}
+  bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
+        la decisión NO tiene escritorios: nace tomada y se corrige con corregir
+  bitacora-api sacar <tipo> <id>            (el que se abrió por error — dueño)
   bitacora-api entrada <slug>               {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
   bitacora-api superar <slug> <id-entrada>  {"superadaPor":"…"}
-  bitacora-api decision <slug>              un punto ENTERO: sin su marco la puerta lo rechaza
-                                            {"titulo":"…","bloquea":"qué se frena hoy",
-                                             "opciones":[{"titulo":"…","implica":"…"},…],
+  bitacora-api decision <slug>              se registra YA TOMADA, con su análisis entero:
+                                            {"titulo":"…","veredicto":"qué se decidió",
+                                             "bloquea":"qué se frenaba","opciones":[{"titulo":"…","implica":"…"},…],
                                              "recomiendo":0,"recomendacion":"por qué esa",
                                              "cierraEn":"…","cuerpo":"…","flujos":["…"]}
-  bitacora-api cerrar <id>                  {"estado":"resuelta","nota":"qué se decidió"}
-  bitacora-api diferir <id>                 {"reabreCuando":"qué lo devuelve al frente"}
-  bitacora-api accion <hilo>                {"titulo":"…","cierraEn":"la PR que lo trae"}
-                                            + "decision":"<id>" cuando sale de un punto
-  bitacora-api hecha <id>                   {"estado":"hecha","nota":"cómo cerró"}
+  bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}
+  bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
   bitacora-api abrir-hilo                   {"slug":"…","nombre":"…","area":"…","decide":"…","brief":"…"}
   bitacora-api editar-hilo <slug>           {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"}
   bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena mudando hilos)
@@ -598,6 +702,8 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api definir                      {"termino":"…","definicion":"…"}  (o una lista)
   bitacora-api anotar-acceso                {"nombre":"Engine API","url":"https://…","nota":"staging"}
   bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
+  bitacora-api rato (dueño)                 {"tarea":"…","reloj":"1:30"}   (el banco de horas)
+  bitacora-api mover-rato <id> (dueño)      {"estado":"cargado"}
   bitacora-api guardar-documento            el documento entero
   bitacora-api traducir                     {"linea":"…","slug":"…","idioma":"en","cuerpo":"…","hash":"…"}
   bitacora-api traducir                     {"tipo":"hilo","llave":"…","idioma":"en","campos":{…},"huella":"…"}
@@ -605,7 +711,7 @@ Escritura (el cuerpo JSON entra por stdin):
                                             (acepta linea|seccion|flujo, los nombres que da la cola)
   bitacora-api mudar-documento <linea|seccion|flujo> <contenedor> <slug>   {"lineaSlug":"otra"}
 
-Archivos y bajas:
+Archivos y bajas (borrar es del dueño):
   bitacora-api adjuntar <archivo> linea=<slug> [queEs="…"]
   bitacora-api borrar /api/lineas/<slug>     (se niega si todavía cuelga algo)
   bitacora-api borrar /api/areas/<slug>      (se niega si algún hilo vive ahí)

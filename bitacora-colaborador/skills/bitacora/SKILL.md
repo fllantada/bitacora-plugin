@@ -1,12 +1,12 @@
 ---
 name: bitacora
-description: "Work with the project logbook (bitácora) as a collaborator — read the project's context, write dated entries, open and close decisions, and keep the shared record of what happened and why. Use when the user mentions the bitácora / logbook, wants to record something that happened, log a finding or a decision, check open decisions, read the project context, or asks what the logbook says about a topic."
+description: "Work with the project logbook (bitácora) as a collaborator — read the project's context, write dated entries, record decisions already made, and keep the shared record of what happened and why. Use when the user mentions the bitácora / logbook, wants to record something that happened, log a finding or a decision, check what was decided, read the project context, or asks what the logbook says about a topic."
 ---
 
 # /bitacora — the project logbook, as a collaborator
 
 The **bitácora** is the project's shared workspace: the place where complex topics get
-analyzed, decisions get recorded one by one, and the day-to-day record of what happened
+analyzed, decisions get recorded one by one — already made, with their frame and their verdict — and the day-to-day record of what happened
 — and why — accumulates. It lives as a web app the owner runs; you talk to it over HTTP
 with the `bitacora-api` client, and you read it in the browser with your email login.
 
@@ -14,6 +14,17 @@ with the `bitacora-api` client, and you read it in the browser with your email l
 server, and the web shows every record's author — yours in one color, everyone else's
 in another. Write freely: attribution is the mechanism of trust here, and visible
 authorship replaces asking for permission.
+
+**Step zero, every time this skill is invoked: `bitacora-api version`.** The plugin
+updates itself, but a new version only takes effect in the next session — this very
+document may be the previous one without anything saying so. The command compares the
+installed version against the latest published one (the server knows it: the same push
+deploys both), and if there is a newer one it prints how to bring it in. In that case:
+run the update it prints, tell the user this session's instructions are the installed
+ones, and carry on — whatever the API answers is the truth in force, and its 400 errors
+name the right door whenever something moved. And if the check can't reach the server
+— no network, or your key expired — it stops nothing either: carry on with the work,
+writes queue themselves, and an expired key is renewed with `bitacora-api renovar`.
 
 ## Setup — once per machine
 
@@ -58,24 +69,26 @@ in order:
 3. **Read the project yourself, quietly**: `$API contexto` (the glossary, stack and
    flows — skip if you already read it this session) and `$API tablero`.
 4. **Present a two-line pulse and ask.** Name what's actually alive — the threads at the
-   front, how many decisions are open, the freshest thing that happened — and ask what
-   they'd like to talk about. For example: *"The board is open in your browser. Two
-   threads are moving — the search migration and the pricing page — with three open
-   decisions between them. What would you like to dig into?"* Always offer from the
-   REAL board, never a generic menu.
+   front, the pending plans (that is where work resumes), the freshest thing that happened
+   — and ask what they'd like to do: resume a plan, write an analysis, log something that
+   happened, record a decision that was made, or just read. For example: *"The board is
+   open in your browser. Two threads are moving — the search migration and the pricing
+   page — with three pending plans between them. What would you like to dig into?"*
+   Always offer from the REAL board, never a generic menu.
 
 From there, conversation: answer questions from the logbook's content (search, threads,
-documents, decisions), record what they tell you as entries, open decision points when
-a real trade-off appears. You are the project's memory speaking.
+documents, decisions), record what they tell you as entries, record decision points when
+a real trade-off gets settled. You are the project's memory speaking.
 
 ## The rest of the routing
 
 | The user says | What you do |
 |---|---|
-| `/bitacora <thread>` | Open that thread (`$API hilo <slug>`): its brief, open decisions, latest entries and documents. The argument may be an alias — the server resolves it. |
+| `/bitacora <thread>` | Open that thread (`$API hilo <slug>`): its brief, pending plans, latest entries and documents. The argument may be an alias — the server resolves it. |
 | `/bitacora <thread> <something that happened>` | Write the dated entry (see *Writing entries* below). |
-| `/bitacora <thread> decision <what needs deciding>` | Add the point to the thread's decision book — with its full frame, or the server rejects it. |
-| `/bitacora <thread> we need to <something to do>` | Add the action to the execution front. |
+| `/bitacora <thread> decision <what was decided>` | Record the point — ALREADY made — in the thread's decision book, with its full frame and its verdict, or the server rejects it. |
+| `/bitacora <thread> we need to <something to do>` | Open the plan: how it gets solved and where it closes. |
+| `/bitacora plan <topic>` | Build the plan out of what was just discussed: ask FIRST which area or thread it joins, require where it closes, and write it into the thread (see *Planning* below). |
 | `/bitacora what is left to do` | The project's execution front. |
 | `/bitacora area <name>` | Read that area (`$API area <slug>`): its name and the threads living in it, each with its state. What is open to decide there, and its timeline, live on the area's page in the browser. |
 | Something that matches nothing | It's probably a thread that doesn't exist yet — list the threads and ask, rather than failing. |
@@ -111,25 +124,63 @@ $API -p <project> entrada <thread-slug> <<'JSON'
 {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
 JSON
 
-# A point goes in WHOLE or not at all — the server rejects one without its frame:
+# A decision is recorded ALREADY MADE, and goes in whole or not at all — the server
+# rejects one without its frame or its verdict:
 $API -p <project> decision <thread-slug> <<'JSON'
-{"titulo":"…","bloquea":"what is blocked today while this stays undecided",
+{"titulo":"…","veredicto":"what was decided",
+ "bloquea":"what was blocked while this stayed undecided",
  "opciones":[{"titulo":"…","implica":"what choosing it costs"},
              {"titulo":"…","implica":"what choosing it costs"}],
  "recomiendo":0,"recomendacion":"why that one and not the others",
  "cierraEn":"…","cuerpo":"…"}
 JSON
 
-# Something to DO is an action, not a decision. Light door on purpose:
-$API -p <project> accion <thread-slug> <<'JSON'
-{"titulo":"…","cierraEn":"the PR that brings it","decision":"<point-id>"}
-JSON
-$API -p <project> acciones          # what is left to do, across the project
-
-$API -p <project> cerrar <id>  <<< '{"estado":"resuelta","nota":"what was decided"}'
-$API -p <project> diferir <id> <<< '{"reabreCuando":"what brings it back to the front"}'
-$API -p <project> hecha <id>   <<< '{"estado":"hecha","nota":"how it closed"}'
+$API -p <project> corregir <id> <<< '{"veredicto":"…"}'
 ```
+
+## A thread holds FIVE TYPES, each with its own door
+
+A **thread** is the ticket, and what hangs from it has a type. The type is what sets its
+door, its desks and its colour:
+
+| Type | What it is | What opening it costs | Desks |
+|---|---|---|---|
+| **Analysis** | what was understood about a topic | its body | none: it is material you read |
+| **Plan** | how something gets solved — strategy AND execution | its body and where it closes | pendiente · hecho · descartado |
+| **Bug** | a defect found while doing something else | its body | abierto · arreglado · descartado |
+| **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
+| **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
+
+```bash
+$API -p <project> analisis <thread> <<'JSON'
+{"titulo":"…","queEs":"what the reader will find","cuerpo":{"en":"# …"}}
+JSON
+$API -p <project> plan <thread> <<'JSON'
+{"titulo":"…","cierraEn":"the PR that brings it","cuerpo":{"en":"# How it gets solved\n…"}}
+JSON
+$API -p <project> bug <thread> <<'JSON'
+{"titulo":"…","cuerpo":{"en":"What happens, how to reproduce it, what is known so far."}}
+JSON
+$API -p <project> client-report <thread> <<'JSON'
+{"titulo":"…","ficha":{"For":"who receives it"},"cuerpo":{"en":"# …"}}
+JSON
+
+$API -p <project> del-hilo <thread> planes    # a thread's plans, with their bodies
+$API -p <project> tipo planes                 # every plan in the project
+$API -p <project> abiertos bugs               # the bugs still open, across threads
+$API -p <project> item planes <id>            # one whole: its body and how it moved
+$API -p <project> mover planes <id> <<< '{"estado":"hecho","nota":"how it closed"}'
+```
+
+**The Plan is what has to be DONE.** It is the plan you would write to solve something,
+with its execution — which is why it has a desk and gets closed. A **Bug** is a fact, not a
+decision: its door asks for the body and nothing else, so a defect found outside your scope
+gets written down with its analysis and you carry on without the fix.
+
+**The decision enters and gets corrected through its own door** — `decision` and
+`corregir`. It is born already made, with its frame and its verdict, so a generic door
+that skipped those would be the shortcut a passing thought takes into the book. What
+still needs deciding is a **plan** ("decide X"): pending work lives where the desks are.
 
 If you are offline, writes queue in `~/.config/bitacora/pendientes.jsonl` and upload
 on the next write. Field values like `tipo` and `estado` are in Spanish — they are the
@@ -218,78 +269,104 @@ name they were born with, and the client accepts both words (`hilo` and `linea`,
   (`"fecha":"YYYY-MM-DD"`); measurements typed from memory don't go in prose — name
   the fact in words instead.
 
-## Decisions — one at a time, and each one stands alone
+## Decisions — recorded already made, and each one stands alone
 
-**An open decision is an analysis in itself.** It is read on its own and understood on its
-own, without opening any other document — which is why it has its own page and why the
-server **demands its frame** when you open it:
+**A decision is a trade-off that was ALREADY settled, recorded with its whole analysis.**
+It is read on its own and understood on its own, without opening any other document —
+which is why it has its own page and why the server **demands its frame and its verdict**
+when you record it:
 
 | Field | What it carries |
 |---|---|
-| `bloquea` | What is blocked TODAY while this stays undecided |
+| `veredicto` | **What was decided**, in one sentence — what the record answers without opening the point |
+| `bloquea` | What was blocked while this stayed undecided |
 | `opciones[]` | Two at minimum, each with `titulo` and a **developed** `implica` — the server asks for real substance, because an option without its consequences is just a title |
-| `recomiendo` | The position of the option you recommend (`0` is the first) |
+| `recomiendo` | The position of the option that was recommended (`0` is the first) |
 | `recomendacion` | Why that one and not the others, **with the full reasoning** |
 | `cierraEn` | Where it closes: a PR, an entry in the client record, or nothing |
 | `cuerpo` | What triggered the point and where the work is. **The longest of them all** — it is the analysis, and the server measures it |
 
-**Those three carry a minimum length and the server says so when it rejects them.** Don't
-write them with ellipses or leave them for later: a point is what someone reads two months
-from now with none of today's context in their head.
+**The long fields carry a minimum length and the server says so when it rejects them.**
+Don't write them with ellipses or leave them for later: a point is what someone reads two
+months from now with none of today's context in their head.
 
-A point without its frame gets a 400 naming what is missing. That friction is the
-mechanism: the book used to fill with points that were a passing thought with a number,
-because opening cost three sentences and closing cost rewriting everything.
+A point without its frame or its verdict gets a 400 naming what is missing. That friction
+is the mechanism: the book used to fill with points that were a passing thought with a
+number, because opening cost three sentences.
 
-A point enters the book only when the trade-off is real: two live options and choosing
-matters. What a doc, a standard or the repo's law settles is not a decision — look it up
-and write the answer. **And something to DO is an action, not a point** — that detour is
-what filled the book. Work them **individually** — origin, position, close — and don't
-open the next until the one on the table is closed.
+A point enters the book only when the trade-off was real: two live options and choosing
+mattered. What a doc, a standard or the repo's law settles leaves no point — look it up
+and write the answer. **And something still to DO is a plan, not a point** — that detour
+is what filled the book. Work them **individually**: origin, position, verdict, one at a
+time.
 
-**Three desks.** `abierta` = something is on us. `diferida` = the point is real and its
-moment is not now; it leaves the front and **requires its `reabreCuando`**, because
-deferring without naming what brings it back is just forgetting. `resuelta` = nothing
-pending. Bringing a point back to the front demands its full frame, whichever way it comes;
-closing and deferring cost one sentence.
+**No desks.** The decision is born `resuelta` and stays recorded: what in the old model
+was an open decision is now a plan ("decide X"), and what was a deferred one is a plan
+with its trigger written in the body — pending work lives where the desks are. `corregir`
+fixes the verdict, the frame or the text of a recorded point. `cerrar` remains as the way
+out for INHERITED points that were left open under the old model — it closes one stating
+its verdict (`$API -p <project> cerrar <id> <<< '{"veredicto":"…"}'`) — and `diferir`
+answers with the current gesture.
 
-Closing IS rewriting: an open point carries its full live context; a closed one gets
-rewritten short and self-contained, so someone reading it in two months understands what
-was decided and why without any of today's context. References (PR numbers, links) go in
-`cierraEn`.
+A point is written short and self-contained, so someone reading it in two months
+understands what was decided and why without any of today's context. References (PR
+numbers, links) go in `cierraEn`. The verdict is dated in the point's history with your
+name — that history is the project's "how we decided" view.
 
-Every state change is recorded in the point's history with your name and the date —
-that history is the project's "how we decided" view.
+## Plans — what is left to do
 
-## Actions — what is left to do
+The decision book answers *what was decided*; the plans answer *what is left to do* —
+**the front of a thread is its pending plans**, deciding included: a choice still open
+lives as a plan ("decide X"), and when it settles, the decision is recorded already made.
 
-The decision book answers *what is left to decide*; the action book answers *what is left
-to do*. They are independent: a decision may spawn no action, an action may come from no
-decision, and a decision taken months ago may still have its action pending.
+**What its door asks for is the body and the named close** — without the close nobody can
+say whether it is done. States: `pendiente`, `hecho`, and `descartado` for what stopped
+applying — marking that one `hecho` would lie about work nobody did.
 
-**The door is light on purpose** — a title and where it closes. If opening an action cost
-what opening a decision costs, work would keep disguising itself as a decision. The one
-thing required is the named close, because without it nobody can say whether it is done.
-States: `pendiente`, `hecha`, and `descartada` for what stopped applying — marking that one
-`hecha` would lie about work nobody did.
-
-**Moving a point to the execution front takes two steps.** When you find an open point that
-is really work to do —nothing is blocked by it, and the material already settled the
-comparison— the action is born naming the point it came from, and the point closes with the
-note saying it moved. With only one of the two the trail is lost: the action ends up orphaned,
-or the point stays open asking for a decision nobody has to make.
+**A plan that waits for its moment carries its trigger in the body**: what wakes it up
+and why today is not the day. That is what the old model called a deferred decision — a
+pending item with a trigger is work that waits, and the type that waits is the plan.
 
 ```bash
-$API -p <project> accion <thread> <<'JSON'
-{"titulo":"…","cierraEn":"…","decision":"<point-id>"}
+$API -p <project> plan <thread> <<'JSON'
+{"titulo":"Decide where the axis rule lives","cierraEn":"the schema PR",
+ "cuerpo":{"en":"# What wakes this up\nPete's second localisation proposal.\n\n# The analysis so far\n…"}}
 JSON
-$API -p <project> cerrar <point-id> <<< '{"estado":"resuelta","nota":"Not a decision: it moved to the execution front."}'
 ```
 
 Dropping goes through the same door as finishing:
-`$API -p <project> hecha <id> <<< '{"estado":"descartada","nota":"why it stopped applying"}'`.
-`$API -p <project> acciones` returns everything; add a state to see only the front:
-`acciones <thread> pendiente`.
+`$API -p <project> mover planes <id> <<< '{"estado":"descartado","nota":"why it stopped applying"}'`.
+`$API -p <project> tipo planes` returns everything; `abiertos planes` leaves only the front.
+
+## Planning — the same gesture in every project
+
+**Every piece of planning ends as a logbook plan, hanging from its thread.** The method
+is one and it lives here: whichever project you plan in, planning is this same gesture
+through the same doors.
+
+**Where it hangs is settled first.** List the areas with their live threads
+(`$API areas`) and ask the user which one the plan joins — the plan is theirs, and so is
+the topic it belongs to. When no thread hosts the topic yet, offer to open one
+(`$API abrir-hilo`, with its brief and its goal) and the plan is born inside it.
+
+**The plan comes out of what was already discussed.** A title that states the conclusion,
+a `cierraEn` saying where it closes — the door demands it: without a close there is no
+plan — and a body carrying the reasoning the conversation produced. Write it with
+`$API plan <thread>` and finish the gesture by handing the user the item's address, so
+they can keep reading it in the web app. The tie-break between types is the standing one
+(see *Plans* above): understanding left asks for an analysis, executing asks for a plan,
+choosing between exclusive paths asks for a decision.
+
+**Claude Code's plan mode (`/plan`, shift+tab) is the harness's working mode** for
+thinking a change through before touching it; the plan it produces is recorded through
+this same gesture — what was thought out hangs from its thread and outlives the session.
+
+```bash
+$API -p <project> areas          # where it hangs: the areas with their live threads — ask BEFORE writing
+$API -p <project> plan <thread> <<'JSON'
+{"titulo":"…","cierraEn":"the PR that brings it","cuerpo":{"en":"# How it gets solved\n…"}}
+JSON
+```
 
 ## What is someone else's
 
