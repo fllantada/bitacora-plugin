@@ -385,7 +385,7 @@ flujo)
 stack) leer "/api/stack${1:+?flujos=1}" ;;
 # Los accesos directos del proyecto: las direcciones de afuera a las que se entra todos
 # los días — el engine, el repo, el tablero de tickets, el diseño.
-accesos) leer "/api/enlaces" ;;
+accesos) leer "/api/enlaces" ;;   # con su `usuario`/`clave`, el que la pide
 # Qué falta HACER: del proyecto entero, o de un hilo si se lo nombra. El segundo argumento
 # filtra por estado — `acciones "" pendiente` es el frente del proyecto sin lo ya cerrado.
 # Los nombres anteriores al modelo de tipos. Siguen resolviendo contra su colección vieja
@@ -594,7 +594,8 @@ definir)
   escribir PUT "/api/glosario"
   ;;
 anotar-acceso)
-  # anotar-acceso  ← {"nombre":"…","url":"https://…","nota":"staging"} o una lista de esos
+  # anotar-acceso  ← {"nombre":"…","url":"https://…","nota":"staging","usuario":"…","clave":"…"}
+  #                  o una lista de esos. `usuario`/`clave` son con qué se entra al lugar.
   vaciar_cola
   escribir PUT "/api/enlaces"
   ;;
@@ -650,7 +651,7 @@ El sistema del proyecto — la tríada. Primera lectura al llegar:
   bitacora-api flujos                       · bitacora-api flujo <slug>
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
-  bitacora-api accesos                      (las direcciones de afuera: engine, repo, tickets, diseño)
+  bitacora-api accesos                      (las direcciones de afuera, con qué se entra a cada una)
 
 El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api abrir                        (el tablero en tu navegador, sin login: enlace fresco de un solo uso)
@@ -701,6 +702,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api editar-seccion <slug>        {"resumen":"…"} · {"tipo":"fuente"}
   bitacora-api definir                      {"termino":"…","definicion":"…"}  (o una lista)
   bitacora-api anotar-acceso                {"nombre":"Engine API","url":"https://…","nota":"staging"}
+                                            · con qué se entra: {"usuario":"…","clave":"…"}
   bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
   bitacora-api rato (dueño)                 {"tarea":"…","reloj":"1:30"}   (el banco de horas)
   bitacora-api mover-rato <id> (dueño)      {"estado":"cargado"}
