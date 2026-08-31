@@ -172,6 +172,14 @@ $API -p <project> item planes <id>            # one whole: its body and how it m
 $API -p <project> mover planes <id> <<< '{"estado":"hecho","nota":"how it closed"}'
 ```
 
+**An analysis goes up SETTLED.** Clear the open questions first, in the session where
+the person who can answer them is — then write. An analysis arriving with ten questions
+inside hands the work back in the one shape nobody can act on: prose with no desk, absent
+from every front. Ask what changes what has to be done now; when one option covers the
+other and costs the same, take the one that covers and say so. **What stayed unanswered
+goes up as a PLAN**, one per item, its `cierraEn` naming what closes it — a plan shows up
+on the front and gets closed, and the same question buried in an analysis shows up nowhere.
+
 **The Plan is what has to be DONE.** It is the plan you would write to solve something,
 with its execution — which is why it has a desk and gets closed. A **Bug** is a fact, not a
 decision: its door asks for the body and nothing else, so a defect found outside your scope
@@ -259,8 +267,14 @@ name they were born with, and the client accepts both words (`hilo` and `linea`,
   *Lo que se descartó* (what was discarded — the most valuable one).
 - Common types: `hallazgo` (finding), `decisión`, `bloqueo` (blocker), `entrega`
   (delivery), `reunión` (meeting), `descarte` (discarded path), `incidente`.
-- **Titles inform.** "Notes from Tuesday" says nothing; the title states the processed
-  conclusion — reading it alone on the board, you know what's inside.
+- **Titles inform, stand alone, and fit in one phrase.** "Notes from Tuesday" says
+  nothing: the title states the processed conclusion, so that reading it alone on the
+  board you know what's inside. It names the topic in the words the topic is asked for —
+  one leaning on another thread ("Case B: …") sends whoever opens it looking for case A.
+  And the API measures it: **60 characters** for a thread's name, **80** for the title of
+  what hangs from it and of the day's entry, with the rule inside the 400. It can be short
+  because the substance has its own fields — `decide` and `brief` on the thread, `queEs`
+  and `cuerpo` on the item.
 - **The writing test:** *can this be reconstructed from the diff, the issue tracker or
   an existing analysis?* If yes, don't write it. The logbook keeps what has no other
   owner: the discovery, the why, what blocked you, what was discarded and under what
@@ -348,6 +362,9 @@ through the same doors.
 (`$API areas`) and ask the user which one the plan joins — the plan is theirs, and so is
 the topic it belongs to. When no thread hosts the topic yet, offer to open one
 (`$API abrir-hilo`, with its brief and its goal) and the plan is born inside it.
+
+**The name fits in one phrase of up to 60 characters and stands on its own** (see *Writing
+entries* above): `decide` says what gets settled there, `brief` says what it is about.
 
 **The plan comes out of what was already discussed.** A title that states the conclusion,
 a `cierraEn` saying where it closes — the door demands it: without a close there is no
