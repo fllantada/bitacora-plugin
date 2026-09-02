@@ -125,6 +125,32 @@ while true; do
   esac
 done
 
+# --- la bandeja: el ciclo del encargo en TODOS los proyectos de esta máquina ----------
+#
+# Va antes de resolver el proyecto porque no es de ninguno: recorre cada llave de
+# config.local y junta los planes entregados (esperan firma), en curso (alguien los
+# tiene) y encargados (esperan que alguien los tome). Es el vistazo del día entre todas
+# las sesiones, y sale de acá porque la llave de la API es de un tenant y el servidor no
+# cruza tenants. Una llave vencida o sin red se dice y se sigue con las demás.
+if [ "${1:-}" = "bandeja" ]; then
+  BASE="${BITACORA_URL:-$(valor_de url || true)}"
+  BASE="${BASE:-https://bitacora.dev-fran.com}"
+  [ -f "$CONFIG" ] || { echo "No hay config.local con llaves ($CONFIG)." >&2; exit 1; }
+  {
+    grep -E '^[a-z0-9-]+=' "$CONFIG" | grep -vE '^(url|raiz)=' | while IFS='=' read -r tenant llave; do
+      respuesta="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
+        "$BASE/api/items/planes?abiertos" 2>/dev/null)" || {
+        echo "· sin respuesta de «${tenant}» (llave vencida, o sin red)" >&2
+        continue
+      }
+      printf '%s' "$respuesta" | jq -c --arg p "$tenant" \
+        '.items[] | select(.estado == "entregado" or .estado == "en-curso" or .estado == "encargado")
+         | {proyecto: $p, estado, hilo, area, titulo, id, ficha}'
+    done
+  } | jq -s 'sort_by(if .estado == "entregado" then 0 elif .estado == "en-curso" then 1 else 2 end)'
+  exit 0
+fi
+
 if [ -z "$PROYECTO" ]; then
   PROYECTO="$(proyecto_del_cwd || true)"
   # Una carpeta puede no llamarse como su tenant (mi-carpeta → mi-tenant):
@@ -358,6 +384,12 @@ version)
   fi
   ;;
 tablero) leer "/api/tablero" ;;
+# El ciclo del encargo, leído por escritorio: lo que una sesión /coding puede tomar, lo
+# que alguien tiene entre manos, y lo que espera la firma de /thinking. Cada plan trae
+# su hilo y su área; `item planes <id>` lo trae entero, con el handoff y el reporte.
+encargados) leer "/api/items/planes?estado=encargado" ;;
+en-curso) leer "/api/items/planes?estado=en-curso" ;;
+entregados) leer "/api/items/planes?estado=entregado" ;;
 # El taller dice HILO y la API dice `lineas`: los dos nombres alcanzan lo mismo, para que
 # la palabra que se lee y la que se tipea sean la misma.
 hilos | lineas) leer "/api/lineas" ;;
@@ -468,6 +500,35 @@ mover)
   exige 2 "mover <tipo> <id>   < JSON" "$@"
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
+  ;;
+# ─────────────────────────────────────────────────────────────────────────────
+# EL CICLO DEL ENCARGO — el plan lleva el handoff en el cuerpo y el reporte al volver.
+#
+# /thinking lo escribe con `plan <hilo>` y "estado":"encargado"; /coding lo toma y lo
+# entrega; /thinking lo firma, o lo devuelve con la ronda siguiente en el cuerpo. Son
+# azúcar sobre `mover planes <id>`: el estado lo pone el verbo, así nadie lo tipea mal.
+# El servidor exige, para llegar a entregado, el reporte y la PR en la ficha.
+tomar)
+  exige 1 "tomar <id> [nota: el worktree o la copia que lo tiene]" "$@"
+  vaciar_cola
+  jq -cn --arg n "${2:-}" '{estado:"en-curso"} + (if $n == "" then {} else {nota:$n} end)' |
+    escribir PATCH "/api/items/planes/$(uri "$1")"
+  ;;
+entregar)
+  exige 1 "entregar <id>   < {\"reporte\":{\"es\":\"## Hecho\\n…\"},\"ficha\":{\"pr\":\"…\",\"rama\":\"…\"},\"nota\":\"…\"}" "$@"
+  vaciar_cola
+  jq -c '. + {estado:"entregado"}' | escribir PATCH "/api/items/planes/$(uri "$1")"
+  ;;
+firmar)
+  exige 1 "firmar <id> [nota: la PR mergeada]" "$@"
+  vaciar_cola
+  jq -cn --arg n "${2:-}" '{estado:"hecho"} + (if $n == "" then {} else {nota:$n} end)' |
+    escribir PATCH "/api/items/planes/$(uri "$1")"
+  ;;
+devolver)
+  exige 1 "devolver <id>   < {\"cuerpo\":{\"es\":\"<el cuerpo entero, con su ## Ronda N>\"},\"nota\":\"…\"}" "$@"
+  vaciar_cola
+  jq -c '. + {estado:"encargado"}' | escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
 # Sin stdin: un DELETE no lleva cuerpo, y esperarlo colgaría la terminal en un Ctrl-D.
 sacar)
@@ -655,7 +716,9 @@ El sistema del proyecto — la tríada. Primera lectura al llegar:
 
 El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api abrir                        (el tablero en tu navegador, sin login: enlace fresco de un solo uso)
-  bitacora-api tablero
+  bitacora-api tablero                      (los hilos con su área y sus ítems, las áreas, lo pendiente por escritorio, la tríada contada)
+  bitacora-api bandeja                      (sin -p: los planes entregados, en curso y encargados de TODOS los proyectos)
+  bitacora-api encargados · en-curso · entregados   (el ciclo del encargo, por escritorio; cada plan con su hilo y su área)
   bitacora-api hilos                        (= lineas)
   bitacora-api hilo <slug|alias>            (= linea)
   bitacora-api areas                        (los mundos del proyecto, con sus hilos)
@@ -673,6 +736,7 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
 Escritura (el cuerpo JSON entra por stdin):
   bitacora-api analisis <hilo>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
   bitacora-api plan <hilo>                  {"titulo":"…","cierraEn":"…","cuerpo":{"es":"# …"},"flujos":["…"]}
+        con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado
   bitacora-api bug <hilo>                   {"titulo":"…","cuerpo":{"es":"qué pasa y cómo se reproduce"},"flujos":["…"]}
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
   bitacora-api client-report <hilo>         {"titulo":"…","cuerpo":{"es":"# …"}}
@@ -680,6 +744,12 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
                                             · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)
         la decisión NO tiene escritorios: nace tomada y se corrige con corregir
+  El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
+  bitacora-api tomar <id> [nota]            → en-curso; la nota es el worktree o la copia que lo tiene
+  bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…"},"nota":"…"} → entregado
+                                            (el servidor exige el reporte y ficha.pr; en MACS la ficha suma review y horas)
+  bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada
+  bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con su ## Ronda N>"},"nota":"…"} → encargado
   bitacora-api sacar <tipo> <id>            (el que se abrió por error — dueño)
   bitacora-api entrada <slug>               {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
   bitacora-api superar <slug> <id-entrada>  {"superadaPor":"…"}

@@ -146,7 +146,7 @@ door, its desks and its colour:
 | Type | What it is | What opening it costs | Desks |
 |---|---|---|---|
 | **Analysis** | what was understood about a topic | its body | none: it is material you read |
-| **Plan** | how something gets solved — strategy AND execution | its body and where it closes | pendiente · hecho · descartado |
+| **Plan** | how something gets solved — strategy AND execution; it also carries a dispatched job | its body and where it closes | pendiente · encargado · en-curso · entregado · hecho · descartado |
 | **Bug** | a defect found while doing something else | its body | abierto · arreglado · descartado |
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
@@ -342,6 +342,27 @@ lives as a plan ("decide X"), and when it settles, the decision is recorded alre
 **What its door asks for is the body and the named close** — without the close nobody can
 say whether it is done. States: `pendiente`, `hecho`, and `descartado` for what stopped
 applying — marking that one `hecho` would lie about work nobody did.
+
+**A plan also carries a dispatched job, end to end.** When a thinking session hands work
+to a coding session, the plan is the handoff: its body is the brief, its `reporte` is what
+came back, and its desk says whose hands it is in — `encargado` (the brief is in the body,
+waiting for a session to take it), `en-curso` (a session took it; the note names its
+worktree), `entregado` (the PR is open and the report written; waiting for sign-off), then
+`hecho`. One plan is one PR. Reaching `entregado` requires `reporte` and `ficha.pr`; the
+door answers naming what is missing.
+
+```bash
+$API -p <project> encargados                 # what can be taken · also: en-curso · entregados
+$API -p <project> tomar <id> "worktree …"    # → en-curso
+$API -p <project> entregar <id> <<'JSON'
+{"reporte":{"en":"## Done\n…\n\n## Decisions along the way\n…\n\n## To decide\n…"},
+ "ficha":{"pr":"https://github.com/…/pull/…","rama":"…"},"nota":"PR open, one ASK"}
+JSON
+$API -p <project> firmar <id> "PR merged"    # → hecho
+$API -p <project> devolver <id> <<'JSON'
+{"cuerpo":{"en":"<the whole body, with a new ## Round 2 at the end>"},"nota":"back: why"}
+JSON
+```
 
 **A plan that waits for its moment carries its trigger in the body**: what wakes it up
 and why today is not the day. That is what the old model called a deferred decision — a
