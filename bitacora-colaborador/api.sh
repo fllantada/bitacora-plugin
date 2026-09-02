@@ -137,7 +137,8 @@ if [ "${1:-}" = "bandeja" ]; then
   BASE="${BASE:-https://bitacora.dev-fran.com}"
   [ -f "$CONFIG" ] || { echo "No hay config.local con llaves ($CONFIG)." >&2; exit 1; }
   {
-    grep -E '^[a-z0-9-]+=' "$CONFIG" | grep -vE '^(url|raiz)=' | while IFS='=' read -r tenant llave; do
+    # Una config sin llaves de tenant es una bandeja vacía, y eso es una respuesta.
+    { grep -E '^[a-z0-9-]+=' "$CONFIG" | grep -vE '^(url|raiz)=' || true; } | while IFS='=' read -r tenant llave; do
       respuesta="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
         "$BASE/api/items/planes?abiertos" 2>/dev/null)" || {
         echo "· sin respuesta de «${tenant}» (llave vencida, o sin red)" >&2
@@ -508,10 +509,13 @@ mover)
 # entrega; /thinking lo firma, o lo devuelve con la ronda siguiente en el cuerpo. Son
 # azúcar sobre `mover planes <id>`: el estado lo pone el verbo, así nadie lo tipea mal.
 # El servidor exige, para llegar a entregado, el reporte y la PR en la ficha.
+# La nota va también a `ficha.destino`: las listas —en-curso, bandeja— sirven la ficha y
+# no la historia, y quién tiene un plan se pregunta desde una lista.
 tomar)
   exige 1 "tomar <id> [nota: el worktree o la copia que lo tiene]" "$@"
   vaciar_cola
-  jq -cn --arg n "${2:-}" '{estado:"en-curso"} + (if $n == "" then {} else {nota:$n} end)' |
+  jq -cn --arg n "${2:-}" \
+    '{estado:"en-curso"} + (if $n == "" then {} else {nota:$n, ficha:{destino:$n}} end)' |
     escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
 entregar)
@@ -745,7 +749,7 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)
         la decisión NO tiene escritorios: nace tomada y se corrige con corregir
   El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
-  bitacora-api tomar <id> [nota]            → en-curso; la nota es el worktree o la copia que lo tiene
+  bitacora-api tomar <id> [nota]            → en-curso; la nota (y ficha.destino) es el worktree o la copia que lo tiene
   bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…"},"nota":"…"} → entregado
                                             (el servidor exige el reporte y ficha.pr; en MACS la ficha suma review y horas)
   bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada

@@ -340,8 +340,10 @@ The decision book answers *what was decided*; the plans answer *what is left to 
 lives as a plan ("decide X"), and when it settles, the decision is recorded already made.
 
 **What its door asks for is the body and the named close** — without the close nobody can
-say whether it is done. States: `pendiente`, `hecho`, and `descartado` for what stopped
-applying — marking that one `hecho` would lie about work nobody did.
+say whether it is done. States: `pendiente` and `hecho` at the two ends, `encargado`,
+`en-curso` and `entregado` for a dispatched job in between (next paragraph), and
+`descartado` for what stopped applying — marking that one `hecho` would lie about work
+nobody did.
 
 **A plan also carries a dispatched job, end to end.** When a thinking session hands work
 to a coding session, the plan is the handoff: its body is the brief, its `reporte` is what
@@ -353,7 +355,8 @@ door answers naming what is missing.
 
 ```bash
 $API -p <project> encargados                 # what can be taken · also: en-curso · entregados
-$API -p <project> tomar <id> "worktree …"    # → en-curso
+$API bandeja                                 # without -p: every project this machine holds a key for
+$API -p <project> tomar <id> "worktree …"    # → en-curso; the note also lands in ficha.destino
 $API -p <project> entregar <id> <<'JSON'
 {"reporte":{"en":"## Done\n…\n\n## Decisions along the way\n…\n\n## To decide\n…"},
  "ficha":{"pr":"https://github.com/…/pull/…","rama":"…"},"nota":"PR open, one ASK"}
