@@ -170,7 +170,13 @@ $API -p <project> tipo planes                 # every plan in the project
 $API -p <project> abiertos bugs               # the bugs still open, across threads
 $API -p <project> item planes <id>            # one whole: its body and how it moved
 $API -p <project> mover planes <id> <<< '{"estado":"hecho","nota":"how it closed"}'
+$API -p <project> mover planes <id> <<< '{"hilo":"the-thread-it-belongs-to"}'   # move it to its thread (slug or alias)
 ```
+
+**A piece hangs from the thread that already holds its topic.** Before writing, ask which
+thread this is the analysis (or plan, or bug) of, and write it there; a new thread opens
+when the person asks for one. A piece left on the wrong sibling thread moves with `mover`
+and `hilo`: it lands after the ones already there and keeps its address unless it clashes.
 
 **An analysis goes up SETTLED.** Clear the open questions first, in the session where
 the person who can answer them is — then write. An analysis arriving with ten questions
@@ -273,8 +279,8 @@ name they were born with, and the client accepts both words (`hilo` and `linea`,
   one leaning on another thread ("Case B: …") sends whoever opens it looking for case A.
   And the API measures it: **60 characters** for a thread's name, **80** for the title of
   what hangs from it and of the day's entry, with the rule inside the 400. It can be short
-  because the substance has its own fields — `decide` and `brief` on the thread, `queEs`
-  and `cuerpo` on the item.
+  because the substance has its own fields — the `brief` on the thread, `queEs` and
+  `cuerpo` on the item.
 - **The writing test:** *can this be reconstructed from the diff, the issue tracker or
   an existing analysis?* If yes, don't write it. The logbook keeps what has no other
   owner: the discovery, the why, what blocked you, what was discarded and under what
@@ -361,10 +367,10 @@ through the same doors.
 **Where it hangs is settled first.** List the areas with their live threads
 (`$API areas`) and ask the user which one the plan joins — the plan is theirs, and so is
 the topic it belongs to. When no thread hosts the topic yet, offer to open one
-(`$API abrir-hilo`, with its brief and its goal) and the plan is born inside it.
+(`$API abrir-hilo`, with its brief) and the plan is born inside it.
 
 **The name fits in one phrase of up to 60 characters and stands on its own** (see *Writing
-entries* above): `decide` says what gets settled there, `brief` says what it is about.
+entries* above): its `brief` says what it is about.
 
 **The plan comes out of what was already discussed.** A title that states the conclusion,
 a `cierraEn` saying where it closes — the door demands it: without a close there is no

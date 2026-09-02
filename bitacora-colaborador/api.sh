@@ -678,6 +678,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api client-report <hilo>         {"titulo":"…","cuerpo":{"es":"# …"}}
   bitacora-api traducir-item <tipo> <id>    {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}
   bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
+                                            · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)
         la decisión NO tiene escritorios: nace tomada y se corrige con corregir
   bitacora-api sacar <tipo> <id>            (el que se abrió por error — dueño)
   bitacora-api entrada <slug>               {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
@@ -689,7 +690,7 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "cierraEn":"…","cuerpo":"…","flujos":["…"]}
   bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
-  bitacora-api abrir-hilo                   {"slug":"…","nombre":"…","area":"…","decide":"…","brief":"…"}
+  bitacora-api abrir-hilo                   {"slug":"…","nombre":"…","area":"…","brief":"…"}
   bitacora-api editar-hilo <slug>           {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"}
   bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena mudando hilos)
   bitacora-api editar-area <slug>           {"nombre":"…"} (renombra) · {"orden":2} (su lugar en el menú)
