@@ -359,8 +359,9 @@ ruled that day, and the day that table was checked (`preciosDe`). The price ride
 with the tokens because prices move, and what a closed plan has to answer is what it cost
 WHEN it was built — that is what budgets the next job like it. The cost is derived on
 read, so it is never sent. Each delivery ADDS its batch to the earlier ones, so a second
-round declares its own without reading the first. `item planes <id>` returns it summed per
-engine, with cost and tokens resolved.
+round declares its own without reading the first, and `ronda` names which round a batch
+belongs to, so a round that arrived in two batches counts as one. `item planes <id>`
+returns it summed per engine, with cost and tokens resolved.
 
 ```bash
 $API -p <project> encargados                 # what can be taken · also: en-curso · entregados
@@ -369,7 +370,7 @@ $API -p <project> tomar <id> "worktree …"    # → en-curso; the note also lan
 $API -p <project> entregar <id> <<'JSON'
 {"reporte":{"en":"## Done\n…\n\n## Decisions along the way\n…\n\n## To decide\n…"},
  "ficha":{"pr":"https://github.com/…/pull/…","rama":"…"},
- "consumo":{"preciosDe":"YYYY-MM-DD","modelos":[{"modelo":"…","entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0,"precio":{"entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0}}]},
+ "consumo":{"ronda":1,"preciosDe":"YYYY-MM-DD","modelos":[{"modelo":"…","entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0,"precio":{"entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0}}]},
  "nota":"PR open, one ASK"}
 JSON
 $API -p <project> firmar <id> "PR merged"    # → hecho
