@@ -519,7 +519,7 @@ tomar)
     escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
 entregar)
-  exige 1 "entregar <id>   < {\"reporte\":{\"es\":\"## Hecho\\n…\"},\"ficha\":{\"pr\":\"…\",\"rama\":\"…\"},\"nota\":\"…\"}" "$@"
+  exige 1 "entregar <id>   < {\"reporte\":{\"es\":\"## Hecho\\n…\"},\"ficha\":{\"pr\":\"…\",\"rama\":\"…\"},\"consumo\":{\"preciosDe\":\"AAAA-MM-DD\",\"modelos\":[…]},\"nota\":\"…\"}" "$@"
   vaciar_cola
   jq -c '. + {estado:"entregado"}' | escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
@@ -670,7 +670,8 @@ review)
   escribir POST "/api/reviews"
   ;;
 rato)
-  # rato  ← {"tarea":"…","reloj":"1:30"}
+  # rato  ← {"tarea":"…","reloj":"1:30","plan":"<id del plan>","pr":"https://…/pull/12"}
+  # `plan` y `pr` dicen de dónde salió: el banco los enlaza. Los dos opcionales.
   vaciar_cola
   escribir POST "/api/trabajo"
   ;;
@@ -750,7 +751,8 @@ Escritura (el cuerpo JSON entra por stdin):
         la decisión NO tiene escritorios: nace tomada y se corrige con corregir
   El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
   bitacora-api tomar <id> [nota]            → en-curso; la nota (y ficha.destino) es el worktree o la copia que lo tiene
-  bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…"},"nota":"…"} → entregado
+  bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…"},"consumo":{…},"nota":"…"} → entregado
+                                            (el consumo son los tokens de cada motor con su precio de ese día: se suma a las tandas anteriores)
                                             (el servidor exige el reporte y ficha.pr; en MACS la ficha suma review y horas)
   bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada
   bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con su ## Ronda N>"},"nota":"…"} → encargado
@@ -780,7 +782,9 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · con qué se entra: {"usuario":"…","clave":"…"}
   bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
   bitacora-api rato (dueño)                 {"tarea":"…","reloj":"1:30"}   (el banco de horas)
-  bitacora-api mover-rato <id> (dueño)      {"estado":"cargado"}
+                                            · de dónde salió: {"plan":"<id del plan>","pr":"https://…/pull/12"} — el banco lo enlaza
+                                              con su PR, su plan y su review (el plan presta a su rato la PR y la review de su ficha)
+  bitacora-api mover-rato <id> (dueño)      {"estado":"cargado"} · {"plan":"<id>","pr":"…"} (null lo saca)
   bitacora-api guardar-documento            el documento entero
   bitacora-api traducir                     {"linea":"…","slug":"…","idioma":"en","cuerpo":"…","hash":"…"}
   bitacora-api traducir                     {"tipo":"hilo","llave":"…","idioma":"en","campos":{…},"huella":"…"}
