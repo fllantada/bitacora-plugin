@@ -454,6 +454,73 @@ areas | area)
   ;;
 secciones) leer "/api/secciones" ;;
 reviews) leer "/api/reviews" ;;
+# ─────────────────────────────────────────────────────────────────────────────
+# PONER UNA PIEZA AFUERA — se lee sin entrar, y nada más que esa pieza.
+#
+# La dirección que devuelve (`enlace`) es la que se manda: cualquiera con ella lee la
+# página, sin cuenta y sin login. El resto del proyecto —el tablero, el hilo, las otras
+# piezas— sigue adentro, y el espejo público no tiene navegación, así que de una pieza
+# publicada no se llega a nada más.
+#
+# La pieza se nombra como se la lee: `<hilo> <slug>` para lo que cuelga de un hilo, y la
+# sección sola para una review, que es una sección de un solo documento. Publicar abre
+# también los archivos que ese texto muestra —las capturas, el PDF que un client-report
+# entregó— y `privado` los cierra con ella.
+#
+# Es del dueño del proyecto: la llave de un colaborador recibe un 403.
+# ─────────────────────────────────────────────────────────────────────────────
+publicar | privado)
+  exige 1 "$comando <hilo> <slug>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>" "$@"
+  vaciar_cola
+  [ "$comando" = publicar ] && afuera=true || afuera=false
+
+  # Tres formas de nombrar la pieza, y la elige la cantidad de argumentos:
+  #
+  #   · con TRES, la explícita: el contenedor con su nombre, igual que `documento` y
+  #     `mudar-documento`. Es la que sirve cuando la sección tiene varios documentos, o
+  #     archivos propios, o cuando el texto vive en un flujo.
+  #   · con DOS, el hilo y el slug: la dirección de lo que cuelga de un ticket.
+  #   · con UNO, la sección sola: la review, que es una sección de un solo documento.
+  #
+  # El cuerpo se arma ANTES del pipe: lo que se valida acá tiene que poder cortar el
+  # script, y `algo | escribir` corre en un subshell — un `exit` ahí abajo deja pasar un
+  # cuerpo vacío y manda el pedido igual.
+  campo=hilo
+  case "$#:$1" in
+  3:linea | 3:hilo) contenedor="$2" pieza="$3" ;;
+  3:seccion | 3:flujo) campo="$1" contenedor="$2" pieza="$3" ;;
+  3:*)
+    echo "El contenedor es linea, seccion o flujo (llegó «$1»)." >&2
+    exit 1
+    ;;
+  2:linea | 2:hilo | 2:seccion | 2:flujo)
+    echo "A «$comando $1 $2» le falta el slug de la pieza." >&2
+    echo "  · $comando <hilo> <slug>" >&2
+    echo "  · $comando <seccion>                                 (una review)" >&2
+    echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
+    exit 1
+    ;;
+  2:*) contenedor="$1" pieza="$2" ;;
+  1:*) campo=seccion contenedor="$1" pieza="" ;;
+  # Un argumento de más cae acá, y va al final porque un `case` resuelve en orden: puesto
+  # antes tapaba la forma de la sección sola. Sin esta rama, lo que se nombraba pasaba a
+  # ser la palabra `linea` y el servidor contestaba sobre una sección que nadie nombró.
+  *)
+    echo "Sobran argumentos. Las tres formas son:" >&2
+    echo "  · $comando <hilo> <slug>" >&2
+    echo "  · $comando <seccion>                                 (una review)" >&2
+    echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
+    exit 1
+    ;;
+  esac
+
+  jq -cn --argjson p "$afuera" --arg k "$campo" --arg c "$contenedor" --arg s "$pieza" \
+    '{publico:$p} + {($k): $c} + (if $s == "" then {} else {slug:$s} end)' |
+    escribir PUT "/api/publicacion"
+  ;;
+# Qué está afuera hoy, con el enlace de cada uno: lo que se pregunta antes de mandar
+# una dirección, y de un tirón el día que se quiera cerrar todo.
+publicados) leer "/api/publicacion" ;;
 horas) leer "/api/trabajo" ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
 # ─────────────────────────────────────────────────────────────────────────────
@@ -731,6 +798,7 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api buscar <texto>
   bitacora-api documento <linea|seccion|flujo> <contenedor> <slug>
   bitacora-api secciones · bitacora-api horas (dueño) · bitacora-api adjuntos [linea] · bitacora-api reviews
+  bitacora-api publicados                   (lo que está afuera hoy, con el enlace de cada uno)
   bitacora-api del-hilo <hilo> <tipo>       (lo que cuelga de un hilo, de un tipo)
   bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando hilos)
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
@@ -791,6 +859,16 @@ Escritura (el cuerpo JSON entra por stdin):
                                             (traduce desde el `escritoEn` del documento)
                                             (acepta linea|seccion|flujo, los nombres que da la cola)
   bitacora-api mudar-documento <linea|seccion|flujo> <contenedor> <slug>   {"lineaSlug":"otra"}
+
+Poner una pieza afuera — se lee sin entrar, y nada más que esa pieza (dueño):
+  bitacora-api publicar <hilo> <slug>       → devuelve el `enlace` para mandar
+  bitacora-api publicar <seccion>           (una review: es una sección de un solo documento)
+  bitacora-api publicar <linea|seccion|flujo> <contenedor> <slug>
+                                            (la forma explícita: la sección con varios documentos
+                                             o con archivos propios, y el texto de un flujo)
+  bitacora-api privado <hilo> <slug>        (la trae de vuelta adentro, con las mismas tres formas)
+                                            publicar abre también los archivos que ese texto muestra
+                                            —las capturas, el PDF que un client-report entregó—, y privado los cierra
 
 Archivos y bajas (borrar es del dueño):
   bitacora-api adjuntar <archivo> linea=<slug> [queEs="…"]
