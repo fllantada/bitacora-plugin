@@ -524,18 +524,18 @@ publicados) leer "/api/publicacion" ;;
 horas) leer "/api/trabajo" ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LOS TIPOS DE UN HILO — analisis · planes · bugs · client-reports · decisiones
+# LOS TIPOS DE UN HILO — analisis · planes · bugs · client-reports · decisiones · simulaciones
 #
 # Un hilo es el ticket y adentro cuelgan cosas de tipo distinto. El tipo se nombra
 # en plural y en la misma palabra que se lee en la app, así lo que se escribe y lo
 # que se navega dicen igual.
 # ─────────────────────────────────────────────────────────────────────────────
 tipo)
-  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones> [estado]" "$@"
+  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones|simulaciones> [estado]" "$@"
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
-  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones>" "$@"
+  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones>" "$@"
   leer "/api/items/$(uri "$1")?abiertos"
   ;;
 del-hilo)
@@ -553,7 +553,7 @@ traducir-item)
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
-analisis | plan | bug | client-report)
+analisis | plan | bug | client-report | simulacion)
   exige 1 "$comando <hilo>   < JSON" "$@"
   vaciar_cola
   case "$comando" in
@@ -561,6 +561,7 @@ analisis | plan | bug | client-report)
     plan) ruta_tipo=planes ;;
     bug) ruta_tipo=bugs ;;
     client-report) ruta_tipo=client-reports ;;
+    simulacion) ruta_tipo=simulaciones ;;
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
   ;;
@@ -600,6 +601,65 @@ devolver)
   exige 1 "devolver <id>   < {\"cuerpo\":{\"es\":\"<el cuerpo entero, con su ## Ronda N>\"},\"nota\":\"…\"}" "$@"
   vaciar_cola
   jq -c '. + {estado:"encargado"}' | escribir PATCH "/api/items/planes/$(uri "$1")"
+  ;;
+# ─────────────────────────────────────────────────────────────────────────────
+# LA SIMULACIÓN — el experimento antes de adoptar un cambio, con el humano en el medio.
+#
+# Nace `disenada` con su hipótesis, su criterio de éxito, sus brazos y lo esperado; el
+# humano revisa lo esperado (en la web, o con `comentar`); `aprobar` fija el diseño;
+# `correr` abre la corrida; los brazos declaran lo suyo (`brazos`), los puntajes entran
+# (`puntuar`), lo observado se contrasta (`observar`) y `concluir` trae el veredicto. Son
+# azúcar sobre `mover simulaciones <id>`: el estado lo pone el verbo, así nadie lo tipea
+# mal. El servidor cobra en cada puerta: sin aprobar no se corre, con esperados objetados
+# no se aprueba, y concluir exige el veredicto con su cumplido.
+# ─────────────────────────────────────────────────────────────────────────────
+simulaciones) leer "/api/items/simulaciones${1:+?estado=$(uri "${1:-}")}" ;;
+# Lo esperado de una simulación, con su revisión y su conversación: la bandeja de la
+# sesión que diseñó — qué objetó el humano y qué falta contestar.
+esperados)
+  exige 1 "esperados <id>" "$@"
+  leer "/api/items/simulaciones/$(uri "$1")" | jq '{estado, revision, esperados}'
+  ;;
+# comentar <id> <esperado>  ← {"texto":"…","revision":"aceptado|objetado"} (los dos opcionales, uno al menos)
+comentar)
+  exige 2 "comentar <id> <esperado>   < {\"texto\":\"…\",\"revision\":\"objetado\"}" "$@"
+  vaciar_cola
+  jq -c --arg e "$2" '{comentario: (. + {esperado: $e})}' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
+  ;;
+aprobar)
+  exige 1 "aprobar <id> [nota]" "$@"
+  vaciar_cola
+  jq -cn --arg n "${2:-}" '{estado:"aprobada"} + (if $n == "" then {} else {nota:$n} end)' |
+    escribir PATCH "/api/items/simulaciones/$(uri "$1")"
+  ;;
+correr)
+  exige 1 "correr <id> [nota]" "$@"
+  vaciar_cola
+  jq -cn --arg n "${2:-}" '{estado:"corriendo"} + (if $n == "" then {} else {nota:$n} end)' |
+    escribir PATCH "/api/items/simulaciones/$(uri "$1")"
+  ;;
+# brazos <id>  ← [{"clave":"A","enlaces":{"compare":"https://…"},"consumo":{…}}]  (o {"brazos":[…]})
+brazos)
+  exige 1 "brazos <id>   < [{\"clave\":\"A\",\"enlaces\":{…},\"consumo\":{…}}]" "$@"
+  vaciar_cola
+  jq -c 'if type == "array" then {brazos: .} else . end' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
+  ;;
+# puntuar <id>  ← [{"brazo":"A","criterio":"…","item":"…","replica":1,"valor":4}]  — se SUMAN a los que estaban
+puntuar)
+  exige 1 "puntuar <id>   < [{\"brazo\":\"A\",\"criterio\":\"…\",\"replica\":1,\"valor\":4}]" "$@"
+  vaciar_cola
+  jq -c 'if type == "array" then {sumarPuntajes: .} else . end' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
+  ;;
+# observar <id>  ← [{"id":"e1","observado":"…","cumplido":true}]  (o {"esperados":[…]})
+observar)
+  exige 1 "observar <id>   < [{\"id\":\"e1\",\"observado\":\"…\",\"cumplido\":true}]" "$@"
+  vaciar_cola
+  jq -c 'if type == "array" then {esperados: .} else . end' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
+  ;;
+concluir)
+  exige 1 "concluir <id>   < {\"veredicto\":\"…\",\"cumplido\":true,\"nota\":\"…\"}" "$@"
+  vaciar_cola
+  jq -c '. + {estado:"concluida"}' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
   ;;
 # Sin stdin: un DELETE no lleva cuerpo, y esperarlo colgaría la terminal en un Ctrl-D.
 sacar)
@@ -803,7 +863,8 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando hilos)
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
   bitacora-api abiertos <tipo>              (los que quedaron sin cerrar; el análisis y la decisión no tienen)
-        tipo = analisis | planes | bugs | client-reports | decisiones
+        tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones
+  bitacora-api simulaciones [estado]        (los experimentos del proyecto; `esperados <id>` trae la revisión de uno)
   bitacora-api por-traducir [idioma]        (documentos y fichas: lo que falta y lo que quedó viejo)
 
 Escritura (el cuerpo JSON entra por stdin):
@@ -813,6 +874,21 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api bug <hilo>                   {"titulo":"…","cuerpo":{"es":"qué pasa y cómo se reproduce"},"flujos":["…"]}
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
   bitacora-api client-report <hilo>         {"titulo":"…","cuerpo":{"es":"# …"}}
+  bitacora-api simulacion <hilo>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
+                                             "brazos":[{"clave":"A","nombre":"…","comoCorre":"…"},{"clave":"B","nombre":"…"}],
+                                             "esperados":[{"texto":"…"}],"cuerpo":{"es":"# El diseño\n…"}}
+        nace `disenada`: el humano revisa lo esperado (web o `comentar`), `aprobar` fija el diseño, `correr` abre la corrida
+  La simulación (azúcar sobre mover simulaciones; el servidor cobra en cada puerta):
+  bitacora-api esperados <id>               (lo esperado con su revisión y sus comentarios: qué objetó el humano)
+  bitacora-api comentar <id> <esperado>     {"texto":"…","revision":"aceptado|objetado"}  (uno de los dos al menos)
+  bitacora-api aprobar <id> [nota]          → aprobada: fija hipótesis, criterio y esperados (con objetados abiertos, 400)
+  bitacora-api correr <id> [nota]           → corriendo (sin aprobar, 400)
+  bitacora-api brazos <id>                  [{"clave":"A","enlaces":{"compare":"https://…"},"consumo":{"preciosDe":"AAAA-MM-DD","modelos":[…]}}]
+                                            (por clave: los enlaces se funden, el consumo se suma como tanda)
+  bitacora-api puntuar <id>                 [{"brazo":"A","criterio":"fidelidad","item":"…","replica":1,"valor":4,"nota":"…"}]
+                                            (se suman a los que estaban; `mover … {"puntajes":[…]}` reemplaza la lista)
+  bitacora-api observar <id>                [{"id":"e1","observado":"qué pasó","cumplido":true}]
+  bitacora-api concluir <id>                {"veredicto":"qué se concluyó y por qué","cumplido":true,"nota":"…"} → concluida
   bitacora-api traducir-item <tipo> <id>    {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}
   bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
                                             · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)

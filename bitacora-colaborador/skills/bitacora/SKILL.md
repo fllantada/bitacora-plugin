@@ -138,7 +138,7 @@ JSON
 $API -p <project> corregir <id> <<< '{"veredicto":"…"}'
 ```
 
-## A thread holds FIVE TYPES, each with its own door
+## A thread holds SIX TYPES, each with its own door
 
 A **thread** is the ticket, and what hangs from it has a type. The type is what sets its
 door, its desks and its colour:
@@ -150,6 +150,7 @@ door, its desks and its colour:
 | **Bug** | a defect found while doing something else | its body | abierto · arreglado · descartado |
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
+| **Simulation** | the experiment before adopting a change: comparable arms, a blind judge, a success criterion fixed before running | its body, the hypothesis, the success criterion and two arms | disenada · aprobada · corriendo · concluida · descartada |
 
 ```bash
 $API -p <project> analisis <thread> <<'JSON'
@@ -190,6 +191,12 @@ on the front and gets closed, and the same question buried in an analysis shows 
 with its execution — which is why it has a desk and gets closed. A **Bug** is a fact, not a
 decision: its door asks for the body and nothing else, so a defect found outside your scope
 gets written down with its analysis and you carry on without the fix.
+
+**The Simulation is the experiment before adopting a change**, and a person sits in the
+middle of it: the session designs it and proposes what it expects to see, a reviewer
+accepts or objects to each expectation, approval fixes the design, and only then does it
+run. See *Simulations* below — reviewing the expectations is a collaborator's job as much
+as anyone's.
 
 **The decision enters and gets corrected through its own door** — `decision` and
 `corregir`. It is born already made, with its frame and its verdict, so a generic door
@@ -393,6 +400,59 @@ JSON
 Dropping goes through the same door as finishing:
 `$API -p <project> mover planes <id> <<< '{"estado":"descartado","nota":"why it stopped applying"}'`.
 `$API -p <project> tipo planes` returns everything; `abiertos planes` leaves only the front.
+
+## Simulations — the experiment before adopting a change
+
+Before a change in how the project works gets adopted — a harness piece, a process, a
+tool, a model — it gets **simulated**: the same inputs down two or more **arms**, a blind
+judge, replicas, the cost of each arm captured, and a **success criterion written BEFORE
+running**. The scoring decides; a decision in the thread's book ratifies. The simulation
+hangs from the thread of its topic, like an analysis does.
+
+**Its states carry the person in the middle.** `disenada` is the proposal waiting for
+review; `aprobada` **fixes the design** — the hypothesis, the criterion and the expected
+results stop accepting changes; `corriendo` is the run; `concluida` carries the verdict
+and whether the criterion was met. The server charges at every door: with objected
+expectations there is no approval (400 naming them), without approval there is no run,
+and concluding requires `veredicto` plus `cumplido`.
+
+**Reviewing the expectations is the collaborator's door.** Each expected result (`e1`,
+`e2`…) has its buttons on the web page — accept in one click, object with the reason,
+comment to ask without moving the review — and the same goes through the API:
+
+```bash
+$API -p <project> esperados <id>                               # the expectations, their review and their comments
+$API -p <project> comentar <id> e1 <<< '{"revision":"aceptado"}'
+$API -p <project> comentar <id> e2 <<< '{"texto":"one fact per file is too much for the short README","revision":"objetado"}'
+$API -p <project> comentar <id> e3 <<< '{"texto":"does a rounded number count as invented?"}'   # a question, review unchanged
+```
+
+Your comment lands signed with your name. The session that designed the simulation reads
+the review, answers an objection by rewriting the expectation (it returns to `propuesto`
+and asks for another look), and the owner approves when nothing is objected.
+
+**Registering one, running it, scoring it** — the same doors as the owner's:
+
+```bash
+$API -p <project> simulacion <thread> <<'JSON'
+{"titulo":"…","hipotesis":"what we believe will happen",
+ "criterioExito":"metric, threshold and what disqualifies — written BEFORE running",
+ "brazos":[{"clave":"A","nombre":"the proposed path","comoCorre":"model and mechanics"},
+           {"clave":"B","nombre":"today's path","comoCorre":"model and mechanics"}],
+ "esperados":[{"texto":"verifiable expectation"},{"texto":"verifiable expectation"}],
+ "cuerpo":{"en":"# The design\n\n## The sample\n…\n\n## The judge\nblind, mirrored order, anchored rubric\n\n## Replicas\n…"}}
+JSON
+$API -p <project> aprobar <id> "reviewed with the team"     # → aprobada, fixes the design
+$API -p <project> correr <id> "three replicas"              # → corriendo
+$API -p <project> brazos <id> <<< '[{"clave":"A","enlaces":{"compare":"https://…"},"consumo":{"preciosDe":"YYYY-MM-DD","modelos":[…]}}]'
+$API -p <project> puntuar <id> <<< '[{"brazo":"A","criterio":"fidelity","item":"README.md","replica":1,"valor":5}]'
+$API -p <project> observar <id> <<< '[{"id":"e1","observado":"what actually happened","cumplido":true}]'
+$API -p <project> concluir <id> <<< '{"veredicto":"what was concluded and why","cumplido":true}'
+```
+
+`item simulaciones <id>` returns the scoring matrix derived from the rows — the mean per
+arm and criterion, the min–max across replicas, the total per arm — plus each arm's cost
+and the run's dates. Nobody writes the matrix by hand.
 
 ## Planning — the same gesture in every project
 
