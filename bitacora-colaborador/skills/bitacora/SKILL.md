@@ -150,7 +150,7 @@ door, its desks and its colour:
 | **Bug** | a defect found while doing something else | its body | abierto · arreglado · descartado |
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
-| **Simulation** | the experiment before adopting a change: comparable arms, a blind judge, a success criterion fixed before running | its body, the hypothesis, the success criterion and two arms | disenada · aprobada · corriendo · concluida · descartada |
+| **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
 
 ```bash
 $API -p <project> analisis <thread> <<'JSON'
@@ -192,11 +192,11 @@ with its execution — which is why it has a desk and gets closed. A **Bug** is 
 decision: its door asks for the body and nothing else, so a defect found outside your scope
 gets written down with its analysis and you carry on without the fix.
 
-**The Simulation is the experiment before adopting a change**, and a person sits in the
-middle of it: the session designs it and proposes what it expects to see, a reviewer
-accepts or objects to each expectation, approval fixes the design, and only then does it
-run. See *Simulations* below — reviewing the expectations is a collaborator's job as much
-as anyone's.
+**The Simulation is the experiment before adopting a change**, and the run produces while
+the grading decides: the session designs it and runs the arms over a sample, leaving what
+each arm produced; a person approves the design, grades the outputs blind on the web,
+picks the right one and concludes. See *Simulations* below — grading is a collaborator's
+job as much as anyone's.
 
 **The decision enters and gets corrected through its own door** — `decision` and
 `corregir`. It is born already made, with its frame and its verdict, so a generic door
@@ -404,34 +404,34 @@ Dropping goes through the same door as finishing:
 ## Simulations — the experiment before adopting a change
 
 Before a change in how the project works gets adopted — a harness piece, a process, a
-tool, a model — it gets **simulated**: the same inputs down two or more **arms**, a blind
-judge, replicas, the cost of each arm captured, and a **success criterion written BEFORE
-running**. The scoring decides; a decision in the thread's book ratifies. The simulation
-hangs from the thread of its topic, like an analysis does.
+tool, a model — it gets **simulated**: the same items —the **sample**— down two or more
+**arms**, with a **rubric** and a **success criterion written BEFORE running**, and a
+**person grading at the end**. The simulation hangs from the thread of its topic, like an
+analysis does, and a decision in the thread's book ratifies what it showed.
 
-**Its states carry the person in the middle.** `disenada` is the proposal waiting for
-review; `aprobada` **fixes the design** — the hypothesis, the criterion and the expected
-results stop accepting changes; `corriendo` is the run; `concluida` carries the verdict
-and whether the criterion was met. The server charges at every door: with objected
-expectations there is no approval (400 naming them), without approval there is no run,
-and concluding requires `veredicto` plus `cumplido`.
+**The run produces and the grading decides, and they have different owners.** The session
+designs, runs the arms and leaves the **outputs** — what each arm produced for each item.
+The person approves the design, grades the outputs **blind** — as "Option 1" and "Option
+2", in an order that mirrors from one item to the next, the arm names hidden until the
+end — scores each with the rubric, picks the right one, and concludes: whether each
+expectation was met, whether the criterion held, and the verdict. **The API refuses the
+person's part** (approving, grading, marking expectations, concluding) and names the web:
+an experiment where whoever ran the arms grades it proves nothing.
 
-**Reviewing the expectations is the collaborator's door.** Each expected result (`e1`,
-`e2`…) has its buttons on the web page — accept in one click, object with the reason,
-comment to ask without moving the review — and the same goes through the API:
+**Its states carry that split.** `disenada` is the session's proposal; `aprobada` is the
+person **fixing the design** — hypothesis, criterion, sample, rubric and expectations stop
+accepting changes; `corriendo` is the session leaving outputs, links and cost per arm;
+`calificando` is the simulation **waiting for the person** — all outputs are in; `concluida`
+is her verdict. The server charges at every door: running requires approval, moving to
+`calificando` requires every output, and the person's fields answer 400 over the API.
 
-```bash
-$API -p <project> esperados <id>                               # the expectations, their review and their comments
-$API -p <project> comentar <id> e1 <<< '{"revision":"aceptado"}'
-$API -p <project> comentar <id> e2 <<< '{"texto":"one fact per file is too much for the short README","revision":"objetado"}'
-$API -p <project> comentar <id> e3 <<< '{"texto":"does a rounded number count as invented?"}'   # a question, review unchanged
-```
+**Grading is done on the web, item by item.** The simulation's page shows a band when it
+waits for you; the grader walks you through the sample: both outputs side by side, the
+rubric with its anchors under each, which one is right at the foot, and the close at the
+end. Whether the total favours an arm is derived from what you scored — including
+criteria where lower is better, which the rubric declares.
 
-Your comment lands signed with your name. The session that designed the simulation reads
-the review, answers an objection by rewriting the expectation (it returns to `propuesto`
-and asks for another look), and the owner approves when nothing is objected.
-
-**Registering one, running it, scoring it** — the same doors as the owner's:
+**Registering one and running it** — the session's doors, the same as the owner's:
 
 ```bash
 $API -p <project> simulacion <thread> <<'JSON'
@@ -439,20 +439,28 @@ $API -p <project> simulacion <thread> <<'JSON'
  "criterioExito":"metric, threshold and what disqualifies — written BEFORE running",
  "brazos":[{"clave":"A","nombre":"the proposed path","comoCorre":"model and mechanics"},
            {"clave":"B","nombre":"today's path","comoCorre":"model and mechanics"}],
+ "muestra":[{"clave":"readme","nombre":"engine/README.md","queEs":"what verifiable fact it holds"}],
+ "rubrica":[{"clave":"fidelity","nombre":"Fidelity","escala":{"min":1,"max":5},"mejor":"alto","ancla":"what each value deserves"},
+            {"clave":"invented","nombre":"Invented facts","escala":{"min":0,"max":5},"mejor":"bajo","ancla":"each claim the code contradicts"}],
  "esperados":[{"texto":"verifiable expectation"},{"texto":"verifiable expectation"}],
- "cuerpo":{"en":"# The design\n\n## The sample\n…\n\n## The judge\nblind, mirrored order, anchored rubric\n\n## Replicas\n…"}}
+ "cuerpo":{"en":"# The design\n\n## The judge\nthe person, blind, on the web\n\n## What disqualifies\n…"}}
 JSON
-$API -p <project> aprobar <id> "reviewed with the team"     # → aprobada, fixes the design
-$API -p <project> correr <id> "three replicas"              # → corriendo
+# the person approves on the web — then:
+$API -p <project> correr <id> "where it runs"               # → corriendo (400 without approval)
+$API -p <project> salidas <id> <<'JSON'
+[{"brazo":"A","item":"readme","texto":"what A produced for readme, whole, in markdown"},
+ {"brazo":"B","item":"readme","texto":"what B produced for readme"}]
+JSON
 $API -p <project> brazos <id> <<< '[{"clave":"A","enlaces":{"compare":"https://…"},"consumo":{"preciosDe":"YYYY-MM-DD","modelos":[…]}}]'
-$API -p <project> puntuar <id> <<< '[{"brazo":"A","criterio":"fidelity","item":"README.md","replica":1,"valor":5}]'
-$API -p <project> observar <id> <<< '[{"id":"e1","observado":"what actually happened","cumplido":true}]'
-$API -p <project> concluir <id> <<< '{"veredicto":"what was concluded and why","cumplido":true}'
+$API -p <project> faltan <id>                               # which arm/item pairs still lack an output
+$API -p <project> lista <id> "all outputs are in"           # → calificando (400 naming missing outputs)
+# … the person grades on the web …
+$API -p <project> calificacion <id>                         # what she decided: matrix, choices per item, expectations, verdict
 ```
 
-`item simulaciones <id>` returns the scoring matrix derived from the rows — the mean per
-arm and criterion, the min–max across replicas, the total per arm — plus each arm's cost
-and the run's dates. Nobody writes the matrix by hand.
+`item simulaciones <id>` returns the grading matrix derived from what the person scored —
+the mean per arm and criterion, items chosen per arm, the normalised total — plus each
+arm's cost and the run's dates. Nobody writes the matrix by hand.
 
 ## Planning — the same gesture in every project
 

@@ -603,34 +603,27 @@ devolver)
   jq -c '. + {estado:"encargado"}' | escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LA SIMULACIÓN — el experimento antes de adoptar un cambio, con el humano en el medio.
+# LA SIMULACIÓN — el experimento antes de adoptar un cambio: la sesión produce, la persona
+# califica.
 #
-# Nace `disenada` con su hipótesis, su criterio de éxito, sus brazos y lo esperado; el
-# humano revisa lo esperado (en la web, o con `comentar`); `aprobar` fija el diseño;
-# `correr` abre la corrida; los brazos declaran lo suyo (`brazos`), los puntajes entran
-# (`puntuar`), lo observado se contrasta (`observar`) y `concluir` trae el veredicto. Son
-# azúcar sobre `mover simulaciones <id>`: el estado lo pone el verbo, así nadie lo tipea
-# mal. El servidor cobra en cada puerta: sin aprobar no se corre, con esperados objetados
-# no se aprueba, y concluir exige el veredicto con su cumplido.
+# Nace `disenada` con su hipótesis, su criterio de éxito, sus brazos, su muestra, su
+# rúbrica y lo esperado. La persona aprueba el diseño EN LA WEB (fija todo eso); la
+# sesión la pasa a `corriendo`, deja lo que produjo cada brazo para cada ítem (`salidas`),
+# declara enlaces y costo por brazo (`brazos`) y la deja `lista` para calificar; la
+# persona califica en la web —a ciegas, ítem por ítem— y concluye con su veredicto.
+# Aprobar, calificar y concluir contestan 400 por esta puerta: son de la persona.
 # ─────────────────────────────────────────────────────────────────────────────
 simulaciones) leer "/api/items/simulaciones${1:+?estado=$(uri "${1:-}")}" ;;
-# Lo esperado de una simulación, con su revisión y su conversación: la bandeja de la
-# sesión que diseñó — qué objetó el humano y qué falta contestar.
-esperados)
-  exige 1 "esperados <id>" "$@"
-  leer "/api/items/simulaciones/$(uri "$1")" | jq '{estado, revision, esperados}'
+# Qué falta correr y qué salidas ya están: la bandeja de la sesión que corre.
+faltan)
+  exige 1 "faltan <id>" "$@"
+  leer "/api/items/simulaciones/$(uri "$1")" | jq '{estado, faltan, salidas: [.salidas[] | {brazo, item, enlace: (.enlace // null)}]}'
   ;;
-# comentar <id> <esperado>  ← {"texto":"…","revision":"aceptado|objetado"} (los dos opcionales, uno al menos)
-comentar)
-  exige 2 "comentar <id> <esperado>   < {\"texto\":\"…\",\"revision\":\"objetado\"}" "$@"
-  vaciar_cola
-  jq -c --arg e "$2" '{comentario: (. + {esperado: $e})}' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
-  ;;
-aprobar)
-  exige 1 "aprobar <id> [nota]" "$@"
-  vaciar_cola
-  jq -cn --arg n "${2:-}" '{estado:"aprobada"} + (if $n == "" then {} else {nota:$n} end)' |
-    escribir PATCH "/api/items/simulaciones/$(uri "$1")"
+# La calificación de la persona, para registrar la decisión que tomó: la matriz, las
+# elecciones por ítem, lo esperado con su cumplido y el veredicto.
+calificacion)
+  exige 1 "calificacion <id>" "$@"
+  leer "/api/items/simulaciones/$(uri "$1")" | jq '{estado, cumplido, veredicto, matriz, elecciones, esperados}'
   ;;
 correr)
   exige 1 "correr <id> [nota]" "$@"
@@ -644,22 +637,18 @@ brazos)
   vaciar_cola
   jq -c 'if type == "array" then {brazos: .} else . end' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
   ;;
-# puntuar <id>  ← [{"brazo":"A","criterio":"…","item":"…","replica":1,"valor":4}]  — se SUMAN a los que estaban
-puntuar)
-  exige 1 "puntuar <id>   < [{\"brazo\":\"A\",\"criterio\":\"…\",\"replica\":1,\"valor\":4}]" "$@"
+# salidas <id>  ← [{"brazo":"A","item":"i1","texto":"…"}]  (o {"salidas":[…]}) — por brazo e ítem; el texto es lo que la persona compara
+salidas)
+  exige 1 "salidas <id>   < [{\"brazo\":\"A\",\"item\":\"i1\",\"texto\":\"…\",\"enlace\":\"https://…\"}]" "$@"
   vaciar_cola
-  jq -c 'if type == "array" then {sumarPuntajes: .} else . end' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
+  jq -c 'if type == "array" then {salidas: .} else . end' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
   ;;
-# observar <id>  ← [{"id":"e1","observado":"…","cumplido":true}]  (o {"esperados":[…]})
-observar)
-  exige 1 "observar <id>   < [{\"id\":\"e1\",\"observado\":\"…\",\"cumplido\":true}]" "$@"
+# La corrida terminó: todas las salidas están y la persona puede calificar. Sin todas, 400.
+lista)
+  exige 1 "lista <id> [nota]" "$@"
   vaciar_cola
-  jq -c 'if type == "array" then {esperados: .} else . end' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
-  ;;
-concluir)
-  exige 1 "concluir <id>   < {\"veredicto\":\"…\",\"cumplido\":true,\"nota\":\"…\"}" "$@"
-  vaciar_cola
-  jq -c '. + {estado:"concluida"}' | escribir PATCH "/api/items/simulaciones/$(uri "$1")"
+  jq -cn --arg n "${2:-}" '{estado:"calificando"} + (if $n == "" then {} else {nota:$n} end)' |
+    escribir PATCH "/api/items/simulaciones/$(uri "$1")"
   ;;
 # Sin stdin: un DELETE no lleva cuerpo, y esperarlo colgaría la terminal en un Ctrl-D.
 sacar)
@@ -864,7 +853,7 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
   bitacora-api abiertos <tipo>              (los que quedaron sin cerrar; el análisis y la decisión no tienen)
         tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones
-  bitacora-api simulaciones [estado]        (los experimentos del proyecto; `esperados <id>` trae la revisión de uno)
+  bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api por-traducir [idioma]        (documentos y fichas: lo que falta y lo que quedó viejo)
 
 Escritura (el cuerpo JSON entra por stdin):
@@ -876,19 +865,20 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api client-report <hilo>         {"titulo":"…","cuerpo":{"es":"# …"}}
   bitacora-api simulacion <hilo>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
                                              "brazos":[{"clave":"A","nombre":"…","comoCorre":"…"},{"clave":"B","nombre":"…"}],
+                                             "muestra":[{"clave":"i1","nombre":"…","queEs":"…"}],
+                                             "rubrica":[{"clave":"fidelidad","nombre":"…","escala":{"min":1,"max":5},"mejor":"alto","ancla":"…"}],
                                              "esperados":[{"texto":"…"}],"cuerpo":{"es":"# El diseño\n…"}}
-        nace `disenada`: el humano revisa lo esperado (web o `comentar`), `aprobar` fija el diseño, `correr` abre la corrida
-  La simulación (azúcar sobre mover simulaciones; el servidor cobra en cada puerta):
-  bitacora-api esperados <id>               (lo esperado con su revisión y sus comentarios: qué objetó el humano)
-  bitacora-api comentar <id> <esperado>     {"texto":"…","revision":"aceptado|objetado"}  (uno de los dos al menos)
-  bitacora-api aprobar <id> [nota]          → aprobada: fija hipótesis, criterio y esperados (con objetados abiertos, 400)
+        nace `disenada`; la persona APRUEBA en la web (fija el diseño); después la sesión corre
+  La simulación — lo de la sesión (azúcar sobre mover simulaciones; el servidor cobra en cada puerta):
   bitacora-api correr <id> [nota]           → corriendo (sin aprobar, 400)
   bitacora-api brazos <id>                  [{"clave":"A","enlaces":{"compare":"https://…"},"consumo":{"preciosDe":"AAAA-MM-DD","modelos":[…]}}]
                                             (por clave: los enlaces se funden, el consumo se suma como tanda)
-  bitacora-api puntuar <id>                 [{"brazo":"A","criterio":"fidelidad","item":"…","replica":1,"valor":4,"nota":"…"}]
-                                            (se suman a los que estaban; `mover … {"puntajes":[…]}` reemplaza la lista)
-  bitacora-api observar <id>                [{"id":"e1","observado":"qué pasó","cumplido":true}]
-  bitacora-api concluir <id>                {"veredicto":"qué se concluyó y por qué","cumplido":true,"nota":"…"} → concluida
+  bitacora-api salidas <id>                 [{"brazo":"A","item":"i1","texto":"lo que produjo","enlace":"https://…"}]
+                                            (por brazo e ítem; el texto es lo que la persona compara a ciegas en la web)
+  bitacora-api faltan <id>                  (qué pares brazo/ítem siguen sin salida)
+  bitacora-api lista <id> [nota]            → calificando: la corrida terminó y la persona puede calificar (faltan salidas, 400)
+  bitacora-api calificacion <id>            (lo que la persona decidió: matriz, elecciones, esperados con su cumplido, veredicto)
+        calificar, elegir, marcar esperados y concluir son DE LA PERSONA y se hacen en la web: por esta puerta, 400
   bitacora-api traducir-item <tipo> <id>    {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}
   bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
                                             · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)
