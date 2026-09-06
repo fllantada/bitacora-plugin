@@ -433,8 +433,8 @@ contexto) leer "/api/contexto" ;;
 # skills. Es material del proyecto: la lee todo miembro. Sin cargar contesta 404.
 instrucciones) leer "/api/instrucciones" ;;
 # Las herramientas que esta sesión tiene a mano, con qué hace cada una: las propias del
-# repo, las compartidas del perfil y las del método del plugin. El catálogo se mantiene
-# solo — lo llena `sincronizar-skills`, que corre la skill /skills del plugin, a mano.
+# repo, las compartidas del perfil y las del método del plugin. El catálogo lo mantiene
+# la skill /skills del plugin, a mano, con `sincronizar-skills`.
 skills) leer "/api/skills" ;;
 skill)
   exige 1 "skill <nombre>   (cómo se la cuenta, con qué se encadena y su SKILL.md)" "$@"
