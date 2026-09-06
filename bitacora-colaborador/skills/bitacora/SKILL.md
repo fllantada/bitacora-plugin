@@ -156,7 +156,7 @@ door, its desks and its colour:
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
-| **Consultation** | the human in the loop: what the session asks the person, point by point, and the person answers ON THE WEB | its body and its points, each with what changes and what the session would do | abierta · contestada · aplicada · descartada |
+| **Consultation** | the human in the loop: what the session asks the person, point by point; the person accepts or rejects each recommendation ON THE WEB | its body and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
 
 ```bash
 $API -p <project> analisis <thread> <<'JSON'
@@ -489,9 +489,10 @@ arm's cost and the run's dates. Nobody writes the matrix by hand.
 When a session reaches decisions that belong to the person — several points to read
 calmly, each changing what a PR writes, a vocabulary, a key, a path between two — it
 writes a **consultation** in the thread instead of a list in the chat. Each **point**
-carries its title, **what changes** with each answer, the live **options** when there is
-more than one, and **what the session would do**; the person answers under each one **on
-the web**, with an input and a save button. The consultation is born `abierta`, moves by
+carries its title, **what changes** with each decision, the live **options** when there is
+more than one, and the **recommendation** with its **why** in a sentence or two; the person
+**accepts** the recommendation in one click or **rejects** it saying what goes instead,
+**on the web**. Keep it brief and clear: what is needed to decide, nothing more. The consultation is born `abierta`, moves by
 itself to `contestada` with the last answer, and the session moves it to `aplicada` once
 it took the answers — decisions to the book with the answer as verdict, a round written.
 
@@ -502,11 +503,11 @@ $API -p <project> consulta <thread> <<'JSON'
  "puntos":[{"titulo":"The key of each record",
             "queCambia":"Today it is the route slug plus the tour slug; a rename orphans the record.",
             "opciones":[{"titulo":"Tour.id","implica":"the permanent reference the contract declares"}],
-            "propuesta":"Tour.id — the three fronts agree."}]}
+            "propuesta":"Use Tour.id.","porque":"The permanent reference the contract declares; the three fronts agree."}]}
 JSON
 # … the person answers on the web; the consultation moves to «contestada» by itself …
 $API -p <project> contestadas            # the ones fully answered, ready to apply
-$API -p <project> respuestas <id>        # point by point: what was asked, proposed and answered
+$API -p <project> respuestas <id>        # point by point: the recommendation, accepted or rejected, and the comment
 $API -p <project> aplicar <id> "round written · three decisions to the book"   # → aplicada
 ```
 

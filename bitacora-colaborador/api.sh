@@ -739,18 +739,19 @@ lista)
 # LA CONSULTA — el human in the loop: la sesión pregunta, la persona contesta.
 #
 # Nace `abierta` con sus puntos: cada uno con su título, qué cambia según la respuesta,
-# las opciones vivas si las hay, y lo que la sesión haría. La persona contesta cada punto
-# EN LA WEB y con la última respuesta la consulta pasa sola a `contestada`; la sesión la
-# lee con `respuestas`, aplica lo contestado —la ronda, las decisiones al libro— y la
-# pasa a `aplicada`. La respuesta contesta 400 por esta puerta: es de la persona.
+# las opciones vivas si las hay, la recomendación y su porqué breve. La persona ACEPTA o
+# RECHAZA cada recomendación EN LA WEB —rechazar dice qué va en su lugar— y con la última
+# la consulta pasa sola a `contestada`; la sesión la lee con `respuestas`, aplica lo
+# decidido —la ronda, las decisiones al libro— y la pasa a `aplicada`. La respuesta
+# contesta 400 por esta puerta: es de la persona.
 # ─────────────────────────────────────────────────────────────────────────────
 consultas) leer "/api/items/consultas${1:+?estado=$(uri "${1:-}")}" ;;
 # Las que la persona ya contestó enteras: la bandeja de la sesión que preguntó.
 contestadas) leer "/api/items/consultas?estado=contestada" ;;
-# Lo que la persona contestó, punto por punto, con lo que se le había preguntado.
+# Lo que la persona decidió, punto por punto: aceptó o rechazó cada recomendación, y su comentario.
 respuestas)
   exige 1 "respuestas <id>" "$@"
-  leer "/api/items/consultas/$(uri "$1")" | jq '{estado, hilo, titulo, respuestas, faltan, puntos: [.puntos[] | {id, titulo, propuesta, respuesta: (.respuesta.texto // null), por: (.respuesta.autor // null)}]}'
+  leer "/api/items/consultas/$(uri "$1")" | jq '{estado, hilo, titulo, respuestas, faltan, puntos: [.puntos[] | {id, titulo, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null)}]}'
   ;;
 # La sesión tomó las respuestas: la consulta cierra. Sin contestar entera, 400.
 aplicar)
@@ -1083,7 +1084,7 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
   bitacora-api contestadas                  (las que la persona ya contestó enteras: lo que la sesión tiene que aplicar)
-  bitacora-api respuestas <id>              (punto por punto: qué se preguntó, qué se propuso y qué contestó la persona)
+  bitacora-api respuestas <id>              (punto por punto: la recomendación, si la persona la aceptó o la rechazó, y su comentario)
   bitacora-api por-traducir [idioma]        (documentos y fichas: lo que falta y lo que quedó viejo)
 
 Escritura (el cuerpo JSON entra por stdin):
@@ -1112,9 +1113,10 @@ Escritura (el cuerpo JSON entra por stdin):
         calificar, elegir, marcar esperados y concluir son DE LA PERSONA y se hacen en la web: por esta puerta, 400
   bitacora-api consulta <hilo>              {"titulo":"…","cuerpo":{"es":"# El contexto\n…"},
                                              "puntos":[{"titulo":"…","queCambia":"qué se decide y qué cambia con cada respuesta",
-                                                        "opciones":[{"titulo":"…","implica":"…"}],"propuesta":"lo que la sesión haría, y por qué"}]}
-        el human in the loop: nace `abierta`; la persona contesta cada punto EN LA WEB y pasa sola a `contestada`
-  bitacora-api aplicar <id> [nota]          → aplicada: la sesión tomó las respuestas (la ronda, las decisiones al libro); sin contestar entera, 400
+                                                        "opciones":[{"titulo":"…","implica":"…"}],
+                                                        "propuesta":"la recomendación: lo que la sesión haría","porque":"su porqué, en una o dos frases"}]}
+        el human in the loop: nace `abierta`; la persona ACEPTA o RECHAZA cada recomendación EN LA WEB y pasa sola a `contestada`
+  bitacora-api aplicar <id> [nota]          → aplicada: la sesión tomó lo decidido (la ronda, las decisiones al libro); sin decidir entera, 400
         la respuesta es DE LA PERSONA y se escribe en la web: por esta puerta, 400
   bitacora-api traducir-item <tipo> <id>    {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}
   bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
