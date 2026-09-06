@@ -226,8 +226,11 @@ fi
 
 # --- el transporte ------------------------------------------------------------
 
+# Una lectura que el servidor rechaza imprime lo que el servidor DIJO: sus 404 y 400
+# traen la instrucción adentro («se cargan con…», «la puerta es…»), y un `curl -f` la
+# tiraba y dejaba solo el código. El mismo trato que da `escribir`.
 leer() {
-  local ruta="$1"
+  local ruta="$1" respuesta codigo salida
   # El idioma viaja en la query, y algunas rutas ya traen la suya.
   if [ -n "$IDIOMA" ]; then
     case "$ruta" in
@@ -235,7 +238,24 @@ leer() {
     *) ruta="$ruta?idioma=$IDIOMA" ;;
     esac
   fi
-  curl -fsS --max-time 20 -H "Authorization: Bearer $TOKEN" "$BASE$ruta"
+  respuesta="$(curl -sS --max-time 20 -H "Authorization: Bearer $TOKEN" \
+    -w $'\n%{http_code}' "$BASE$ruta" 2>/dev/null || printf '\n000')"
+  codigo="${respuesta##*$'\n'}"
+  salida="${respuesta%$'\n'*}"
+  case "$codigo" in
+  2*)
+    printf '%s\n' "$salida"
+    return 0
+    ;;
+  000)
+    echo "Sin respuesta del servidor ($BASE)." >&2
+    return 1
+    ;;
+  *)
+    echo "El servidor dijo que no ($codigo): $salida" >&2
+    return 1
+    ;;
+  esac
 }
 
 # Lo que viaja en la URL: un slug con espacios o un texto de búsqueda.
@@ -402,9 +422,24 @@ buscar)
   exige 1 "buscar <texto>" "$@"
   leer "/api/buscar?q=$(uri "$1")"
   ;;
-# La tríada del proyecto en una llamada: el dominio, el stack y los flujos.
-# Es la primera lectura al llegar a un proyecto que no se viene trabajando.
+# El sistema del proyecto en una llamada: el dominio, el stack y los flujos, MÁS las
+# instrucciones del ciclo en este tenant (el markdown crudo, o null) y las skills a mano
+# con su explicación breve.
+# Es la primera lectura al llegar a un proyecto: /thinking y /coding la hacen en su paso 0
+# y obedecen las instrucciones.
 contexto) leer "/api/contexto" ;;
+# Cómo se corre el ciclo acá, solas: dónde se para cada sesión, qué gatea un commit, cómo
+# sale la PR, dónde se publica la review, cómo se factura, las fuentes, los registros, las
+# skills. Es material del proyecto: la lee todo miembro. Sin cargar contesta 404.
+instrucciones) leer "/api/instrucciones" ;;
+# Las herramientas que esta sesión tiene a mano, con qué hace cada una: las propias del
+# repo, las compartidas del perfil y las del método del plugin. El catálogo se mantiene
+# solo — lo llena `sincronizar-skills`, que corre en el paso 0 de /thinking y /coding.
+skills) leer "/api/skills" ;;
+skill)
+  exige 1 "skill <nombre>   (su descripción entera y su SKILL.md)" "$@"
+  leer "/api/skills/$(uri "${1#/}")"
+  ;;
 glosario) leer "/api/glosario" ;;
 termino)
   exige 1 "termino <palabra|alias>" "$@"
@@ -576,7 +611,13 @@ mover)
 # /thinking lo escribe con `plan <hilo>` y "estado":"encargado"; /coding lo toma y lo
 # entrega; /thinking lo firma, o lo devuelve con la ronda siguiente en el cuerpo. Son
 # azúcar sobre `mover planes <id>`: el estado lo pone el verbo, así nadie lo tipea mal.
-# El servidor exige, para llegar a entregado, el reporte y la PR en la ficha.
+# El servidor cobra el contrato en las dos puntas: para entrar a encargado, el cuerpo
+# con sus seis secciones (Tarea · Destino · Contexto y porqué · Patrón a seguir ·
+# Alcance exacto · Lo que NO entra); para llegar a entregado, el reporte con las suyas
+# (Hecho · Evidencia · Decisiones sobre la marcha · Fricciones · Para decidir ·
+# Pendientes fuera de alcance, las tres últimas van siempre y dicen «Ninguna» cuando no
+# hubo: una sección ausente o vacía rebota como olvido) y la PR en la ficha.
+# Un 400 nombra todo lo que falta de una vez, con lo que cada sección afirma.
 # La nota va también a `ficha.destino`: las listas —en-curso, bandeja— sirven la ficha y
 # no la historia, y quién tiene un plan se pregunta desde una lista.
 tomar)
@@ -587,7 +628,7 @@ tomar)
     escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
 entregar)
-  exige 1 "entregar <id>   < {\"reporte\":{\"es\":\"## Hecho\\n…\"},\"ficha\":{\"pr\":\"…\",\"rama\":\"…\"},\"consumo\":{\"preciosDe\":\"AAAA-MM-DD\",\"modelos\":[…]},\"nota\":\"…\"}" "$@"
+  exige 1 "entregar <id>   < {\"reporte\":{\"es\":\"## Hecho\\n…\\n## Evidencia\\n…\\n## Decisiones sobre la marcha\\n…\\n## Fricciones\\n…\\n## Para decidir\\n…\\n## Pendientes fuera de alcance\\n…\"},\"ficha\":{\"pr\":\"…\",\"rama\":\"…\",\"review\":\"…\"},\"consumo\":{\"preciosDe\":\"AAAA-MM-DD\",\"modelos\":[…]},\"nota\":\"…\"}" "$@"
   vaciar_cola
   jq -c '. + {estado:"entregado"}' | escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
@@ -598,9 +639,18 @@ firmar)
     escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
 devolver)
-  exige 1 "devolver <id>   < {\"cuerpo\":{\"es\":\"<el cuerpo entero, con su ## Ronda N>\"},\"nota\":\"…\"}" "$@"
+  exige 1 "devolver <id>   < {\"cuerpo\":{\"es\":\"<el cuerpo entero, con sus seis secciones y su ## Ronda N>\"},\"nota\":\"…\"}" "$@"
   vaciar_cola
-  jq -c '. + {estado:"encargado"}' | escribir PATCH "/api/items/planes/$(uri "$1")"
+  # Devolver es agregar la ronda: un cuerpo vacío se contesta acá con la forma, porque el
+  # verbo pone el estado y el servidor recibiría un movimiento sin ronda que parece válido.
+  cuerpo_devuelto="$(cat)"
+  if [ -z "$(printf '%s' "$cuerpo_devuelto" | jq -r '.cuerpo // empty' 2>/dev/null)" ]; then
+    echo "devolver lleva el cuerpo ENTERO del plan con la ronda nueva al final:" >&2
+    echo '  {"cuerpo":{"es":"# Tarea\n…\n# Destino\n…\n# Contexto y porqué\n…\n# Patrón a seguir\n…\n# Alcance exacto\n…\n# Lo que NO entra\n…\n\n## Ronda N\nqué → por qué → corrección propuesta"},"nota":"vuelve: <por qué, en una frase>"}' >&2
+    echo "  Se lee con: bitacora-api item planes <id>   (el cuerpo actual, para agregarle la ronda)" >&2
+    exit 1
+  fi
+  printf '%s' "$cuerpo_devuelto" | jq -c '. + {estado:"encargado"}' | escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
 # LA SIMULACIÓN — el experimento antes de adoptar un cambio: la sesión produce, la persona
@@ -764,6 +814,84 @@ seccion)
   vaciar_cola
   escribir POST "/api/secciones"
   ;;
+# Las instrucciones del ciclo se escriben ENTERAS y en markdown crudo por stdin: es un
+# documento y se reemplaza. La primera vez crea la sección reservada `instrucciones`.
+#   bitacora-api escribir-instrucciones < instrucciones.md
+# Con `--json` el stdin es el JSON de la puerta ({"cuerpo":{"es":"…","en":"…"},"queEs":"…"}),
+# para el proyecto que las escribe en dos idiomas.
+# ─────────────────────────────────────────────────────────────────────────────
+# EL CATÁLOGO DE SKILLS — se mantiene solo, con UNA llamada determinística.
+#
+# Recorre las carpetas de skills que esta sesión ve —las del repo, las del perfil y las
+# del plugin instalado—, manda el hash de cada SKILL.md, y sube el texto SOLO de las que
+# el servidor no conoce o que cambiaron. Depende únicamente de los archivos del disco: dos
+# sesiones paradas en el mismo proyecto mandan lo mismo.
+#
+# Corre en el paso 0 de /thinking y /coding, en silencio. Su última línea dice qué cambió,
+# y /coding la pega en «Pendientes fuera de alcance» del reporte: el texto crudo se
+# actualiza solo, pero lo que alguien escribió SOBRE esas skills lo gestiona /thinking.
+sincronizar-skills)
+  vaciar_cola
+  # Las tres casas, en el orden en que el catálogo las agrupa. La del plugin sale del
+  # directorio de este mismo archivo, así la versión instalada se describe a sí misma.
+  # El directorio del plugin instalado, resuelto desde el shim: un symlink relativo se
+  # resolvería contra el cwd y saltearía esa casa en silencio, así que se sigue entero.
+  PLUGIN_SH="${BASH_SOURCE[0]}"
+  while [ -L "$PLUGIN_SH" ]; do
+    destino="$(readlink "$PLUGIN_SH")"
+    case "$destino" in
+    /*) PLUGIN_SH="$destino" ;;
+    *) PLUGIN_SH="$(dirname "$PLUGIN_SH")/$destino" ;;
+    esac
+  done
+  PLUGIN_DIR="$(cd "$(dirname "$PLUGIN_SH")" && pwd)"
+  HOME_CLAUDE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+  inventario="$(
+    for casa in "repo:$PWD/.claude/skills" "perfil:$HOME_CLAUDE/skills" "plugin:$PLUGIN_DIR/skills"; do
+      procedencia="${casa%%:*}"
+      raiz="${casa#*:}"
+      [ -d "$raiz" ] || continue
+      for md in "$raiz"/*/SKILL.md; do
+        [ -f "$md" ] || continue
+        jq -cn --arg n "$(basename "$(dirname "$md")")" --arg p "$procedencia" \
+          --arg r "$(printf '%s' "${md%/SKILL.md}" | sed "s#^$HOME#~#")" \
+          --arg h "$(shasum -a 1 "$md" | cut -c1-16)" \
+          '{nombre:$n, procedencia:$p, ruta:$r, hash:$h}'
+      done
+    done | jq -cs '{skills: .}'
+  )"
+  respuesta="$(printf '%s' "$inventario" | escribir POST "/api/skills/sincronizar")" || exit 1
+  # Lo que el servidor pidió sube entero, una llamada por skill: son pocas y solo cuando
+  # cambian. La ruta que devolvió es la misma que se mandó, así que el archivo se reencuentra.
+  printf '%s' "$respuesta" | jq -c '.subir[]?' | while IFS= read -r pendiente; do
+    nombre="$(printf '%s' "$pendiente" | jq -r .nombre)"
+    procedencia="$(printf '%s' "$pendiente" | jq -r .procedencia)"
+    ruta="$(printf '%s' "$pendiente" | jq -r .ruta)"
+    archivo="$(printf '%s' "$ruta" | sed "s#^~#$HOME#")/SKILL.md"
+    [ -f "$archivo" ] || continue
+    jq -n --arg p "$procedencia" --arg r "$ruta" \
+      --arg h "$(shasum -a 1 "$archivo" | cut -c1-16)" --rawfile c "$archivo" \
+      '{procedencia:$p, ruta:$r, hash:$h, cuerpo:$c}' |
+      escribir PUT "/api/skills/$(uri "$nombre")" >/dev/null
+  done
+  # La línea que /coding pega en su reporte. La arma el servidor, así el cliente, la web y
+  # el reporte dicen lo mismo con las mismas palabras.
+  printf '%s' "$respuesta" | jq -r '"Skills (\(.vistas)): " + .resumen'
+  ;;
+escribir-instrucciones)
+  vaciar_cola
+  if [ "${1:-}" = "--json" ]; then
+    escribir PUT "/api/instrucciones"
+  else
+    cuerpo_md="$(cat)"
+    if [ -z "$(printf '%s' "$cuerpo_md" | tr -d '[:space:]')" ]; then
+      echo "escribir-instrucciones lee el markdown entero por stdin:  bitacora-api escribir-instrucciones < instrucciones.md" >&2
+      echo "  Secciones que las skills esperan: Dónde se para cada sesión · La rama y la PR · Antes de commitear · La review · La facturación · Las fuentes · Los registros · Las skills" >&2
+      exit 1
+    fi
+    printf '%s' "$cuerpo_md" | jq -Rs '{cuerpo: .}' | escribir PUT "/api/instrucciones"
+  fi
+  ;;
 editar-seccion)
   exige 1 "editar-seccion <slug>   < JSON" "$@"
   vaciar_cola
@@ -828,8 +956,11 @@ Uso: bitacora-api [-p <proyecto>] <comando>
   bitacora-api proyecto                      (dice cuál resolvió)
   bitacora-api version                       (la instalada contra la última publicada — lo primero de cada invocación)
 
-El sistema del proyecto — la tríada. Primera lectura al llegar:
-  bitacora-api contexto                     (el dominio + el stack + los flujos, de una)
+El sistema del proyecto — la tríada, las instrucciones y las skills. Primera lectura al llegar:
+  bitacora-api contexto                     (el dominio + el stack + los flujos + las instrucciones + las skills, de una)
+  bitacora-api instrucciones                (cómo se corre el ciclo del encargo acá, en markdown crudo; 404 si no están cargadas)
+  bitacora-api skills                       (las herramientas a mano: las del repo, las del perfil y las del plugin, con qué hace cada una)
+  bitacora-api skill <nombre>               (una entera: su descripción y su SKILL.md)
   bitacora-api flujos                       · bitacora-api flujo <slug>
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
@@ -859,7 +990,8 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
 Escritura (el cuerpo JSON entra por stdin):
   bitacora-api analisis <hilo>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
   bitacora-api plan <hilo>                  {"titulo":"…","cierraEn":"…","cuerpo":{"es":"# …"},"flujos":["…"]}
-        con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado
+        con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;
+        el servidor exige seis secciones en el cuerpo: # Tarea · # Destino · # Contexto y porqué · # Patrón a seguir · # Alcance exacto · # Lo que NO entra
   bitacora-api bug <hilo>                   {"titulo":"…","cuerpo":{"es":"qué pasa y cómo se reproduce"},"flujos":["…"]}
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
   bitacora-api client-report <hilo>         {"titulo":"…","cuerpo":{"es":"# …"}}
@@ -885,11 +1017,15 @@ Escritura (el cuerpo JSON entra por stdin):
         la decisión NO tiene escritorios: nace tomada y se corrige con corregir
   El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
   bitacora-api tomar <id> [nota]            → en-curso; la nota (y ficha.destino) es el worktree o la copia que lo tiene
-  bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…"},"consumo":{…},"nota":"…"} → entregado
+  bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…","review":"…"},"consumo":{…},"nota":"…"} → entregado
                                             (el consumo son los tokens de cada motor con su precio de ese día: se suma a las tandas anteriores)
-                                            (el servidor exige el reporte y ficha.pr; en MACS la ficha suma review y horas)
+                                            (el servidor exige ficha.pr y el reporte con sus seis secciones: ## Hecho · ## Evidencia ·
+                                             ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir · ## Pendientes fuera de alcance —
+                                             las tres últimas van siempre y dicen «Ninguna» cuando no hubo, porque ausente o vacía rebota;
+                                             la review publicada en la bitácora va en ficha.review)
   bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada
-  bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con su ## Ronda N>"},"nota":"…"} → encargado
+  bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con sus seis secciones y su ## Ronda N>"},"nota":"…"} → encargado
+                                            (entrar a encargado cobra las seis secciones del cuerpo; sin cuerpo, imprime la forma)
   bitacora-api sacar <tipo> <id>            (el que se abrió por error — dueño)
   bitacora-api entrada <slug>               {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
   bitacora-api superar <slug> <id-entrada>  {"superadaPor":"…"}
@@ -911,6 +1047,10 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api editar-pieza <slug>          {"responsabilidad":"…"} · {"sumarAlias":["el CMS"]}
   bitacora-api seccion                      {"tipo":"archivo","nombre":"…","nota":"…"}
   bitacora-api editar-seccion <slug>        {"resumen":"…"} · {"tipo":"fuente"}
+  bitacora-api sincronizar-skills           (UNA llamada: manda los hashes de los SKILL.md que ve y sube solo lo que cambió)
+                                            va en el paso 0 de /thinking y /coding; su última línea dice qué cambió, y /coding la pega en el reporte
+  bitacora-api escribir-instrucciones       < instrucciones.md   (el markdown entero por stdin; reemplaza; crea la sección la primera vez)
+                                            · --json < {"cuerpo":{"es":"…","en":"…"},"queEs":"…"}   (en dos idiomas)
   bitacora-api definir                      {"termino":"…","definicion":"…"}  (o una lista)
   bitacora-api anotar-acceso                {"nombre":"Engine API","url":"https://…","nota":"staging"}
                                             · con qué se entra: {"usuario":"…","clave":"…"}

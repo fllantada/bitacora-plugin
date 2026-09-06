@@ -101,7 +101,9 @@ record that writes itself stops being judgment and becomes a log.
 ```bash
 API=~/.local/bin/bitacora-api
 
-$API -p <project> contexto      # FIRST READ on arrival: language + stack + flows, in one call
+$API -p <project> contexto      # FIRST READ on arrival: language + stack + flows + the cycle instructions, in one call
+$API -p <project> instrucciones # how the job cycle runs HERE, as raw markdown (404 until the owner loads them)
+$API -p <project> skills        # the tools at hand here, with what each one does — and `skill <name>` for one whole
 $API -p <project> tablero       # the board: every thread of work, grouped by area
 $API -p <project> hilo <slug>   # one thread: its entries, decisions and documents
 $API -p <project> areas         # the project's areas, with how many threads live in each
@@ -357,8 +359,15 @@ to a coding session, the plan is the handoff: its body is the brief, its `report
 came back, and its desk says whose hands it is in — `encargado` (the brief is in the body,
 waiting for a session to take it), `en-curso` (a session took it; the note names its
 worktree), `entregado` (the PR is open and the report written; waiting for sign-off), then
-`hecho`. One plan is one PR. Reaching `entregado` requires `reporte` and `ficha.pr`; the
-door answers naming what is missing.
+`hecho`. One plan is one PR. **The body and the report are a contract the server
+enforces.** Entering `encargado` requires the body to carry six sections as markdown
+headings, each with content below: `# Task`, `# Destination`, `# Context and why`,
+`# Pattern to follow`, `# Exact scope`, `# Out of scope`. Reaching `entregado` requires
+`ficha.pr` and a `reporte` with six sections: `## Done`, `## Evidence`, `## Decisions
+along the way` with content, and `## Frictions`, `## To decide`, `## Pending out of scope`,
+which are always present and read "None" when there was nothing to report — an absent or
+empty section is a 400, because a blank reads as forgotten, not as answered. The door
+answers 400 naming everything missing at once, with what each section states.
 
 **What it cost to build travels as data, in `consumo`.** One batch per round: each
 engine's tokens —input, output, cache read, cache write— with the price per million that
@@ -375,7 +384,7 @@ $API -p <project> encargados                 # what can be taken · also: en-cur
 $API bandeja                                 # without -p: every project this machine holds a key for
 $API -p <project> tomar <id> "worktree …"    # → en-curso; the note also lands in ficha.destino
 $API -p <project> entregar <id> <<'JSON'
-{"reporte":{"en":"## Done\n…\n\n## Decisions along the way\n…\n\n## To decide\n…"},
+{"reporte":{"en":"## Done\n…\n\n## Evidence\n…\n\n## Decisions along the way\n…\n\n## Frictions\nNone\n\n## To decide\n…\n\n## Pending out of scope\nNone"},
  "ficha":{"pr":"https://github.com/…/pull/…","rama":"…"},
  "consumo":{"ronda":1,"preciosDe":"YYYY-MM-DD","modelos":[{"modelo":"…","entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0,"precio":{"entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0}}]},
  "nota":"PR open, one ASK"}
@@ -510,7 +519,11 @@ JSON
 `$API contexto` returns the triad that describes how this project works: the
 **glossary** (what each word means HERE, and whose voice it is — the client's
 vocabulary wins), the **stack** (each technology with its responsibility), and the
-**flows** (end-to-end journeys, the project's integration tests). A decision taken
+**flows** (end-to-end journeys, the project's integration tests) — plus the project's
+**instructions** (`instrucciones`: how the job cycle runs here — where each session
+stands, what gates a commit, how the PR goes out, how it is billed), as raw markdown
+when the owner loaded them. They are project material: read them, and follow them
+under the repo's own law. A decision taken
 without reading it is taken blind. When you work with a piece or a term that has no
 entry yet, add it — `$API anotar-pieza`, `$API definir` — while it's in front of you.
 A stack piece also carries `documentacion` (the URL of its official docs, shown as a
