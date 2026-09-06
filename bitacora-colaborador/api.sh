@@ -1009,8 +1009,12 @@ review)
   escribir POST "/api/reviews"
   ;;
 rato)
-  # rato  ← {"tarea":"…","reloj":"1:30","plan":"<id del plan>","pr":"https://…/pull/12"}
-  # `plan` y `pr` dicen de dónde salió: el banco los enlaza. Los dos opcionales.
+  # rato  ← {"tarea":"…","tareaEn":"…","reloj":"1:30","epica":"…","epicaNombre":"…",
+  #          "jira":{"clave":"…","url":"…"},"plan":"<id del plan>","pr":"https://…/pull/12"}
+  # `tarea` y `reloj` son el piso. `tareaEn` es la fila en inglés, la que se carga;
+  # `epica` y `epicaNombre` el código y el nombre bajo el que el panel lo agrupa;
+  # `plan` y `pr` dicen de dónde salió: el banco los enlaza. Las instrucciones del
+  # tenant dicen cuáles de estos van siempre y con qué reloj.
   vaciar_cola
   escribir POST "/api/trabajo"
   ;;
@@ -1166,6 +1170,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · con qué se entra: {"usuario":"…","clave":"…"}
   bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
   bitacora-api rato (dueño)                 {"tarea":"…","reloj":"1:30"}   (el banco de horas)
+                                            · la fila entera: {"tareaEn":"la fila en inglés, la que se carga","epica":"<código de la épica>","epicaNombre":"<su nombre>",
+                                              "jira":{"clave":"<clave del ticket>","url":"…"}} — las instrucciones del tenant dicen cuáles van siempre
                                             · de dónde salió: {"plan":"<id del plan>","pr":"https://…/pull/12"} — el banco lo enlaza
                                               con su PR, su plan y su review (el plan presta a su rato la PR y la review de su ficha)
   bitacora-api mover-rato <id> (dueño)      {"estado":"cargado"} · {"plan":"<id>","pr":"…"} (null lo saca)
