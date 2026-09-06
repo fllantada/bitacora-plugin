@@ -460,6 +460,15 @@ nota-skill)
   fi
   printf '%s' "$nota_dicha" | escribir PUT "/api/skills/$(uri "${1#/}")/nota"
   ;;
+# La skill que se RETIRÓ: sale del catálogo con su texto y su nota.
+#
+# La que esta máquina dejó de ver se atenúa sola y espera, porque otro perfil puede tenerla;
+# esto es decir que ya no existe en ninguno. Del dueño, como todo borrado.
+sacar-skill)
+  exige 1 "sacar-skill <nombre>   (la que se retiró: sale del catálogo — dueño)" "$@"
+  curl -fsS --max-time 20 -X DELETE -H "Authorization: Bearer $TOKEN" \
+    "$BASE/api/skills/$(uri "${1#/}")"
+  ;;
 glosario) leer "/api/glosario" ;;
 termino)
   exige 1 "termino <palabra|alias>" "$@"
@@ -1017,6 +1026,7 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
   bitacora-api skill <nombre>               (una entera: cómo se la cuenta, con qué se encadena y su SKILL.md)
   bitacora-api nota-skill <nombre>          {"paraQue":"…","cuando":"…","deja":"…","ojo":"…"}
         la skill contada para una persona: lo único del catálogo que se escribe
+  bitacora-api sacar-skill <nombre>         (la que se retiró de verdad: sale del catálogo — dueño)
   bitacora-api flujos                       · bitacora-api flujo <slug>
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>

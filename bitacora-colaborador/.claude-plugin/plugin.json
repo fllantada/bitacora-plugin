@@ -1,7 +1,7 @@
 {
   "name": "bitacora-colaborador",
   "description": "The /bitacora skill for project collaborators — the bitacora-api client plus the collaborator's craft: signed writes, entries, decisions, and the project context, against the logbook the project owner runs",
-  "version": "3.19.0",
+  "version": "3.20.0",
   "author": {
     "name": "Fran Llantada"
   },
