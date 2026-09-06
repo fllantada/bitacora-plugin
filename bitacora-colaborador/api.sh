@@ -423,10 +423,10 @@ buscar)
   leer "/api/buscar?q=$(uri "$1")"
   ;;
 # El sistema del proyecto en una llamada: el dominio, el stack y los flujos, MÁS las
-# instrucciones del ciclo en este tenant (el markdown crudo, o null) y los NOMBRES de las
-# skills a mano — solo los nombres: es la primera lectura de toda sesión y tiene que caber
-# en una respuesta; el detalle de una skill se pide con `skill <nombre>`.
-# /thinking y /coding la hacen en su paso 0 y obedecen las instrucciones.
+# instrucciones del ciclo en este tenant (el markdown crudo, o null).
+# Las skills NO viajan acá: la sesión ya tiene las suyas en el disco, y el catálogo es la
+# vista para el humano (se lee con `skills`). /thinking y /coding la hacen en su paso 0 y
+# obedecen las instrucciones.
 contexto) leer "/api/contexto" ;;
 # Cómo se corre el ciclo acá, solas: dónde se para cada sesión, qué gatea un commit, cómo
 # sale la PR, dónde se publica la review, cómo se factura, las fuentes, los registros, las
@@ -1020,7 +1020,7 @@ Uso: bitacora-api [-p <proyecto>] <comando>
   bitacora-api version                       (la instalada contra la última publicada — lo primero de cada invocación)
 
 El sistema del proyecto — la tríada, las instrucciones y las skills. Primera lectura al llegar:
-  bitacora-api contexto                     (el dominio + el stack + los flujos + las instrucciones + los nombres de las skills, de una)
+  bitacora-api contexto                     (el dominio + el stack + los flujos + las instrucciones, de una)
   bitacora-api instrucciones                (cómo se corre el ciclo del encargo acá, en markdown crudo; 404 si no están cargadas)
   bitacora-api skills                       (las herramientas a mano: las del repo, las del perfil y las del plugin, con qué hace cada una)
   bitacora-api skill <nombre>               (una entera: cómo se la cuenta, con qué se encadena y su SKILL.md)
