@@ -423,10 +423,10 @@ buscar)
   leer "/api/buscar?q=$(uri "$1")"
   ;;
 # El sistema del proyecto en una llamada: el dominio, el stack y los flujos, MÁS las
-# instrucciones del ciclo en este tenant (el markdown crudo, o null) y las skills a mano
-# con su explicación breve.
-# Es la primera lectura al llegar a un proyecto: /thinking y /coding la hacen en su paso 0
-# y obedecen las instrucciones.
+# instrucciones del ciclo en este tenant (el markdown crudo, o null) y los NOMBRES de las
+# skills a mano — solo los nombres: es la primera lectura de toda sesión y tiene que caber
+# en una respuesta; el detalle de una skill se pide con `skill <nombre>`.
+# /thinking y /coding la hacen en su paso 0 y obedecen las instrucciones.
 contexto) leer "/api/contexto" ;;
 # Cómo se corre el ciclo acá, solas: dónde se para cada sesión, qué gatea un commit, cómo
 # sale la PR, dónde se publica la review, cómo se factura, las fuentes, los registros, las
@@ -434,7 +434,7 @@ contexto) leer "/api/contexto" ;;
 instrucciones) leer "/api/instrucciones" ;;
 # Las herramientas que esta sesión tiene a mano, con qué hace cada una: las propias del
 # repo, las compartidas del perfil y las del método del plugin. El catálogo se mantiene
-# solo — lo llena `sincronizar-skills`, que corre en el paso 0 de /thinking y /coding.
+# solo — lo llena `sincronizar-skills`, que corre la skill /skills del plugin, a mano.
 skills) leer "/api/skills" ;;
 skill)
   exige 1 "skill <nombre>   (cómo se la cuenta, con qué se encadena y su SKILL.md)" "$@"
@@ -856,9 +856,9 @@ seccion)
 # el servidor no conoce o que cambiaron. Depende únicamente de los archivos del disco: dos
 # sesiones paradas en el mismo proyecto mandan lo mismo.
 #
-# Corre en el paso 0 de /thinking y /coding, en silencio. Su última línea dice qué cambió,
-# y /coding la pega en «Pendientes fuera de alcance» del reporte: el texto crudo se
-# actualiza solo, pero lo que alguien escribió SOBRE esas skills lo gestiona /thinking.
+# La corre la skill /skills del plugin, invocada a mano. Su última línea dice qué cambió,
+# y es su plan de trabajo: el texto crudo se actualiza solo, y lo editorial —contar la
+# nueva, reescribir la nota vieja, sacar la retirada— es lo que /skills hace después.
 sincronizar-skills)
   vaciar_cola
   # Las tres casas, en el orden en que el catálogo las agrupa. La del plugin sale del
@@ -1020,7 +1020,7 @@ Uso: bitacora-api [-p <proyecto>] <comando>
   bitacora-api version                       (la instalada contra la última publicada — lo primero de cada invocación)
 
 El sistema del proyecto — la tríada, las instrucciones y las skills. Primera lectura al llegar:
-  bitacora-api contexto                     (el dominio + el stack + los flujos + las instrucciones + las skills, de una)
+  bitacora-api contexto                     (el dominio + el stack + los flujos + las instrucciones + los nombres de las skills, de una)
   bitacora-api instrucciones                (cómo se corre el ciclo del encargo acá, en markdown crudo; 404 si no están cargadas)
   bitacora-api skills                       (las herramientas a mano: las del repo, las del perfil y las del plugin, con qué hace cada una)
   bitacora-api skill <nombre>               (una entera: cómo se la cuenta, con qué se encadena y su SKILL.md)
@@ -1116,7 +1116,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api sincronizar-skills [<repo>…] (UNA llamada: manda los hashes de los SKILL.md que ve y sube solo lo que cambió;
                                              su última línea nombra lo nuevo, lo que cambió, las notas que quedaron viejas
                                              y cuántas siguen sin contar; los <repo> extra son otras carpetas del mismo tenant)
-                                            va en el paso 0 de /thinking y /coding; su última línea dice qué cambió, y /coding la pega en el reporte
+                                            la corre la skill /skills, a mano; su última línea dice qué cambió y es su plan de trabajo
   bitacora-api escribir-instrucciones       < instrucciones.md   (el markdown entero por stdin; reemplaza; crea la sección la primera vez)
                                             · --json < {"cuerpo":{"es":"…","en":"…"},"queEs":"…"}   (en dos idiomas)
   bitacora-api definir                      {"termino":"…","definicion":"…"}  (o una lista)
