@@ -103,7 +103,10 @@ API=~/.local/bin/bitacora-api
 
 $API -p <project> contexto      # FIRST READ on arrival: language + stack + flows + the cycle instructions, in one call
 $API -p <project> instrucciones # how the job cycle runs HERE, as raw markdown (404 until the owner loads them)
-$API -p <project> skills        # the tools at hand here, with what each one does — and `skill <name>` for one whole
+$API -p <project> skills        # the tools at hand here: what each one is for, and whether it is the project's own or inherited
+$API -p <project> skill <name>  # one whole: how it is told, what it chains with, and its SKILL.md
+$API -p <project> nota-skill <name>   # tell it for a person: {"paraQue":"…","cuando":"…","deja":"…","ojo":"…"}
+                                #   write it right after reading that skill's text — the catalogue lists it uncounted until someone does
 $API -p <project> tablero       # the board: every thread of work, grouped by area
 $API -p <project> hilo <slug>   # one thread: its entries, decisions and documents
 $API -p <project> areas         # the project's areas, with how many threads live in each

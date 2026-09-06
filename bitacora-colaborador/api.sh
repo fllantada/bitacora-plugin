@@ -437,8 +437,28 @@ instrucciones) leer "/api/instrucciones" ;;
 # solo — lo llena `sincronizar-skills`, que corre en el paso 0 de /thinking y /coding.
 skills) leer "/api/skills" ;;
 skill)
-  exige 1 "skill <nombre>   (su descripción entera y su SKILL.md)" "$@"
+  exige 1 "skill <nombre>   (cómo se la cuenta, con qué se encadena y su SKILL.md)" "$@"
   leer "/api/skills/$(uri "${1#/}")"
+  ;;
+# LA NOTA: la skill contada para una persona, que es lo único del catálogo que se escribe.
+#
+# El resto se deriva del archivo y dice para qué la convocaría un harness; esto contesta la
+# pregunta de quien abre el catálogo: para qué me sirve, cuándo la llamo, qué me deja hecho.
+# Se escribe leyendo el SKILL.md, y el servidor la aparea con esa versión: cuando el archivo
+# cambie, la sincronización nombra la nota que quedó vieja.
+nota-skill)
+  exige 1 "nota-skill <nombre>   < {\"paraQue\":\"…\",\"cuando\":\"…\",\"deja\":\"…\",\"ojo\":\"…\"}" "$@"
+  vaciar_cola
+  nota_dicha="$(cat)"
+  if [ -z "$(printf '%s' "$nota_dicha" | jq -r '.paraQue // empty' 2>/dev/null)" ]; then
+    echo "nota-skill lleva los cuatro renglones con que se cuenta una skill:" >&2
+    echo '  {"paraQue":"qué resuelve, como se lo contarías a alguien que nunca la usó",' >&2
+    echo '   "cuando":"en qué momento se la invoca","deja":"qué queda hecho cuando termina",' >&2
+    echo '   "ojo":"lo que conviene saber antes (opcional)"}' >&2
+    echo "  Se escribe leyendo su texto: bitacora-api skill <nombre>" >&2
+    exit 1
+  fi
+  printf '%s' "$nota_dicha" | escribir PUT "/api/skills/$(uri "${1#/}")/nota"
   ;;
 glosario) leer "/api/glosario" ;;
 termino)
@@ -846,8 +866,31 @@ sincronizar-skills)
   done
   PLUGIN_DIR="$(cd "$(dirname "$PLUGIN_SH")" && pwd)"
   HOME_CLAUDE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+  # Qué más hay en la carpeta además del instructivo: sus scripts, sus referencias, sus
+  # plantillas. Es meta información de consulta —el catálogo dice si una skill es un texto o
+  # un texto con herramientas colgando— y cuesta lo mismo que la lista que ya viaja.
+  #
+  # Solo el primer nivel, y el directorio se nombra con su barra: lo que se quiere saber es
+  # qué trae, y una skill que arrastra un `node_modules` o un sitio compilado contestaría
+  # esa pregunta con mil archivos que nadie va a leer.
+  archivos_de() {
+    (
+      cd "$1" 2>/dev/null || return 0
+      for entrada in *; do
+        [ -e "$entrada" ] || continue
+        [ "$entrada" = "SKILL.md" ] && continue
+        if [ -d "$entrada" ]; then printf '%s/\n' "$entrada"; else printf '%s\n' "$entrada"; fi
+      done | LC_ALL=C sort | head -24
+    ) | jq -R -s -c 'split("\n") | map(select(length > 0))'
+  }
+  # Las casas del inventario. La del repo es donde estás parado, y un tenant cuyo trabajo
+  # vive en varias carpetas suma las otras como argumentos: el catálogo es del proyecto de
+  # la bitácora, y un proyecto de la bitácora puede tener más de un repo en el disco.
+  casas=("repo:$PWD/.claude/skills")
+  for otro in "$@"; do casas+=("repo:${otro%/}/.claude/skills"); done
+  casas+=("perfil:$HOME_CLAUDE/skills" "plugin:$PLUGIN_DIR/skills")
   inventario="$(
-    for casa in "repo:$PWD/.claude/skills" "perfil:$HOME_CLAUDE/skills" "plugin:$PLUGIN_DIR/skills"; do
+    for casa in "${casas[@]}"; do
       procedencia="${casa%%:*}"
       raiz="${casa#*:}"
       [ -d "$raiz" ] || continue
@@ -856,7 +899,8 @@ sincronizar-skills)
         jq -cn --arg n "$(basename "$(dirname "$md")")" --arg p "$procedencia" \
           --arg r "$(printf '%s' "${md%/SKILL.md}" | sed "s#^$HOME#~#")" \
           --arg h "$(shasum -a 1 "$md" | cut -c1-16)" \
-          '{nombre:$n, procedencia:$p, ruta:$r, hash:$h}'
+          --argjson a "$(archivos_de "${md%/SKILL.md}")" \
+          '{nombre:$n, procedencia:$p, ruta:$r, hash:$h, archivos:$a}'
       done
     done | jq -cs '{skills: .}'
   )"
@@ -871,7 +915,8 @@ sincronizar-skills)
     [ -f "$archivo" ] || continue
     jq -n --arg p "$procedencia" --arg r "$ruta" \
       --arg h "$(shasum -a 1 "$archivo" | cut -c1-16)" --rawfile c "$archivo" \
-      '{procedencia:$p, ruta:$r, hash:$h, cuerpo:$c}' |
+      --argjson a "$(archivos_de "$(dirname "$archivo")")" \
+      '{procedencia:$p, ruta:$r, hash:$h, cuerpo:$c, archivos:$a}' |
       escribir PUT "/api/skills/$(uri "$nombre")" >/dev/null
   done
   # La línea que /coding pega en su reporte. La arma el servidor, así el cliente, la web y
@@ -960,7 +1005,9 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
   bitacora-api contexto                     (el dominio + el stack + los flujos + las instrucciones + las skills, de una)
   bitacora-api instrucciones                (cómo se corre el ciclo del encargo acá, en markdown crudo; 404 si no están cargadas)
   bitacora-api skills                       (las herramientas a mano: las del repo, las del perfil y las del plugin, con qué hace cada una)
-  bitacora-api skill <nombre>               (una entera: su descripción y su SKILL.md)
+  bitacora-api skill <nombre>               (una entera: cómo se la cuenta, con qué se encadena y su SKILL.md)
+  bitacora-api nota-skill <nombre>          {"paraQue":"…","cuando":"…","deja":"…","ojo":"…"}
+        la skill contada para una persona: lo único del catálogo que se escribe
   bitacora-api flujos                       · bitacora-api flujo <slug>
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
@@ -1047,7 +1094,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api editar-pieza <slug>          {"responsabilidad":"…"} · {"sumarAlias":["el CMS"]}
   bitacora-api seccion                      {"tipo":"archivo","nombre":"…","nota":"…"}
   bitacora-api editar-seccion <slug>        {"resumen":"…"} · {"tipo":"fuente"}
-  bitacora-api sincronizar-skills           (UNA llamada: manda los hashes de los SKILL.md que ve y sube solo lo que cambió)
+  bitacora-api sincronizar-skills [<repo>…] (UNA llamada: manda los hashes de los SKILL.md que ve y sube solo lo que cambió;
+                                             su última línea nombra lo nuevo, lo que cambió, las notas que quedaron viejas
+                                             y cuántas siguen sin contar; los <repo> extra son otras carpetas del mismo tenant)
                                             va en el paso 0 de /thinking y /coding; su última línea dice qué cambió, y /coding la pega en el reporte
   bitacora-api escribir-instrucciones       < instrucciones.md   (el markdown entero por stdin; reemplaza; crea la sección la primera vez)
                                             · --json < {"cuerpo":{"es":"…","en":"…"},"queEs":"…"}   (en dos idiomas)
