@@ -902,7 +902,13 @@ sincronizar-skills)
           --argjson a "$(archivos_de "${md%/SKILL.md}")" \
           '{nombre:$n, procedencia:$p, ruta:$r, hash:$h, archivos:$a}'
       done
-    done | jq -cs '{skills: .}'
+    done | jq -cs '
+      # Un nombre, una skill: la primera casa gana, que es el orden en que el harness la
+      # resuelve —la del proyecto le gana a la del root—. Sin esto, una skill con el mismo
+      # nombre en el repo y en el perfil se guardaría con el texto de la que NO se invoca.
+      reduce .[] as $s ({}; if has($s.nombre) then . else . + {($s.nombre): $s} end)
+      | {skills: [.[]]}
+    '
   )"
   respuesta="$(printf '%s' "$inventario" | escribir POST "/api/skills/sincronizar")" || exit 1
   # Lo que el servidor pidió sube entero, una llamada por skill: son pocas y solo cuando
@@ -917,7 +923,10 @@ sincronizar-skills)
       --arg h "$(shasum -a 1 "$archivo" | cut -c1-16)" --rawfile c "$archivo" \
       --argjson a "$(archivos_de "$(dirname "$archivo")")" \
       '{procedencia:$p, ruta:$r, hash:$h, cuerpo:$c, archivos:$a}' |
-      escribir PUT "/api/skills/$(uri "$nombre")" >/dev/null
+      escribir PUT "/api/skills/$(uri "$nombre")" >/dev/null ||
+      # Una que el servidor rechaza no se lleva puesta la sincronización entera: se dice
+      # cuál fue y las demás siguen subiendo.
+      echo "  ✗ /$nombre quedó sin subir" >&2
   done
   # La línea que /coding pega en su reporte. La arma el servidor, así el cliente, la web y
   # el reporte dicen lo mismo con las mismas palabras.
