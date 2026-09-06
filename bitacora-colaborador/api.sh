@@ -738,7 +738,8 @@ lista)
 # ─────────────────────────────────────────────────────────────────────────────
 # LA CONSULTA — el human in the loop: la sesión pregunta, la persona contesta.
 #
-# Nace `abierta` con sus puntos: cada uno con su título, qué cambia según la respuesta,
+# Nace `abierta` con su queEs —de dónde salen los puntos y qué se hace con lo decidido, en
+# una o dos frases— y sus puntos: cada uno con su título, qué cambia según la respuesta,
 # las opciones vivas si las hay, la recomendación y su porqué breve. La persona ACEPTA o
 # RECHAZA cada recomendación EN LA WEB —rechazar dice qué va en su lugar— y con la última
 # la consulta pasa sola a `contestada`; la sesión la lee con `respuestas`, aplica lo
@@ -1111,7 +1112,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api lista <id> [nota]            → calificando: la corrida terminó y la persona puede calificar (faltan salidas, 400)
   bitacora-api calificacion <id>            (lo que la persona decidió: matriz, elecciones, esperados con su cumplido, veredicto)
         calificar, elegir, marcar esperados y concluir son DE LA PERSONA y se hacen en la web: por esta puerta, 400
-  bitacora-api consulta <hilo>              {"titulo":"…","cuerpo":{"es":"# El contexto\n…"},
+  bitacora-api consulta <hilo>              {"titulo":"…","queEs":"de dónde salen los puntos y qué se hace con lo decidido, en una o dos frases",
                                              "puntos":[{"titulo":"…","queCambia":"qué se decide y qué cambia con cada respuesta",
                                                         "opciones":[{"titulo":"…","implica":"…"}],
                                                         "propuesta":"la recomendación: lo que la sesión haría","porque":"su porqué, en una o dos frases"}]}
