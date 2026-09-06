@@ -1058,7 +1058,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api plan <hilo>                  {"titulo":"…","cierraEn":"…","cuerpo":{"es":"# …"},"flujos":["…"]}
         con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;
         el servidor exige seis secciones en el cuerpo: # Tarea · # Destino · # Contexto y porqué · # Patrón a seguir · # Alcance exacto · # Lo que NO entra
-  bitacora-api bug <hilo>                   {"titulo":"…","cuerpo":{"es":"qué pasa y cómo se reproduce"},"flujos":["…"]}
+  bitacora-api bug <hilo>                   {"titulo":"…","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
   bitacora-api client-report <hilo>         {"titulo":"…","cuerpo":{"es":"# …"}}
   bitacora-api simulacion <hilo>            {"titulo":"…","hipotesis":"…","criterioExito":"…",

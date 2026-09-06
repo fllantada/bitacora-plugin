@@ -152,7 +152,7 @@ door, its desks and its colour:
 |---|---|---|---|
 | **Analysis** | what was understood about a topic | its body | none: it is material you read |
 | **Plan** | how something gets solved — strategy AND execution; it also carries a dispatched job | its body and where it closes | pendiente · encargado · en-curso · entregado · hecho · descartado |
-| **Bug** | a defect found while doing something else | its body | abierto · arreglado · descartado |
+| **Bug** | a defect found while doing something else | its body, with What happens · Where · How to reproduce | abierto · arreglado · descartado |
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
@@ -165,7 +165,7 @@ $API -p <project> plan <thread> <<'JSON'
 {"titulo":"…","cierraEn":"the PR that brings it","cuerpo":{"en":"# How it gets solved\n…"}}
 JSON
 $API -p <project> bug <thread> <<'JSON'
-{"titulo":"…","cuerpo":{"en":"What happens, how to reproduce it, what is known so far."}}
+{"titulo":"…","cuerpo":{"en":"# What happens\n…\n\n# Where\n…\n\n# How to reproduce\n1. …\n2. …"}}
 JSON
 $API -p <project> client-report <thread> <<'JSON'
 {"titulo":"…","ficha":{"For":"who receives it"},"cuerpo":{"en":"# …"}}
@@ -194,8 +194,17 @@ on the front and gets closed, and the same question buried in an analysis shows 
 
 **The Plan is what has to be DONE.** It is the plan you would write to solve something,
 with its execution — which is why it has a desk and gets closed. A **Bug** is a fact, not a
-decision: its door asks for the body and nothing else, so a defect found outside your scope
-gets written down with its analysis and you carry on without the fix.
+decision — no trade-off frame, which belongs to the decision — so a defect found outside
+your scope gets written down with its analysis and you carry on without the fix.
+
+**Its door charges the three questions that make it workable**, as headings in the body:
+**What happens** (what the system does and what it should do), **Where** (the piece, route
+or screen, and in which environment) and **How to reproduce** (the steps or the command
+that show it again). They are charged when it is opened, because a defect is told while it
+is fresh: whoever saw it is the only one who can write them, and without them whoever picks
+it up months later has to rediscover the defect first. And the reproduction is what gives a
+bug its own expiry: it gets run before the fix, and one that no longer shows up is closed
+saying exactly that.
 
 **The Simulation is the experiment before adopting a change**, and the run produces while
 the grading decides: the session designs it and runs the arms over a sample, leaving what
