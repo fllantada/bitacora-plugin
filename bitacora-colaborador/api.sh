@@ -146,9 +146,14 @@ if [ "${1:-}" = "bandeja" ]; then
       }
       printf '%s' "$respuesta" | jq -c --arg p "$tenant" \
         '.items[] | select(.estado == "entregado" or .estado == "en-curso" or .estado == "encargado")
-         | {proyecto: $p, estado, hilo, area, titulo, id, ficha}'
+         | {proyecto: $p, tipo: "plan", estado, hilo, area, titulo, id, ficha}'
+      # Las consultas abiertas son la mano que falta: van primero, porque solo la persona las destraba.
+      consultas="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
+        "$BASE/api/items/consultas?estado=abierta" 2>/dev/null)" || continue
+      printf '%s' "$consultas" | jq -c --arg p "$tenant" \
+        '.items[] | {proyecto: $p, tipo: "consulta", estado, hilo, area, titulo, id, respuestas}'
     done
-  } | jq -s 'sort_by(if .estado == "entregado" then 0 elif .estado == "en-curso" then 1 else 2 end)'
+  } | jq -s 'sort_by(if .tipo == "consulta" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
   exit 0
 fi
 
@@ -588,18 +593,18 @@ publicados) leer "/api/publicacion" ;;
 horas) leer "/api/trabajo" ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LOS TIPOS DE UN HILO — analisis · planes · bugs · client-reports · decisiones · simulaciones
+# LOS TIPOS DE UN HILO — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas
 #
 # Un hilo es el ticket y adentro cuelgan cosas de tipo distinto. El tipo se nombra
 # en plural y en la misma palabra que se lee en la app, así lo que se escribe y lo
 # que se navega dicen igual.
 # ─────────────────────────────────────────────────────────────────────────────
 tipo)
-  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones|simulaciones> [estado]" "$@"
+  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas> [estado]" "$@"
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
-  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones>" "$@"
+  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas>" "$@"
   leer "/api/items/$(uri "$1")?abiertos"
   ;;
 del-hilo)
@@ -617,7 +622,7 @@ traducir-item)
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
-analisis | plan | bug | client-report | simulacion)
+analisis | plan | bug | client-report | simulacion | consulta)
   exige 1 "$comando <hilo>   < JSON" "$@"
   vaciar_cola
   case "$comando" in
@@ -626,6 +631,7 @@ analisis | plan | bug | client-report | simulacion)
     bug) ruta_tipo=bugs ;;
     client-report) ruta_tipo=client-reports ;;
     simulacion) ruta_tipo=simulaciones ;;
+    consulta) ruta_tipo=consultas ;;
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
   ;;
@@ -728,6 +734,30 @@ lista)
   vaciar_cola
   jq -cn --arg n "${2:-}" '{estado:"calificando"} + (if $n == "" then {} else {nota:$n} end)' |
     escribir PATCH "/api/items/simulaciones/$(uri "$1")"
+  ;;
+# ─────────────────────────────────────────────────────────────────────────────
+# LA CONSULTA — el human in the loop: la sesión pregunta, la persona contesta.
+#
+# Nace `abierta` con sus puntos: cada uno con su título, qué cambia según la respuesta,
+# las opciones vivas si las hay, y lo que la sesión haría. La persona contesta cada punto
+# EN LA WEB y con la última respuesta la consulta pasa sola a `contestada`; la sesión la
+# lee con `respuestas`, aplica lo contestado —la ronda, las decisiones al libro— y la
+# pasa a `aplicada`. La respuesta contesta 400 por esta puerta: es de la persona.
+# ─────────────────────────────────────────────────────────────────────────────
+consultas) leer "/api/items/consultas${1:+?estado=$(uri "${1:-}")}" ;;
+# Las que la persona ya contestó enteras: la bandeja de la sesión que preguntó.
+contestadas) leer "/api/items/consultas?estado=contestada" ;;
+# Lo que la persona contestó, punto por punto, con lo que se le había preguntado.
+respuestas)
+  exige 1 "respuestas <id>" "$@"
+  leer "/api/items/consultas/$(uri "$1")" | jq '{estado, hilo, titulo, respuestas, faltan, puntos: [.puntos[] | {id, titulo, propuesta, respuesta: (.respuesta.texto // null), por: (.respuesta.autor // null)}]}'
+  ;;
+# La sesión tomó las respuestas: la consulta cierra. Sin contestar entera, 400.
+aplicar)
+  exige 1 "aplicar <id> [nota]" "$@"
+  vaciar_cola
+  jq -cn --arg n "${2:-}" '{estado:"aplicada"} + (if $n == "" then {} else {nota:$n} end)' |
+    escribir PATCH "/api/items/consultas/$(uri "$1")"
   ;;
 # Sin stdin: un DELETE no lleva cuerpo, y esperarlo colgaría la terminal en un Ctrl-D.
 sacar)
@@ -1035,7 +1065,7 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
 El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api abrir                        (el tablero en tu navegador, sin login: enlace fresco de un solo uso)
   bitacora-api tablero                      (los hilos con su área y sus ítems, las áreas, lo pendiente por escritorio, la tríada contada)
-  bitacora-api bandeja                      (sin -p: los planes entregados, en curso y encargados de TODOS los proyectos)
+  bitacora-api bandeja                      (sin -p: las consultas que esperan tu respuesta y los planes entregados, en curso y encargados de TODOS los proyectos)
   bitacora-api encargados · en-curso · entregados   (el ciclo del encargo, por escritorio; cada plan con su hilo y su área)
   bitacora-api hilos                        (= lineas)
   bitacora-api hilo <slug|alias>            (= linea)
@@ -1049,8 +1079,11 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando hilos)
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
   bitacora-api abiertos <tipo>              (los que quedaron sin cerrar; el análisis y la decisión no tienen)
-        tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones
+        tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
+  bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
+  bitacora-api contestadas                  (las que la persona ya contestó enteras: lo que la sesión tiene que aplicar)
+  bitacora-api respuestas <id>              (punto por punto: qué se preguntó, qué se propuso y qué contestó la persona)
   bitacora-api por-traducir [idioma]        (documentos y fichas: lo que falta y lo que quedó viejo)
 
 Escritura (el cuerpo JSON entra por stdin):
@@ -1077,6 +1110,12 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api lista <id> [nota]            → calificando: la corrida terminó y la persona puede calificar (faltan salidas, 400)
   bitacora-api calificacion <id>            (lo que la persona decidió: matriz, elecciones, esperados con su cumplido, veredicto)
         calificar, elegir, marcar esperados y concluir son DE LA PERSONA y se hacen en la web: por esta puerta, 400
+  bitacora-api consulta <hilo>              {"titulo":"…","cuerpo":{"es":"# El contexto\n…"},
+                                             "puntos":[{"titulo":"…","queCambia":"qué se decide y qué cambia con cada respuesta",
+                                                        "opciones":[{"titulo":"…","implica":"…"}],"propuesta":"lo que la sesión haría, y por qué"}]}
+        el human in the loop: nace `abierta`; la persona contesta cada punto EN LA WEB y pasa sola a `contestada`
+  bitacora-api aplicar <id> [nota]          → aplicada: la sesión tomó las respuestas (la ronda, las decisiones al libro); sin contestar entera, 400
+        la respuesta es DE LA PERSONA y se escribe en la web: por esta puerta, 400
   bitacora-api traducir-item <tipo> <id>    {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}
   bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
                                             · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)

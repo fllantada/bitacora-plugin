@@ -143,7 +143,7 @@ JSON
 $API -p <project> corregir <id> <<< '{"veredicto":"…"}'
 ```
 
-## A thread holds SIX TYPES, each with its own door
+## A thread holds SEVEN TYPES, each with its own door
 
 A **thread** is the ticket, and what hangs from it has a type. The type is what sets its
 door, its desks and its colour:
@@ -156,6 +156,7 @@ door, its desks and its colour:
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
+| **Consultation** | the human in the loop: what the session asks the person, point by point, and the person answers ON THE WEB | its body and its points, each with what changes and what the session would do | abierta · contestada · aplicada · descartada |
 
 ```bash
 $API -p <project> analisis <thread> <<'JSON'
@@ -482,6 +483,35 @@ $API -p <project> calificacion <id>                         # what she decided: 
 `item simulaciones <id>` returns the grading matrix derived from what the person scored —
 the mean per arm and criterion, items chosen per arm, the normalised total — plus each
 arm's cost and the run's dates. Nobody writes the matrix by hand.
+
+## The Consultation — the human in the loop
+
+When a session reaches decisions that belong to the person — several points to read
+calmly, each changing what a PR writes, a vocabulary, a key, a path between two — it
+writes a **consultation** in the thread instead of a list in the chat. Each **point**
+carries its title, **what changes** with each answer, the live **options** when there is
+more than one, and **what the session would do**; the person answers under each one **on
+the web**, with an input and a save button. The consultation is born `abierta`, moves by
+itself to `contestada` with the last answer, and the session moves it to `aplicada` once
+it took the answers — decisions to the book with the answer as verdict, a round written.
+
+```bash
+$API -p <project> consulta <thread> <<'JSON'
+{"titulo":"The seven changes to the record: what goes in",
+ "cuerpo":{"en":"# The context\n\nWhere the points come from…"},
+ "puntos":[{"titulo":"The key of each record",
+            "queCambia":"Today it is the route slug plus the tour slug; a rename orphans the record.",
+            "opciones":[{"titulo":"Tour.id","implica":"the permanent reference the contract declares"}],
+            "propuesta":"Tour.id — the three fronts agree."}]}
+JSON
+# … the person answers on the web; the consultation moves to «contestada» by itself …
+$API -p <project> contestadas            # the ones fully answered, ready to apply
+$API -p <project> respuestas <id>        # point by point: what was asked, proposed and answered
+$API -p <project> aplicar <id> "round written · three decisions to the book"   # → aplicada
+```
+
+The answer belongs to the person: `respuesta` and the `contestada` state return 400 through
+the API, naming the web. An answered point is never rewritten — what changed is a new point.
 
 ## Planning — the same gesture in every project
 
