@@ -147,11 +147,13 @@ if [ "${1:-}" = "bandeja" ]; then
       printf '%s' "$respuesta" | jq -c --arg p "$tenant" \
         '.items[] | select(.estado == "entregado" or .estado == "en-curso" or .estado == "encargado")
          | {proyecto: $p, tipo: "plan", estado, hilo, area, titulo, id, ficha}'
-      # Las consultas abiertas son la mano que falta: van primero, porque solo la persona las destraba.
+      # Las consultas que esperan a la persona son la mano que falta: van primero, porque solo
+      # ella las destraba. La abierta cuyo resto pidió más contexto espera a la sesión y no va.
       consultas="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
         "$BASE/api/items/consultas?estado=abierta" 2>/dev/null)" || continue
       printf '%s' "$consultas" | jq -c --arg p "$tenant" \
-        '.items[] | {proyecto: $p, tipo: "consulta", estado, hilo, area, titulo, id, respuestas}'
+        '.items[] | select(((.faltan // []) | length) > 0)
+         | {proyecto: $p, tipo: "consulta", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto}'
     done
   } | jq -s 'sort_by(if .tipo == "consulta" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
   exit 0
@@ -740,19 +742,39 @@ lista)
 #
 # Nace `abierta` con su queEs —de dónde salen los puntos y qué se hace con lo decidido, en
 # una o dos frases— y sus puntos: cada uno con su título, qué cambia según la respuesta,
-# las opciones vivas si las hay, la recomendación y su porqué breve. La persona ACEPTA o
-# RECHAZA cada recomendación EN LA WEB —rechazar dice qué va en su lugar— y con la última
-# la consulta pasa sola a `contestada`; la sesión la lee con `respuestas`, aplica lo
-# decidido —la ronda, las decisiones al libro— y la pasa a `aplicada`. La respuesta
-# contesta 400 por esta puerta: es de la persona.
+# las opciones vivas si las hay, la recomendación y su porqué breve. La persona ACEPTA,
+# RECHAZA o PIDE MÁS CONTEXTO en cada recomendación EN LA WEB —rechazar dice qué va en su
+# lugar; pedir contexto devuelve el punto a la sesión, que lo reescribe con `puntos` y lo
+# pregunta de nuevo— y con la última decisión la consulta pasa sola a `contestada`; la
+# sesión la lee con `respuestas`, aplica lo decidido —la ronda, las decisiones al libro— y
+# la pasa a `aplicada`. La respuesta contesta 400 por esta puerta: es de la persona.
 # ─────────────────────────────────────────────────────────────────────────────
 consultas) leer "/api/items/consultas${1:+?estado=$(uri "${1:-}")}" ;;
-# Las que la persona ya contestó enteras: la bandeja de la sesión que preguntó.
+# Las que la persona ya decidió enteras: lo que la sesión aplica.
 contestadas) leer "/api/items/consultas?estado=contestada" ;;
-# Lo que la persona decidió, punto por punto: aceptó o rechazó cada recomendación, y su comentario.
+# Lo que la persona ya dijo y espera a la sesión: las decididas enteras, para aplicar, y las
+# abiertas donde pidió más contexto en algún punto, para reescribirlo. Es la tercera llamada
+# del paso cero de /thinking: lo que la persona contestó mientras no había sesión.
+decidido)
+  leer "/api/items/consultas?abiertos" | jq '[.items[]
+    | select(.estado == "contestada" or ((.pidenContexto // []) | length) > 0)
+    | {id, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, actualizado}]
+    | sort_by(if .estado == "contestada" then 0 else 1 end)'
+  ;;
+# Lo que la persona dijo, punto por punto: aceptó o rechazó cada recomendación, o pidió más
+# contexto (`decision: "pide-contexto"`, con qué le faltó en `comentario`); `pedidos` son
+# los pedidos de contexto que ese punto ya recibió y la sesión atendió reescribiéndolo.
 respuestas)
   exige 1 "respuestas <id>" "$@"
-  leer "/api/items/consultas/$(uri "$1")" | jq '{estado, hilo, titulo, respuestas, faltan, puntos: [.puntos[] | {id, titulo, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null)}]}'
+  leer "/api/items/consultas/$(uri "$1")" | jq '{estado, hilo, titulo, respuestas, faltan, pidenContexto, puntos: [.puntos[] | {id, titulo, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
+  ;;
+# Corregir o reescribir puntos mientras la consulta está abierta: por id el que se corrige,
+# sin id el que nace entero. Es cómo se atiende un pedido de contexto: el punto reescrito
+# vuelve a esperar a la persona, y su pedido queda en `pedidos`. El punto ya decidido, 400.
+puntos)
+  exige 1 "puntos <id>   < {\"puntos\":[{\"id\":\"p2\",\"queCambia\":\"…\",\"porque\":\"…\"}]}" "$@"
+  vaciar_cola
+  escribir PATCH "/api/items/consultas/$(uri "$1")"
   ;;
 # La sesión tomó las respuestas: la consulta cierra. Sin contestar entera, 400.
 aplicar)
@@ -1088,8 +1110,9 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
         tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
-  bitacora-api contestadas                  (las que la persona ya contestó enteras: lo que la sesión tiene que aplicar)
-  bitacora-api respuestas <id>              (punto por punto: la recomendación, si la persona la aceptó o la rechazó, y su comentario)
+  bitacora-api decidido                     (lo que la persona ya dijo y espera a la sesión: las decididas enteras, y las abiertas con puntos que pidieron más contexto)
+  bitacora-api contestadas                  (las que la persona ya decidió enteras: lo que la sesión tiene que aplicar)
+  bitacora-api respuestas <id>              (punto por punto: la recomendación, si la persona la aceptó, la rechazó o pidió más contexto, y su comentario)
   bitacora-api por-traducir [idioma]        (documentos y fichas: lo que falta y lo que quedó viejo)
 
 Escritura (el cuerpo JSON entra por stdin):
@@ -1120,7 +1143,9 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "puntos":[{"titulo":"…","queCambia":"qué se decide y qué cambia con cada respuesta",
                                                         "opciones":[{"titulo":"…","implica":"…"}],
                                                         "propuesta":"la recomendación: lo que la sesión haría","porque":"su porqué, en una o dos frases"}]}
-        el human in the loop: nace `abierta`; la persona ACEPTA o RECHAZA cada recomendación EN LA WEB y pasa sola a `contestada`
+        el human in the loop: nace `abierta`; la persona ACEPTA, RECHAZA o PIDE MÁS CONTEXTO en cada recomendación EN LA WEB y pasa sola a `contestada`
+  bitacora-api puntos <id>                  {"puntos":[{"id":"p2","queCambia":"…","porque":"…"},{"titulo":"…","queCambia":"…","propuesta":"…","porque":"…"}]}
+        corregir por id o sumar sin id mientras está abierta; reescribir el punto que pidió contexto lo devuelve a la persona. El ya decidido, 400
   bitacora-api aplicar <id> [nota]          → aplicada: la sesión tomó lo decidido (la ronda, las decisiones al libro); sin decidir entera, 400
         la respuesta es DE LA PERSONA y se escribe en la web: por esta puerta, 400
   bitacora-api traducir-item <tipo> <id>    {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}

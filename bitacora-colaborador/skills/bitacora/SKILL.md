@@ -156,7 +156,7 @@ door, its desks and its colour:
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
-| **Consultation** | the human in the loop: what the session asks the person, point by point; the person accepts or rejects each recommendation ON THE WEB | its `queEs` —where the points come from and what happens with what is decided— and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
+| **Consultation** | the human in the loop: what the session asks the person, point by point; the person accepts, rejects or asks for more context on each recommendation ON THE WEB | its `queEs` —where the points come from and what happens with what is decided— and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
 
 ```bash
 $API -p <project> analisis <thread> <<'JSON'
@@ -491,8 +491,11 @@ calmly, each changing what a PR writes, a vocabulary, a key, a path between two 
 writes a **consultation** in the thread instead of a list in the chat. Each **point**
 carries its title, **what changes** with each decision, the live **options** when there is
 more than one, and the **recommendation** with its **why** in a sentence or two; the person
-**accepts** the recommendation in one click or **rejects** it saying what goes instead,
-**on the web**. Keep it brief and clear: what is needed to decide, nothing more. The consultation IS its
+**accepts** the recommendation in one click, **rejects** it saying what goes instead, or
+**asks for more context** in one click when what is written is not enough to decide,
+**on the web**. A point sent back for context returns to the session, which rewrites it
+with what was missing (`puntos <id>`, by its id) and asks it again; the request stays on
+the point as a record. Keep it brief and clear: what is needed to decide, nothing more. The consultation IS its
 points: its `queEs` says in a sentence or two where they come from and what happens with
 what is decided, and it is all the context the person reads before the first point. The consultation is born `abierta`, moves by
 itself to `contestada` with the last answer, and the session moves it to `aplicada` once
@@ -508,13 +511,19 @@ $API -p <project> consulta <thread> <<'JSON'
             "propuesta":"Use Tour.id.","porque":"The permanent reference the contract declares; the three fronts agree."}]}
 JSON
 # … the person answers on the web; the consultation moves to «contestada» by itself …
-$API -p <project> contestadas            # the ones fully answered, ready to apply
-$API -p <project> respuestas <id>        # point by point: the recommendation, accepted or rejected, and the comment
+$API -p <project> decidido               # what the person already said and the session has to take: fully decided ones, and points that asked for context
+$API -p <project> contestadas            # the ones fully decided, ready to apply
+$API -p <project> respuestas <id>        # point by point: the recommendation, accepted, rejected or sent back for context, and the comment
+$API -p <project> puntos <id> <<'JSON'
+{"puntos":[{"id":"p2","queCambia":"…what was missing, written so it can be decided from this alone…","porque":"…"}]}
+JSON
 $API -p <project> aplicar <id> "round written · three decisions to the book"   # → aplicada
 ```
 
 The answer belongs to the person: `respuesta` and the `contestada` state return 400 through
-the API, naming the web. An answered point is never rewritten — what changed is a new point.
+the API, naming the web. A decided point is never rewritten — what changed is a new point;
+the point that asked for more context is the deliberate exception, because rewriting it is
+how the request is answered.
 
 ## Planning — the same gesture in every project
 
