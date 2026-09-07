@@ -439,6 +439,10 @@ contexto) leer "/api/contexto" ;;
 # sale la PR, dónde se publica la review, cómo se factura, las fuentes, los registros, las
 # skills. Es material del proyecto: la lee todo miembro. Sin cargar contesta 404.
 instrucciones) leer "/api/instrucciones" ;;
+# De qué vive el cliente, con SUS palabras: a qué se dedica, qué vende, a quién llega y qué
+# lo distingue. Es la primera lectura del proyecto — el glosario es su vocabulario, no él.
+# Sin escribir contesta 404 diciendo qué va adentro.
+dominio) leer "/api/dominio" ;;
 # Las herramientas que esta sesión tiene a mano, con qué hace cada una: las propias del
 # repo, las compartidas del perfil y las del método del plugin. El catálogo lo mantiene
 # la skill /skills del plugin, a mano, con `sincronizar-skills`.
@@ -855,13 +859,16 @@ fusionar)
   vaciar_cola
   escribir POST "/api/lineas/$(uri "$1")/fusionar"
   ;;
-# abrir-flujo  ← {"nombre":"…","queEs":"…","categoria":"runtime|editorial|ciclo-de-vida|migracion"}
+# abrir-flujo  ← {"nombre":"…","queEs":"…","categoria":"runtime|editorial|ciclo-de-vida|migracion",
+#                 "pasos":[{"etapa":"…","actor":"…","que":"…","pieza":"<slug del stack>","detalle":"…"}]}
+# Los PASOS son el flujo: `que` es la frase que se entiende sin ser técnico y `detalle` lo que
+# se abre debajo. La `etapa` agrupa los pasos seguidos que la comparten.
 abrir-flujo)
   vaciar_cola
   escribir POST "/api/flujos"
   ;;
 editar-flujo)
-  exige 1 "editar-flujo <slug>   < {\"estado\":\"construido\"} · {\"sumarStack\":[\"algolia\"]} · {\"sumarGlosario\":[\"route\"]}" "$@"
+  exige 1 "editar-flujo <slug>   < {\"estado\":\"construido\"} · {\"sumarStack\":[\"algolia\"]} · {\"pasos\":[{\"que\":\"…\"}]}" "$@"
   vaciar_cola
   escribir PATCH "/api/flujos/$(uri "$1")"
   ;;
@@ -1009,6 +1016,20 @@ escribir-instrucciones)
     printf '%s' "$cuerpo_md" | jq -Rs '{cuerpo: .}' | escribir PUT "/api/instrucciones"
   fi
   ;;
+escribir-dominio)
+  vaciar_cola
+  if [ "${1:-}" = "--json" ]; then
+    escribir PUT "/api/dominio"
+  else
+    cuerpo_md="$(cat)"
+    if [ -z "$(printf '%s' "$cuerpo_md" | tr -d '[:space:]')" ]; then
+      echo "escribir-dominio lee el markdown entero por stdin:  bitacora-api escribir-dominio < dominio.md" >&2
+      echo "  Va el NEGOCIO del cliente, con su vocabulario: a qué se dedica · Qué vende · A quién · Cómo llega a sus clientes · Qué lo distingue" >&2
+      exit 1
+    fi
+    printf '%s' "$cuerpo_md" | jq -Rs '{cuerpo: .}' | escribir PUT "/api/dominio"
+  fi
+  ;;
 editar-seccion)
   exige 1 "editar-seccion <slug>   < JSON" "$@"
   vaciar_cola
@@ -1078,7 +1099,8 @@ Uso: bitacora-api [-p <proyecto>] <comando>
   bitacora-api version                       (la instalada contra la última publicada — lo primero de cada invocación)
 
 El sistema del proyecto — la tríada, las instrucciones y las skills. Primera lectura al llegar:
-  bitacora-api contexto                     (el dominio + el stack + los flujos + las instrucciones, de una)
+  bitacora-api contexto                     (el dominio + el glosario + el stack + los flujos + las instrucciones, de una)
+  bitacora-api dominio                      (de qué vive el cliente, con sus palabras; 404 si no está escrito)
   bitacora-api instrucciones                (cómo se corre el ciclo del encargo acá, en markdown crudo; 404 si no están cargadas)
   bitacora-api skills                       (las herramientas a mano: las del repo, las del perfil y las del plugin, con qué hace cada una)
   bitacora-api skill <nombre>               (una entera: cómo se la cuenta, con qué se encadena y su SKILL.md)
@@ -1178,10 +1200,17 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena mudando hilos)
   bitacora-api editar-area <slug>           {"nombre":"…"} (renombra) · {"orden":2} (su lugar en el menú)
   bitacora-api fusionar <slug>              {"en":"la-que-queda"}
-  bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime"}
+  bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime",
+                                             "pasos":[{"etapa":"…","actor":"…","que":"…","pieza":"algolia","detalle":"…"}]}
   bitacora-api editar-flujo <slug>          {"estado":"construido"} · {"sumarStack":[…]} · {"sumarGlosario":[…]}
-  bitacora-api anotar-pieza                 {"nombre":"…","responsabilidad":"…","donde":"…","documentacion":"https://…","notas":"…"}
+                                            · {"pasos":[…]} reemplaza el recorrido entero (un paso no se parchea solo)
+  bitacora-api anotar-pieza                 {"nombre":"…","responsabilidad":"…","nivel":"contenedor","tecnologia":"Node · GraphQL · Fargate",
+                                             "donde":"…","documentacion":"https://…","notas":"…"}
+        nivel = sistema | contenedor | componente | libreria   (sin declararlo, contenedor)
+        `dentroDe` es el slug del contenedor: una librería o un componente cuelga de él
   bitacora-api editar-pieza <slug>          {"responsabilidad":"…"} · {"sumarAlias":["el CMS"]}
+                                            · {"nivel":"libreria","dentroDe":"engine"} la mete adentro
+                                            · {"dentroDe":""} la saca (la cadena vacía borra el campo)
   bitacora-api seccion                      {"tipo":"archivo","nombre":"…","nota":"…"}
   bitacora-api editar-seccion <slug>        {"resumen":"…"} · {"tipo":"fuente"}
   bitacora-api sincronizar-skills [<repo>…] (UNA llamada: manda los hashes de los SKILL.md que ve y sube solo lo que cambió;
@@ -1189,7 +1218,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                              y cuántas siguen sin contar; los <repo> extra son otras carpetas del mismo tenant)
                                             la corre la skill /skills, a mano; su última línea dice qué cambió y es su plan de trabajo
   bitacora-api escribir-instrucciones       < instrucciones.md   (el markdown entero por stdin; reemplaza; crea la sección la primera vez)
-                                            · --json < {"cuerpo":{"es":"…","en":"…"},"queEs":"…"}   (en dos idiomas)
+  bitacora-api escribir-dominio             < dominio.md          (el negocio del cliente, con sus palabras; reemplaza)
+        las dos aceptan · --json < {"cuerpo":{"es":"…","en":"…"},"queEs":"…"}   (en dos idiomas)
   bitacora-api definir                      {"termino":"…","definicion":"…"}  (o una lista)
   bitacora-api anotar-acceso                {"nombre":"Engine API","url":"https://…","nota":"staging"}
                                             · con qué se entra: {"usuario":"…","clave":"…"}

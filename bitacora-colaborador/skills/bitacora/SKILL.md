@@ -570,19 +570,37 @@ JSON
 
 ## The project's system — read before deciding
 
-`$API contexto` returns the triad that describes how this project works: the
-**glossary** (what each word means HERE, and whose voice it is — the client's
-vocabulary wins), the **stack** (each technology with its responsibility), and the
-**flows** (end-to-end journeys, the project's integration tests) — plus the project's
+`$API contexto` returns everything that describes how this project works: the
+**domain** (`dominio`: what the client makes a living from, in THEIR words — what they
+do, what they sell, to whom, and what sets them apart), the **glossary** (what each word
+means HERE, and whose voice it is — the client's vocabulary wins), the **stack** (each
+piece with its responsibility, its level and what it is built with), and the **flows**
+(end-to-end journeys, step by step, the project's integration tests) — plus the project's
 **instructions** (`instrucciones`: how the job cycle runs here — where each session
 stands, what gates a commit, how the PR goes out, how it is billed), as raw markdown
 when the owner loaded them. They are project material: read them, and follow them
 under the repo's own law. A decision taken
-without reading it is taken blind. When you work with a piece or a term that has no
+without reading it is taken blind.
+
+**The domain and the glossary are two different things.** The domain is the BUSINESS; the
+glossary is how each thing in it is named. Read the domain first: the stack reads
+differently once you know which business it holds up.
+
+When you work with a piece or a term that has no
 entry yet, add it — `$API anotar-pieza`, `$API definir` — while it's in front of you.
-A stack piece also carries `documentacion` (the URL of its official docs, shown as a
+A stack piece carries its `nivel` (`sistema` · `contenedor` · `componente` · `libreria`,
+and `dentroDe` with the slug of the container it lives in — a library belongs inside the
+service that uses it, not beside it), `tecnologia` (what it is built with: «Node · GraphQL
+· Fargate»), `documentacion` (the URL of its official docs, shown as a
 link on its card) and `notas` (the basics you need to work with it: version, plan,
 account, the limit that bites) — fill them in when you have them at hand.
+
+**A flow IS its steps.** Each one carries `que` (what happens, in a sentence anyone
+understands without knowing how it is built — the only required field), `etapa` (the stage
+that groups consecutive steps), `actor` (who triggers it), `pieza` (the stack slug that
+acts) and `detalle` (the technical detail, folded away). The sentence is for the client and
+the detail is for whoever builds it; both in the same row is what keeps a journey from
+having to pick one of the two readers.
 
 **`$API accesos` lists the project's quick links**, each with the credential it carries:
 the outside addresses you enter every day — the engine, the repo, the ticket board, the
