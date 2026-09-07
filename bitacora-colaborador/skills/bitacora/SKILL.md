@@ -143,7 +143,7 @@ JSON
 $API -p <project> corregir <id> <<< '{"veredicto":"…"}'
 ```
 
-## A thread holds SEVEN TYPES, each with its own door
+## A thread holds EIGHT TYPES, each with its own door
 
 A **thread** is the ticket, and what hangs from it has a type. The type is what sets its
 door, its desks and its colour:
@@ -157,6 +157,7 @@ door, its desks and its colour:
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
 | **Consultation** | the human in the loop: what the session asks the person, point by point; the person accepts, rejects or asks for more context on each recommendation ON THE WEB | its `queEs` —where the points come from and what happens with what is decided— and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
+| **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
 
 ```bash
 $API -p <project> analisis <thread> <<'JSON'
@@ -524,6 +525,92 @@ The answer belongs to the person: `respuesta` and the `contestada` state return 
 the API, naming the web. A decided point is never rewritten — what changed is a new point;
 the point that asked for more context is the deliberate exception, because rewriting it is
 how the request is answered.
+
+## The Visual Check — what gets approved by LOOKING
+
+**A branch that changes what the end user SEES needs the owner to approve what they see**,
+and that is not decided by reading. The consultation is the door for what is decided by
+reading; this is the door for what is decided with the eyes: an ordered **run of steps**,
+each one carrying the screen under judgement, how you get to it, and which run of the system
+that moment belongs to. The decision is the consultation's —accept with one click, reject
+saying what goes instead, or ask for more context—; what it adds is what makes an image
+judgeable.
+
+| Field of the step | What it is |
+|---|---|
+| `titulo` | the screen or the moment, in a few words |
+| `despues` | **the capture under judgement**: the screen as it ends up with the change. Always there |
+| `antes` | that same screen on the base branch. **Empty when the step DEBUTS the screen**, which turns the question from «did it improve» into «is it right as it is» |
+| `origen` | the screen you come from, with the control you tap marked on it |
+| `gesto` | what you tapped to go from `origen` to `despues` — «tap Discount» |
+| `queCuenta` | two lines on what that screen says and what to look at |
+| `propuesta` + `porque` | the session's recommendation and its reason, in one phrase |
+| `flujo` | the slug of the run that moment belongs to |
+
+**Captures go up first and the step names them by their path.** Each one enters through the
+attachments door —one request per file, so a long check has no size ceiling— and `capturar`
+returns each path: **no path is ever written by hand**, and the check's door verifies that
+every one named exists as a file of that thread and is an image. A mistyped path comes back
+as a 400 saying which, instead of showing up as a hole where the owner had to decide.
+
+**The context is half the value: which screen, of which run.** The check declares the runs
+it verifies in `flujos` and each step names its own in `flujo`; with a single run declared,
+the step inherits it. The door requires it, because a screen that does not say which run it
+belongs to makes the approver reconstruct it. **And the navigation is paid from the second
+step on**: `origen` and `gesto` are always there except in the first, which you enter with
+no previous gesture.
+
+| Desk | What it is | Who moves it |
+|---|---|---|
+| `abierto` | waiting for the person's eyes — or for the session, when what is left undecided asked for more context | it is born here |
+| `contestado` | every step decided: the signal for the session | the server, with the last decision |
+| `aplicado` | the session took what was approved: rejections become the next round of the plan, on the same branch | the session, with `aplicar-chequeo` |
+| `descartado` | it stopped applying, with its reason | the session |
+
+```bash
+# 1. The captures go up and return their path: that is what the step names them by.
+$API -p <project> capturar <thread> step1-origin.png step1-before.png step1-after.png
+# → {"step1-origin.png":"<thread>/step1-origin.png", …}
+
+# 2. The check, with its run and its steps.
+$API -p <project> chequeo <thread> <<'JSON'
+{"titulo":"The prizes step of the wizard, on a Galaxy S21",
+ "queEs":"PR #212 rebuilds the prizes step of the sign-up wizard. Nine screens of the run, on an S21: what changed is the order of the fields and the summary at the foot.",
+ "flujos":["<run-slug>"],
+ "pasos":[
+   {"titulo":"The wizard, on the data step",
+    "queCuenta":"The screen you enter prizes from. The continue button is now pinned to the foot.",
+    "despues":"<thread>/step1-after.png",
+    "antes":"<thread>/step1-before.png",
+    "propuesta":"Keep it pinned to the foot.",
+    "porque":"On an S21 the button fell below the fold with the keyboard open."},
+   {"titulo":"Prizes, with the new summary",
+    "queCuenta":"The summary at the foot now adds up the chosen prizes. Check the total does not cover the button.",
+    "origen":"<thread>/step1-after.png",
+    "gesto":"tap Next",
+    "despues":"<thread>/step2-after.png",
+    "propuesta":"Keep the summary as it is.",
+    "porque":"It is a new screen and the total reads without covering anything."}]}
+JSON
+
+# 3. … the person approves step by step on the web; the check moves to «contestado» by itself …
+$API -p <project> visto <id>     # step by step: what was approved, what was rejected and with which comment
+$API -p <project> pasos <id> <<'JSON'
+{"pasos":[{"id":"p2","despues":"<thread>/step2-recaptured.png","queCuenta":"…what was missing to see…"}]}
+JSON
+$API -p <project> aplicar-chequeo <id> "round 2 written in the plan · two screens rebuilt"
+```
+
+**When you open a check and not a consultation.** The check is for what is decided with the
+eyes: a screen, a component, a run of the app. The consultation is for what is decided by
+reading: a vocabulary, a key, a path between two. One plan can open both, and each goes
+through its own door.
+
+Captures come from wherever the session works —Playwright on web, the device or the
+simulator on mobile—; the type is indifferent to which of the two produced them. The
+decision belongs to the person and enters through the web, same as the consultation: a step
+already decided is never rewritten, and the one that asked for more context is the
+deliberate exception, because recapturing it is how the request is answered.
 
 ## Planning — the same gesture in every project
 

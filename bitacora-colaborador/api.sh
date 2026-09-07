@@ -154,8 +154,15 @@ if [ "${1:-}" = "bandeja" ]; then
       printf '%s' "$consultas" | jq -c --arg p "$tenant" \
         '.items[] | select(((.faltan // []) | length) > 0)
          | {proyecto: $p, tipo: "consulta", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto}'
+      # Y los chequeos visuales que esperan sus ojos, por la misma razón: lo que se aprueba
+      # mirando solo lo destraba la persona, y una PR se queda esperando ese sí.
+      chequeos="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
+        "$BASE/api/items/chequeos?estado=abierto" 2>/dev/null)" || continue
+      printf '%s' "$chequeos" | jq -c --arg p "$tenant" \
+        '.items[] | select(((.faltan // []) | length) > 0)
+         | {proyecto: $p, tipo: "chequeo", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto}'
     done
-  } | jq -s 'sort_by(if .tipo == "consulta" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
+  } | jq -s 'sort_by(if .tipo == "consulta" or .tipo == "chequeo" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
   exit 0
 fi
 
@@ -599,18 +606,18 @@ publicados) leer "/api/publicacion" ;;
 horas) leer "/api/trabajo" ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LOS TIPOS DE UN HILO — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas
+# LOS TIPOS DE UN HILO — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas · chequeos
 #
 # Un hilo es el ticket y adentro cuelgan cosas de tipo distinto. El tipo se nombra
 # en plural y en la misma palabra que se lee en la app, así lo que se escribe y lo
 # que se navega dicen igual.
 # ─────────────────────────────────────────────────────────────────────────────
 tipo)
-  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas> [estado]" "$@"
+  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos> [estado]" "$@"
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
-  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas>" "$@"
+  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos>" "$@"
   leer "/api/items/$(uri "$1")?abiertos"
   ;;
 del-hilo)
@@ -628,7 +635,7 @@ traducir-item)
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
-analisis | plan | bug | client-report | simulacion | consulta)
+analisis | plan | bug | client-report | simulacion | consulta | chequeo)
   exige 1 "$comando <hilo>   < JSON" "$@"
   vaciar_cola
   case "$comando" in
@@ -638,6 +645,7 @@ analisis | plan | bug | client-report | simulacion | consulta)
     client-report) ruta_tipo=client-reports ;;
     simulacion) ruta_tipo=simulaciones ;;
     consulta) ruta_tipo=consultas ;;
+    chequeo) ruta_tipo=chequeos ;;
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
   ;;
@@ -760,10 +768,15 @@ contestadas) leer "/api/items/consultas?estado=contestada" ;;
 # abiertas donde pidió más contexto en algún punto, para reescribirlo. Es la tercera llamada
 # del paso cero de /thinking: lo que la persona contestó mientras no había sesión.
 decidido)
-  leer "/api/items/consultas?abiertos" | jq '[.items[]
-    | select(.estado == "contestada" or ((.pidenContexto // []) | length) > 0)
-    | {id, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, actualizado}]
-    | sort_by(if .estado == "contestada" then 0 else 1 end)'
+  {
+    leer "/api/items/consultas?abiertos" | jq '[.items[] | . + {tipo: "consulta"}]'
+    # El chequeo visual entra en la misma bandeja: lo que la persona aprobó mirando también
+    # espera que la sesión lo tome, y leerlo en otro comando sería dejarlo sin mirar.
+    leer "/api/items/chequeos?abiertos" | jq '[.items[] | . + {tipo: "chequeo"}]'
+  } | jq -s 'add | [.[]
+    | select(.estado == "contestada" or .estado == "contestado" or ((.pidenContexto // []) | length) > 0)
+    | {id, tipo, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, actualizado}]
+    | sort_by(if (.estado | startswith("contestad")) then 0 else 1 end)'
   ;;
 # Lo que la persona dijo, punto por punto: aceptó o rechazó cada recomendación, o pidió más
 # contexto (`decision: "pide-contexto"`, con qué le faltó en `comentario`); `pedidos` son
@@ -786,6 +799,66 @@ aplicar)
   vaciar_cola
   jq -cn --arg n "${2:-}" '{estado:"aplicada"} + (if $n == "" then {} else {nota:$n} end)' |
     escribir PATCH "/api/items/consultas/$(uri "$1")"
+  ;;
+# ─────────────────────────────────────────────────────────────────────────────
+# EL CHEQUEO VISUAL — lo que se aprueba MIRANDO, paso por paso.
+#
+# Para lo que se decide leyendo está la consulta; esto es para lo que se decide con los
+# ojos: una PR que cambia lo que el usuario final ve. El orden es siempre el mismo:
+#
+#   1. `capturar <hilo> <archivo...>` sube las capturas y devuelve la RUTA de cada una.
+#      Nunca se escribe una ruta a mano: la puerta del chequeo verifica que cada captura
+#      nombrada exista como archivo de ese hilo, y contesta 400 con la que falta.
+#   2. `chequeo <hilo>` lo abre con sus pasos, cada uno con la pantalla que se juzga
+#      (`despues`), cómo se llega a ella (`origen` + `gesto`, desde el segundo paso), la
+#      pantalla en la base cuando el paso cambia algo que ya existía (`antes` — vacía
+#      cuando estrena), qué mirar (`queCuenta`), la recomendación y su porqué. Y de qué
+#      RECORRIDO es cada pantalla: `flujos` arriba, o el `flujo` de cada paso.
+#   3. La persona ACEPTA, RECHAZA o PIDE MÁS CONTEXTO cada paso EN LA WEB, mirando el
+#      antes y el después en el mismo lugar de la pantalla. Con la última decisión el
+#      chequeo pasa solo a `contestado`.
+#   4. `visto <id>` trae lo que dijo de cada paso; los rechazos son la ronda siguiente del
+#      plan, sobre la misma rama. `aplicar-chequeo <id>` lo cierra.
+#
+# Las capturas de web se toman con Playwright y las de mobile del device o del simulador:
+# de dónde salen es de la sesión, y el tipo es indiferente a eso.
+# ─────────────────────────────────────────────────────────────────────────────
+chequeos) leer "/api/items/chequeos${1:+?estado=$(uri "${1:-}")}" ;;
+# Sube capturas al hilo y devuelve la ruta de cada una, que es con lo que el paso la nombra.
+capturar)
+  exige 2 "capturar <hilo> <archivo...>   (devuelve {archivo: ruta} para nombrarlas en los pasos)" "$@"
+  hilo_captura="$1"
+  shift
+  # Cada archivo emite su par nombre → ruta y nada más: el `jq -s add` funde los pares en
+  # un objeto, así que un dato suelto al lado quedaría como un archivo más cuya ruta es un
+  # número — y eso es lo que el paso va a nombrar.
+  for archivo in "$@"; do
+    subir "$archivo" "linea=$hilo_captura" |
+      jq -c --arg a "$archivo" '{(($a | split("/") | last)): .ruta}'
+  done | jq -s 'add'
+  ;;
+# Lo que la persona dijo de cada paso: aceptó o rechazó lo que vio, o pidió más contexto
+# (`decision: "pide-contexto"`, con qué le faltó en `comentario`). `pedidos` son los que ese
+# paso ya recibió y la sesión atendió recapturándolo.
+visto)
+  exige 1 "visto <id>" "$@"
+  leer "/api/items/chequeos/$(uri "$1")" | jq '{estado, hilo, titulo, flujos, respuestas, faltan, pidenContexto, pasos: [.pasos[] | {id, titulo, flujo, estrena, gesto, queCuenta, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
+  ;;
+# Corregir o agregar pasos mientras el chequeo está abierto: por id el que se corrige, sin
+# id el que nace entero. Es cómo se atiende un pedido de contexto —el paso recapturado
+# vuelve a esperar a la persona— y cómo se arregla un chequeo mal armado sin abrir otro que
+# compita por la misma decisión. El paso ya decidido, 400.
+pasos)
+  exige 1 "pasos <id>   < {\"pasos\":[{\"id\":\"p2\",\"despues\":\"<ruta>\",\"queCuenta\":\"…\"}]}" "$@"
+  vaciar_cola
+  escribir PATCH "/api/items/chequeos/$(uri "$1")"
+  ;;
+# La sesión tomó lo aprobado: el chequeo cierra. Sin decidir entero, 400.
+aplicar-chequeo)
+  exige 1 "aplicar-chequeo <id> [nota]" "$@"
+  vaciar_cola
+  jq -cn --arg n "${2:-}" '{estado:"aplicado"} + (if $n == "" then {} else {nota:$n} end)' |
+    escribir PATCH "/api/items/chequeos/$(uri "$1")"
   ;;
 # Sin stdin: un DELETE no lleva cuerpo, y esperarlo colgaría la terminal en un Ctrl-D.
 sacar)
@@ -1129,9 +1202,14 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando hilos)
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
   bitacora-api abiertos <tipo>              (los que quedaron sin cerrar; el análisis y la decisión no tienen)
-        tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas
+        tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas | chequeos
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
+  bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
+  bitacora-api capturar <hilo> <archivo...> (sube las capturas y devuelve la ruta de cada una)
+  bitacora-api visto <id>                   (lo que la persona dijo de cada paso del chequeo)
+  bitacora-api pasos <id>                   < {"pasos":[{"id":"p2","despues":"<ruta>","queCuenta":"…"}]}
+  bitacora-api aplicar-chequeo <id> [nota]  (la sesión tomó lo aprobado: el chequeo cierra)
   bitacora-api decidido                     (lo que la persona ya dijo y espera a la sesión: las decididas enteras, y las abiertas con puntos que pidieron más contexto)
   bitacora-api contestadas                  (las que la persona ya decidió enteras: lo que la sesión tiene que aplicar)
   bitacora-api respuestas <id>              (punto por punto: la recomendación, si la persona la aceptó, la rechazó o pidió más contexto, y su comentario)
@@ -1166,6 +1244,14 @@ Escritura (el cuerpo JSON entra por stdin):
                                                         "opciones":[{"titulo":"…","implica":"…"}],
                                                         "propuesta":"la recomendación: lo que la sesión haría","porque":"su porqué, en una o dos frases"}]}
         el human in the loop: nace `abierta`; la persona ACEPTA, RECHAZA o PIDE MÁS CONTEXTO en cada recomendación EN LA WEB y pasa sola a `contestada`
+  bitacora-api chequeo <hilo>               {"titulo":"…","queEs":"qué cambió y qué se le pide al que aprueba","flujos":["<slug-del-recorrido>"],
+                                             "pasos":[{"titulo":"la pantalla o el momento","queCuenta":"qué cuenta esta pantalla y qué hay que mirar",
+                                                       "despues":"<ruta de la captura como queda>","antes":"<ruta en la base — vacía cuando estrena>",
+                                                       "origen":"<ruta de la pantalla desde la que se viene>","gesto":"qué se tocó para llegar acá",
+                                                       "flujo":"<slug — cuando el chequeo cruza más de un recorrido>",
+                                                       "propuesta":"la recomendación","porque":"su porqué, en una frase"}]}
+        lo que se aprueba MIRANDO: las capturas suben antes con `capturar` y el paso las nombra por su ruta, que la puerta verifica;
+        `origen` y `gesto` van desde el segundo paso, y la persona aprueba cada uno EN LA WEB comparando el antes con el después
   bitacora-api puntos <id>                  {"puntos":[{"id":"p2","queCambia":"…","porque":"…"},{"titulo":"…","queCambia":"…","propuesta":"…","porque":"…"}]}
         corregir por id o sumar sin id mientras está abierta; reescribir el punto que pidió contexto lo devuelve a la persona. El ya decidido, 400
   bitacora-api aplicar <id> [nota]          → aplicada: la sesión tomó lo decidido (la ronda, las decisiones al libro); sin decidir entera, 400
