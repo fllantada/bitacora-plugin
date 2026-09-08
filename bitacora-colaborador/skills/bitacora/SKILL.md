@@ -375,8 +375,8 @@ waiting for a session to take it), `en-curso` (a session took it; the note names
 worktree), `entregado` (the PR is open and the report written; waiting for sign-off), then
 `hecho`. One plan is one PR. **The body and the report are a contract the server
 enforces.** Entering `encargado` requires the body to carry six sections as markdown
-headings, each with content below: `# Task`, `# Destination`, `# Context and why`,
-`# Pattern to follow`, `# Exact scope`, `# Out of scope`. Reaching `entregado` requires
+headings, each with content below: `# Task`, `# Destination`, `# Context`,
+`# Pattern to follow`, `# Scope`, `# Out of scope`. Reaching `entregado` requires
 `ficha.pr` and a `reporte` with six sections: `## Done`, `## Evidence`, `## Decisions
 along the way` with content, and `## Frictions`, `## To decide`, `## Pending out of scope`,
 which are always present and read "None" when there was nothing to report — an absent or

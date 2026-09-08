@@ -661,8 +661,8 @@ mover)
 # entrega; /thinking lo firma, o lo devuelve con la ronda siguiente en el cuerpo. Son
 # azúcar sobre `mover planes <id>`: el estado lo pone el verbo, así nadie lo tipea mal.
 # El servidor cobra el contrato en las dos puntas: para entrar a encargado, el cuerpo
-# con sus seis secciones (Tarea · Destino · Contexto y porqué · Patrón a seguir ·
-# Alcance exacto · Lo que NO entra); para llegar a entregado, el reporte con las suyas
+# con sus seis secciones (Tarea · Destino · Contexto · Patrón a seguir ·
+# Alcance · Fuera de alcance); para llegar a entregado, el reporte con las suyas
 # (Hecho · Evidencia · Decisiones sobre la marcha · Fricciones · Para decidir ·
 # Pendientes fuera de alcance, las tres últimas van siempre y dicen «Ninguna» cuando no
 # hubo: una sección ausente o vacía rebota como olvido) y la PR en la ficha.
@@ -695,7 +695,7 @@ devolver)
   cuerpo_devuelto="$(cat)"
   if [ -z "$(printf '%s' "$cuerpo_devuelto" | jq -r '.cuerpo // empty' 2>/dev/null)" ]; then
     echo "devolver lleva el cuerpo ENTERO del plan con la ronda nueva al final:" >&2
-    echo '  {"cuerpo":{"es":"# Tarea\n…\n# Destino\n…\n# Contexto y porqué\n…\n# Patrón a seguir\n…\n# Alcance exacto\n…\n# Lo que NO entra\n…\n\n## Ronda N\nqué → por qué → corrección propuesta"},"nota":"vuelve: <por qué, en una frase>"}' >&2
+    echo '  {"cuerpo":{"es":"# Tarea\n…\n# Destino\n…\n# Contexto\n…\n# Patrón a seguir\n…\n# Alcance\n…\n# Fuera de alcance\n…\n\n## Ronda N\nqué → por qué → corrección propuesta"},"nota":"vuelve: <por qué, en una frase>"}' >&2
     echo "  Se lee con: bitacora-api item planes <id>   (el cuerpo actual, para agregarle la ronda)" >&2
     exit 1
   fi
@@ -1219,7 +1219,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api analisis <hilo>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
   bitacora-api plan <hilo>                  {"titulo":"…","cierraEn":"…","cuerpo":{"es":"# …"},"flujos":["…"]}
         con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;
-        el servidor exige seis secciones en el cuerpo: # Tarea · # Destino · # Contexto y porqué · # Patrón a seguir · # Alcance exacto · # Lo que NO entra
+        el servidor exige seis secciones en el cuerpo: # Tarea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance
   bitacora-api bug <hilo>                   {"titulo":"…","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
   bitacora-api client-report <hilo>         {"titulo":"…","cuerpo":{"es":"# …"}}
