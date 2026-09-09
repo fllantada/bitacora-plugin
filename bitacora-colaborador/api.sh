@@ -436,7 +436,7 @@ buscar)
   exige 1 "buscar <texto>" "$@"
   leer "/api/buscar?q=$(uri "$1")"
   ;;
-# El sistema del proyecto en una llamada: el dominio, el stack y los flujos, MÁS las
+# El sistema del proyecto en una llamada: el dominio, el stack, los flujos y las fuentes, MÁS las
 # instrucciones del ciclo en este tenant (el markdown crudo, o null).
 # Las skills NO viajan acá: la sesión ya tiene las suyas en el disco, y el catálogo es la
 # vista para el humano (se lee con `skills`). /thinking y /coding la hacen en su paso 0 y
@@ -498,6 +498,35 @@ flujo)
   leer "/api/flujos/$(uri "$1")"
   ;;
 stack) leer "/api/stack${1:+?flujos=1}" ;;
+# ── LAS FUENTES: lo que el cliente entregó, con de cuándo es cada cosa ────────
+#
+# El registro entero llega en el orden que ES la regla de qué manda: las vivas del cliente
+# arriba, las fechadas de la más nueva a la más vieja, las superadas al pie. Antes de decidir
+# algo sobre un tema, esto contesta qué material hay y cuál manda.
+#
+#   bitacora-api fuentes                 (todas)
+#   bitacora-api fuentes algolia         (las de ese tema: el slug de un área, de un hilo o de una pieza)
+#   bitacora-api fuentes "" hoja         (solo las hojas)
+fuentes)
+  ruta="/api/fuentes"
+  sep="?"
+  if [ -n "${1:-}" ]; then
+    ruta="$ruta${sep}tag=$(uri "$1")"
+    sep="&"
+  fi
+  [ -n "${2:-}" ] && ruta="$ruta${sep}clase=$(uri "$2")"
+  leer "$ruta"
+  ;;
+fuente)
+  exige 1 "fuente <slug>" "$@"
+  leer "/api/fuentes/$(uri "$1")"
+  ;;
+# Las vivas cuya copia quedó vieja, con lo que hace falta para refrescarla: por dónde se
+# lee (`procedencia`), su handle (`ref`), la huella de lo que ya tenemos y de cuándo es.
+por-sincronizar)
+  leer "/api/fuentes?vigencia=viva" |
+    jq '[.[] | select(.esperaRefresco) | {slug, nombre, procedencia, ref, url, hash: (.espejo.hash // null), sincronizadoAt: (.espejo.sincronizadoAt // null)}]'
+  ;;
 # Los accesos directos del proyecto: las direcciones de afuera a las que se entra todos
 # los días — el engine, el repo, el tablero de tickets, el diseño.
 accesos) leer "/api/enlaces" ;;   # con su `usuario`/`clave`, el que la pide
@@ -946,6 +975,53 @@ editar-flujo)
   escribir PATCH "/api/flujos/$(uri "$1")"
   ;;
 # anotar-pieza  ← {"nombre":"…","responsabilidad":"…","donde":"…","comoSeEntra":"…"}
+# Anota una fuente, o corrige la ficha de la que ya estaba. Upsert por slug, como el stack:
+# el espejo se conserva — lo escribe `sincronizada` y no la ficha.
+#
+#   bitacora-api anotar-fuente <<'JSON'
+#   {"nombre":"El excel de atributos",
+#    "queEs":"El registro donde el cliente fija el alcance atributo por atributo",
+#    "clase":"hoja","procedencia":"google-sheets","producidaPor":"Fran McCann",
+#    "lado":"cliente","fecha":"2026-09-08","vigencia":"viva",
+#    "url":"https://docs.google.com/spreadsheets/d/1Qc.../edit","ref":"1Qc...",
+#    "tags":["algolia","modelo"],"nota":"la hoja que importa es 1-attribute-register"}
+#   JSON
+#
+# `clase`: documento · hoja · canal · tablero · diseno · pagina
+# `procedencia`: google-sheets · google-docs · slack · jira · figma · miro · email · drive · mano
+# `lado`: cliente · equipo · nuestro · proveedor   ·   `vigencia`: viva · fechada
+anotar-fuente)
+  vaciar_cola
+  escribir POST "/api/fuentes"
+  ;;
+# Corrige una fuente: su `queEs`, su fecha, sus tags, la que la superó. `tags` reemplaza la
+# lista entera y `sumarTags` agrega a la que había; la cadena vacía borra `superadaPor`,
+# `url`, `ref` y `nota`.
+#
+#   bitacora-api editar-fuente attribute-register <<'JSON'
+#   {"sumarTags":["plp-taxonomia"],"fecha":"2026-09-09"}
+#   JSON
+editar-fuente)
+  exige 1 "editar-fuente <slug>   < {\"sumarTags\":[\"algolia\"]}" "$@"
+  vaciar_cola
+  escribir PATCH "/api/fuentes/$(uri "$1")"
+  ;;
+# Deja anotada la copia que se acaba de tomar: sube el archivo, calcula su huella y estampa
+# el espejo. Con una fecha detrás mueve además la de la fuente, para la viva cuyo original
+# se editó.
+#
+#   bitacora-api sincronizada attribute-register ~/Downloads/_source.xlsx 2026-09-09
+sincronizada)
+  exige 2 "sincronizada <slug> <archivo> [fecha AAAA-MM-DD]" "$@"
+  fuente_slug="$1"
+  archivo_espejo="$2"
+  [ -f "$archivo_espejo" ] || { echo "No existe $archivo_espejo" >&2; exit 1; }
+  ruta_espejo="$(subir "$archivo_espejo" "fuente=$fuente_slug" | jq -r '.ruta')"
+  hash_espejo="$(shasum -a 1 "$archivo_espejo" | cut -d" " -f1)"
+  jq -cn --arg r "$ruta_espejo" --arg h "$hash_espejo" --arg f "${3:-}" \
+    '{ruta:$r, hash:$h} + (if $f == "" then {} else {fecha:$f} end)' |
+    escribir POST "/api/fuentes/$(uri "$fuente_slug")/espejo"
+  ;;
 anotar-pieza)
   vaciar_cola
   escribir POST "/api/stack"
@@ -1172,7 +1248,7 @@ Uso: bitacora-api [-p <proyecto>] <comando>
   bitacora-api version                       (la instalada contra la última publicada — lo primero de cada invocación)
 
 El sistema del proyecto — la tríada, las instrucciones y las skills. Primera lectura al llegar:
-  bitacora-api contexto                     (el dominio + el glosario + el stack + los flujos + las instrucciones, de una)
+  bitacora-api contexto                     (el dominio + el glosario + el stack + los flujos + las fuentes + las instrucciones, de una)
   bitacora-api dominio                      (de qué vive el cliente, con sus palabras; 404 si no está escrito)
   bitacora-api instrucciones                (cómo se corre el ciclo del encargo acá, en markdown crudo; 404 si no están cargadas)
   bitacora-api skills                       (las herramientas a mano: las del repo, las del perfil y las del plugin, con qué hace cada una)
@@ -1184,6 +1260,10 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
   bitacora-api accesos                      (las direcciones de afuera, con qué se entra a cada una)
+  bitacora-api fuentes [tema] [clase]       (lo que el cliente entregó, en el orden que dice cuál MANDA:
+                                             las vivas del cliente arriba, las fechadas por fecha, las superadas al pie)
+  bitacora-api fuente <slug>                (una entera, con su espejo y de cuándo es)
+  bitacora-api por-sincronizar              (las vivas cuya copia quedó vieja, con su handle y su huella)
 
 El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api abrir                        (el tablero en tu navegador, sin login: enlace fresco de un solo uso)
@@ -1297,6 +1377,18 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api editar-pieza <slug>          {"responsabilidad":"…"} · {"sumarAlias":["el CMS"]}
                                             · {"nivel":"libreria","dentroDe":"engine"} la mete adentro
                                             · {"dentroDe":""} la saca (la cadena vacía borra el campo)
+  bitacora-api anotar-fuente                {"nombre":"…","queEs":"…","clase":"hoja","procedencia":"google-sheets",
+                                             "producidaPor":"Fran McCann","lado":"cliente","fecha":"2026-09-08",
+                                             "vigencia":"viva","url":"https://…","ref":"<doc-id>","tags":["algolia"],"nota":"…"}
+        clase = documento | hoja | canal | tablero | diseno | pagina
+        procedencia = google-sheets | google-docs | slack | jira | figma | miro | email | drive | mano
+        lado = cliente | equipo | nuestro | proveedor      vigencia = viva | fechada
+        `fecha` es la DE la fuente: cuándo la produjo su autor, no cuándo la anotaste
+  bitacora-api editar-fuente <slug>         {"fecha":"2026-09-09"} · {"sumarTags":["plp-taxonomia"]}
+                                            · {"superadaPor":"attribute-register"} la marca reemplazada
+                                            · {"superadaPor":""} la desmarca (la cadena vacía borra el campo)
+  bitacora-api sincronizada <slug> <archivo> [fecha]
+        sube la copia, calcula su huella y estampa el espejo — con la fecha, mueve la de la fuente
   bitacora-api seccion                      {"tipo":"archivo","nombre":"…","nota":"…"}
   bitacora-api editar-seccion <slug>        {"resumen":"…"} · {"tipo":"fuente"}
   bitacora-api sincronizar-skills [<repo>…] (UNA llamada: manda los hashes de los SKILL.md que ve y sube solo lo que cambió;

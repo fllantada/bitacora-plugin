@@ -90,6 +90,9 @@ a real trade-off gets settled. You are the project's memory speaking.
 | `/bitacora <thread> we need to <something to do>` | Open the plan: how it gets solved and where it closes. |
 | `/bitacora plan <topic>` | Build the plan out of what was just discussed: ask FIRST which area or thread it joins, require where it closes, and write it into the thread (see *Planning* below). |
 | `/bitacora what is left to do` | The project's execution front. |
+| `/bitacora sources` · `/bitacora what do we have on <topic>` | The source register: what the client handed over, how old each thing is and which one rules (see *The sources* below). |
+| `/bitacora record this source <what arrived>` | Register it: its kind, where it is read from, who produced it, its date and its tags. |
+| `/bitacora I just pulled <the source>` | Record the copy and move its date (`sincronizada`). |
 | `/bitacora area <name>` | Read that area (`$API area <slug>`): its name and the threads living in it, each with its state. What is open to decide there, and its timeline, live on the area's page in the browser. |
 | Something that matches nothing | It's probably a thread that doesn't exist yet — list the threads and ask, rather than failing. |
 
@@ -662,7 +665,9 @@ JSON
 do, what they sell, to whom, and what sets them apart), the **glossary** (what each word
 means HERE, and whose voice it is — the client's vocabulary wins), the **stack** (each
 piece with its responsibility, its level and what it is built with), and the **flows**
-(end-to-end journeys, step by step, the project's integration tests) — plus the project's
+(end-to-end journeys, step by step, the project's integration tests), the **sources**
+(`fuentes`: what the client handed over, with how old each thing is and which one rules)
+— plus the project's
 **instructions** (`instrucciones`: how the job cycle runs here — where each session
 stands, what gates a commit, how the PR goes out, how it is billed), as raw markdown
 when the owner loaded them. They are project material: read them, and follow them
@@ -688,6 +693,78 @@ that groups consecutive steps), `actor` (who triggers it), `pieza` (the stack sl
 acts) and `detalle` (the technical detail, folded away). The sentence is for the client and
 the detail is for whoever builds it; both in the same row is what keeps a journey from
 having to pick one of the two readers.
+
+### The sources — what the client handed over, and which one rules
+
+A **source** is what came from outside: a sheet the client keeps editing, a PDF, a Slack
+channel, a Figma file, a board. It is registered once at PROJECT level and its `tags` make it
+show up in every area and every thread it names — one channel talks about search, the CMS and
+the infrastructure in the same week, so hanging it off a single thread hides it from the
+other two.
+
+What the card has to be enough for is **judging the material WITHOUT opening it**: which side
+it comes from, how old it is, whether whoever produced it keeps editing it, and whether our
+copy is current. Those four decide whether what it says still holds.
+
+| Field | What it carries |
+|---|---|
+| `nombre` · `queEs` | What it is called and what it answers, in one sentence. Bilingual, like every card; `queEs` is left out when the material arrived with its name as its whole card |
+| `clase` | What kind of thing it is: `documento` · `hoja` · `canal` · `tablero` · `diseno` · `pagina` |
+| `procedencia` | Where it is read from: `google-sheets` · `google-docs` · `slack` · `jira` · `figma` · `miro` · `email` · `drive` · `mano` |
+| `producidaPor` · `lado` | Who wrote it, and which side it is on: `cliente` · `equipo` · `nuestro` · `proveedor` |
+| `fecha` | **The source's own date** (`AAAA-MM-DD`): when its author produced or sent it — not when you recorded it |
+| `vigencia` | `viva` while its author keeps editing it; `fechada` when it is a snapshot of one moment |
+| `superadaPor` | The slug of the one that replaced it: it gets marked and stays, like a glossary word |
+| `url` · `ref` | Where it lives outside, and the handle it is refreshed by (the doc id, the channel id, `fileKey/nodeId`) |
+| `espejo` | Our copy: its attachment, when it was taken, and the fingerprint of its content |
+| `tags` | Free slugs — areas, threads, stack pieces, words: this is what makes it appear in each area |
+| `nota` | What you need to know to use it: the quota, the sharing permission, the sheet that matters |
+
+**Which one rules is DERIVED from the order**, so it cannot go stale: the client's live one
+rules over a dated one, among dated ones the newest rules, and a superseded one says so,
+dimmed at the foot. No field declares precedence — it comes out of vigencia, side and date.
+
+```bash
+$API fuentes                    # the whole register, in that order
+$API fuentes algolia            # the ones on a topic: the slug of an area, a thread or a stack piece
+$API fuentes "" hoja            # sheets only
+$API fuente attribute-register  # one whole, with its mirror
+$API por-sincronizar            # the live ones whose copy went stale, with their handle and fingerprint
+```
+
+**Before deciding anything on a topic, this answers what material exists and which one
+rules** — which is why it travels inside `$API contexto`. A claim resting on a `nuestro`
+source is a claim about our own draft, not about the domain: `lado` is what keeps that
+distinction, the same one a glossary word's `voz` keeps.
+
+```bash
+$API anotar-fuente <<'JSON'
+{"nombre":"The attribute spreadsheet",
+ "queEs":"The register where the client sets the scope attribute by attribute: what gets tagged, which system it comes from, and its search configuration",
+ "clase":"hoja","procedencia":"google-sheets","producidaPor":"Fran McCann","lado":"cliente",
+ "fecha":"2026-09-08","vigencia":"viva",
+ "url":"https://docs.google.com/spreadsheets/d/1Qc.../edit","ref":"1Qc...",
+ "tags":["algolia","modelo"],
+ "nota":"the sheet that matters is 1-attribute-register"}
+JSON
+# upsert by slug that writes the WHOLE card: one recorded again without `tags` loses them
+# —and drops out of «The sources» of its area—, without `vigencia` goes back to `fechada`
+# and without `lado` to `cliente`; the mirror is kept. A field is corrected with `editar-fuente`.
+
+$API editar-fuente attribute-register <<< '{"sumarTags":["plp-taxonomia"],"fecha":"2026-09-09"}'
+# `tags` replaces the whole list; `sumarTags` adds to the one already there
+# {"superadaPor":"attribute-register"} marks one replaced · {"superadaPor":""} unmarks it
+$API borrar /api/fuentes/<slug>   # the one recorded by mistake: leaves with its mirror (owner only)
+
+$API sincronizada attribute-register ~/Downloads/_source.xlsx 2026-09-09
+# uploads the copy, computes its sha1 and stamps the mirror; with the date it also
+# moves the source's own date — the live one whose original was edited
+```
+
+The mirror lives where the files already live —the private bucket, served with a session—
+and its fingerprint is what says whether the original changed without opening it. A live
+source whose copy is more than **a week** old shows up in `por-sincronizar`, and the
+workshop says so on its row.
 
 **`$API accesos` lists the project's quick links**, each with the credential it carries:
 the outside addresses you enter every day — the engine, the repo, the ticket board, the
