@@ -1022,6 +1022,103 @@ sincronizada)
     '{ruta:$r, hash:$h} + (if $f == "" then {} else {fecha:$f} end)' |
     escribir POST "/api/fuentes/$(uri "$fuente_slug")/espejo"
   ;;
+# Refresca las vivas: baja el original por su procedencia, compara la huella y estampa el
+# espejo. Sin slug recorre las que esperan refresco (`por-sincronizar`); con slug, esa
+# fuente aunque esté al día. Lo corre /thinking en su paso cero.
+#
+# Sheets y Docs se bajan por el export público del documento con su `ref`, sin credencial:
+# la única condición es que esté compartido por enlace, y cuando Google contesta una página
+# en lugar del archivo el renglón lo dice con qué pedir. La huella decide: igual a la del
+# espejo, la copia está al día y se re-estampa la fecha; distinta, sube la copia con el
+# nombre del espejo anterior y la fecha de la fuente pasa a la de hoy. Las demás
+# procedencias las refresca la skill del perfil que tiene el acceso —/slack, /jira,
+# /figma— y el renglón la nombra; una fechada se refresca cuando su autor manda otra.
+#
+#   bitacora-api refrescar                     # las vivas que esperan refresco
+#   bitacora-api refrescar attribute-register  # esa, aunque esté al día
+refrescar)
+  if [ -n "${1:-}" ]; then
+    lista_refresco="$(leer "/api/fuentes/$(uri "$1")" | jq -c '[.]')"
+  else
+    lista_refresco="$(leer "/api/fuentes?vigencia=viva" | jq -c '[.[] | select(.esperaRefresco)]')"
+  fi
+  al_dia=0
+  cambiaron=0
+  sin_acceso=0
+  sin_acceso_lista=""
+  por_su_skill=0
+  hoy_refresco="$(date +%F)"
+  carpeta_refresco="$(mktemp -d)"
+  while IFS= read -r ficha_refresco; do
+    slug_refresco="$(jq -r '.slug' <<<"$ficha_refresco")"
+    procedencia_refresco="$(jq -r '.procedencia' <<<"$ficha_refresco")"
+    ref_refresco="$(jq -r '.ref // ""' <<<"$ficha_refresco")"
+    url_refresco="$(jq -r '.url // ""' <<<"$ficha_refresco")"
+    hash_previo="$(jq -r '.espejo.hash // ""' <<<"$ficha_refresco")"
+    adjunto_previo="$(jq -r '.espejo.adjunto // ""' <<<"$ficha_refresco")"
+    # El handle sale de la ficha, o de la dirección cuando la ficha no lo trae.
+    [ -z "$ref_refresco" ] && ref_refresco="$(sed -n 's|.*/d/\([^/?#]*\).*|\1|p' <<<"$url_refresco")"
+    case "$procedencia_refresco" in
+    google-sheets)
+      export_refresco="https://docs.google.com/spreadsheets/d/$ref_refresco/export?format=xlsx"
+      nombre_refresco="_source.xlsx"
+      ;;
+    google-docs)
+      export_refresco="https://docs.google.com/document/d/$ref_refresco/export?format=txt"
+      nombre_refresco="$slug_refresco.txt"
+      ;;
+    slack)
+      por_su_skill=$((por_su_skill + 1))
+      echo "  →  $slug_refresco (slack): la refresca /slack —los archivos del canal desde el último refresco— y después \`sincronizada $slug_refresco <archivo>\`"
+      continue
+      ;;
+    jira)
+      por_su_skill=$((por_su_skill + 1))
+      echo "  →  $slug_refresco (jira): la refresca /jira —los adjuntos del proyecto— y después \`sincronizada $slug_refresco <archivo>\`"
+      continue
+      ;;
+    figma)
+      por_su_skill=$((por_su_skill + 1))
+      echo "  →  $slug_refresco (figma): la refresca /figma con su cupo mensual y después \`sincronizada $slug_refresco <captura>\`"
+      continue
+      ;;
+    *)
+      por_su_skill=$((por_su_skill + 1))
+      echo "  →  $slug_refresco ($procedencia_refresco): la refresca la persona: cuando llegue otra versión, se anota como fuente nueva que supera a esta"
+      continue
+      ;;
+    esac
+    # La copia nueva lleva el nombre de la anterior, así ocupa su misma ruta.
+    [ -n "$adjunto_previo" ] && nombre_refresco="${adjunto_previo##*/}"
+    archivo_refresco="$carpeta_refresco/$nombre_refresco"
+    respuesta_refresco="$(curl -sSL --max-time 120 -o "$archivo_refresco" -w '%{http_code} %{content_type}' "$export_refresco" 2>/dev/null || echo "000")"
+    case "$respuesta_refresco" in
+    2*html* | 3* | 4* | 5* | 000*)
+      sin_acceso=$((sin_acceso + 1))
+      sin_acceso_lista="$sin_acceso_lista $slug_refresco"
+      echo "  ✗  $slug_refresco: sin acceso al original ($export_refresco). Pedile a quien es dueño del documento que lo comparta por enlace —«Cualquier persona con el enlace», como lector— y volvé a correr \`refrescar $slug_refresco\`."
+      continue
+      ;;
+    esac
+    hash_nuevo="$(shasum -a 1 "$archivo_refresco" | cut -d" " -f1)"
+    if [ "$hash_nuevo" = "$hash_previo" ] && [ -n "$adjunto_previo" ]; then
+      if jq -cn --arg r "$adjunto_previo" --arg h "$hash_nuevo" '{ruta:$r, hash:$h}' |
+        escribir POST "/api/fuentes/$(uri "$slug_refresco")/espejo" >/dev/null; then
+        al_dia=$((al_dia + 1))
+        echo "  ✓  $slug_refresco: al día — la copia coincide con el original"
+      fi
+    else
+      if ruta_refresco="$(subir "$archivo_refresco" "fuente=$slug_refresco" | jq -r '.ruta')" &&
+        jq -cn --arg r "$ruta_refresco" --arg h "$hash_nuevo" --arg f "$hoy_refresco" '{ruta:$r, hash:$h, fecha:$f}' |
+        escribir POST "/api/fuentes/$(uri "$slug_refresco")/espejo" >/dev/null; then
+        cambiaron=$((cambiaron + 1))
+        echo "  ↻  $slug_refresco: cambió — espejo nuevo en $ruta_refresco, fecha $hoy_refresco"
+      fi
+    fi
+  done < <(jq -c '.[]' <<<"$lista_refresco")
+  rm -rf "$carpeta_refresco"
+  echo "Fuentes: $al_dia al día · $cambiaron cambiaron · $sin_acceso sin acceso${sin_acceso_lista:+ (${sin_acceso_lista# })} · $por_su_skill por su skill o su autor"
+  ;;
 anotar-pieza)
   vaciar_cola
   escribir POST "/api/stack"
@@ -1264,6 +1361,8 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
                                              las vivas del cliente arriba, las fechadas por fecha, las superadas al pie)
   bitacora-api fuente <slug>                (una entera, con su espejo y de cuándo es)
   bitacora-api por-sincronizar              (las vivas cuya copia quedó vieja, con su handle y su huella)
+  bitacora-api refrescar [slug]             (baja las vivas por su procedencia, compara la huella y estampa el espejo;
+                                             la que quedó sin acceso la dice con qué pedir — lo corre /thinking al arrancar)
 
 El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api abrir                        (el tablero en tu navegador, sin login: enlace fresco de un solo uso)
@@ -1389,6 +1488,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · {"superadaPor":""} la desmarca (la cadena vacía borra el campo)
   bitacora-api sincronizada <slug> <archivo> [fecha]
         sube la copia, calcula su huella y estampa el espejo — con la fecha, mueve la de la fuente
+  bitacora-api refrescar [slug]             sin slug las que esperan refresco; con slug esa. Sheets y Docs por su export
+                                            público (sin credencial: compartido por enlace); las demás, por su skill
   bitacora-api seccion                      {"tipo":"archivo","nombre":"…","nota":"…"}
   bitacora-api editar-seccion <slug>        {"resumen":"…"} · {"tipo":"fuente"}
   bitacora-api sincronizar-skills [<repo>…] (UNA llamada: manda los hashes de los SKILL.md que ve y sube solo lo que cambió;

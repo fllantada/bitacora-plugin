@@ -91,6 +91,7 @@ a real trade-off gets settled. You are the project's memory speaking.
 | `/bitacora plan <topic>` | Build the plan out of what was just discussed: ask FIRST which area or thread it joins, require where it closes, and write it into the thread (see *Planning* below). |
 | `/bitacora what is left to do` | The project's execution front. |
 | `/bitacora sources` · `/bitacora what do we have on <topic>` | The source register: what the client handed over, how old each thing is and which one rules (see *The sources* below). |
+| `/bitacora refresh the sources` · `/bitacora are the sources up to date?` | Fetches the live ones by their origin, compares the fingerprint and stamps the mirror (`refrescar`); the one it could not reach it names, with what to ask for (see *The sources*). |
 | `/bitacora record this source <what arrived>` | Register it: its kind, where it is read from, who produced it, its date and its tags. |
 | `/bitacora I just pulled <the source>` | Record the copy and move its date (`sincronizada`). |
 | `/bitacora area <name>` | Read that area (`$API area <slug>`): its name and the threads living in it, each with its state. What is open to decide there, and its timeline, live on the area's page in the browser. |
@@ -765,6 +766,29 @@ The mirror lives where the files already live —the private bucket, served with
 and its fingerprint is what says whether the original changed without opening it. A live
 source whose copy is more than **a week** old shows up in `por-sincronizar`, and the
 workshop says so on its row.
+
+**Refreshing the live ones is one command, and `/thinking` runs it in its step zero**: the
+session that thinks refreshes what went stale on start and records the new source when it
+shows up. Each project learns to sync with what it already has: the register is its list
+—every live source with its `procedencia` and its `ref`— and the recipe per origin lives
+here, once.
+
+```bash
+$API refrescar                     # the live ones awaiting refresh: fetch, compare the fingerprint, stamp
+$API refrescar attribute-register  # that one, even if up to date
+# closes with one line: how many up to date, how many changed, which ones unreachable, which ones go through their skill
+```
+
+| Origin | How it refreshes | When it fails, what to ask for |
+|---|---|---|
+| `google-sheets` · `google-docs` | The document's public export by its `ref` (the sheet's xlsx, the doc's text), no credential. The fingerprint says «up to date» or «changed»; when changed, it uploads the copy under the previous mirror's name and the date moves to today | Google answers a page instead of the file: the document's owner has to share it **by link** —«Anyone with the link», as viewer—. The line says so in those words, and you ask whoever produced it |
+| `slack` · `jira` · `figma` | The profile skill that already holds the access (`/slack`, `/jira`, `/figma` within its quota), then `sincronizada <slug> <file>` | The skill says what it lacks: the workspace token, the site's API token, a View seat on the file. You get it there and come back |
+| `email` · `drive` · `miro` · `mano` | A person: a dated source refreshes when its author sends another one, which enters as a new source superseding the previous | — |
+
+**And a new source is recorded from the thread where it appeared.** A link to a sheet, a
+document, a channel or a file that arrives while a topic is being thought enters with
+`anotar-fuente` carrying the tags of its area and its thread, and `refrescar <slug>` takes
+its first mirror: the area is a tag, so tying it is naming it.
 
 **`$API accesos` lists the project's quick links**, each with the credential it carries:
 the outside addresses you enter every day — the engine, the repo, the ticket board, the
