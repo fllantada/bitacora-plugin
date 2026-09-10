@@ -751,7 +751,17 @@ JSON
 # upsert by slug that writes the WHOLE card: one recorded again without `tags` loses them
 # —and drops out of «The sources» of its area—, without `vigencia` goes back to `fechada`
 # and without `lado` to `cliente`; the mirror is kept. A field is corrected with `editar-fuente`.
+```
 
+**The `nota` is what you need to know to USE it** —the quota that blocks it, the permission
+that is missing, which tab of the workbook matters—, and the register reads
+as a list: whatever goes there shows up as one more line on every row that carries it. What
+the row already says —that the date came from the last refresh, how precisely it is known,
+that the first refresh will move it— is read off the mirror line, which carries the day of
+our copy next to the source's own date. With none of that to tell, a source is recorded
+without a `nota`.
+
+```bash
 $API editar-fuente attribute-register <<< '{"sumarTags":["plp-taxonomia"],"fecha":"2026-09-09"}'
 # `tags` replaces the whole list; `sumarTags` adds to the one already there
 # {"superadaPor":"attribute-register"} marks one replaced · {"superadaPor":""} unmarks it
