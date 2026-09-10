@@ -863,10 +863,12 @@ aplicar)
 #      (`despues`), cómo se llega a ella (`origen` + `gesto`, desde el segundo paso), la
 #      pantalla en la base cuando el paso cambia algo que ya existía (`antes` — vacía
 #      cuando estrena), qué mirar (`queCuenta`), la recomendación y su porqué. Y de qué
-#      RECORRIDO es cada pantalla: `flujos` arriba, o el `flujo` de cada paso.
-#   3. La persona ACEPTA, RECHAZA o PIDE MÁS CONTEXTO cada paso EN LA WEB, mirando el
-#      antes y el después en el mismo lugar de la pantalla. Con la última decisión el
-#      chequeo pasa solo a `contestado`.
+#      RECORRIDO es cada pantalla: `flujos` arriba, o el `flujo` de cada paso. De qué
+#      DISPOSITIVO son las capturas (`dispositivo`: escritorio | celular) lo deduce la
+#      página de la imagen; se declara cuando la de escritorio es a página entera.
+#   3. La persona ACEPTA, RECHAZA o PIDE MÁS CONTEXTO cada paso EN LA WEB, comparando el
+#      antes con el después: lado a lado las de celular, con un barrido a todo el ancho
+#      las de escritorio. Con la última decisión el chequeo pasa solo a `contestado`.
 #   4. `visto <id>` trae lo que dijo de cada paso; los rechazos son la ronda siguiente del
 #      plan, sobre la misma rama. `aplicar-chequeo <id>` lo cierra.
 #
