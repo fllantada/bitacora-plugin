@@ -610,9 +610,10 @@ eyes: a screen, a component, a run of the app. The consultation is for what is d
 reading: a vocabulary, a key, a path between two. One plan can open both, and each goes
 through its own door.
 
-Captures come from wherever the session works —Playwright on web, at double density
-(`deviceScaleFactor: 2`) so the small print reads sharp at 100% in the viewer; the device or
-the simulator on mobile—; the type is indifferent to which of the two produced them. The
+Captures come from wherever the session works —Playwright on web, of the visible screen and
+at double density (`deviceScaleFactor: 2`) so the small print reads sharp at 100% in the
+viewer; the device or the simulator on mobile—; the type is indifferent to which of the two
+produced them. The
 decision belongs to the person and enters through the web, same as the consultation: a step
 already decided is never rewritten, and the one that asked for more context is the
 deliberate exception, because recapturing it is how the request is answered.

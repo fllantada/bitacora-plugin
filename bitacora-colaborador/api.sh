@@ -277,13 +277,34 @@ uri() { jq -rn --arg v "$1" '$v|@uri'; }
 
 # Sube un archivo. No pasa por la cola: un binario no entra en una línea de JSONL, y
 # reintentar una subida a ciegas es peor que volver a escribir el comando.
+#
+# La subida que el servidor rechaza imprime lo que el servidor DIJO, igual que `leer`: el 400
+# de la puerta trae la razón adentro, y el rechazo de la plataforma por tamaño trae el suyo.
 subir() {
-  local archivo="$1"
+  local archivo="$1" respuesta codigo salida
   shift
+  # El archivo se busca antes de mandarlo: con rutas relativas, la carpeta suele ser la causa.
+  [ -r "$archivo" ] || { echo "No se puede leer $archivo desde $PWD: revisá la ruta." >&2; return 1; }
   local campos=()
   for par in "$@"; do campos+=(-F "$par"); done
-  curl -fsS --max-time 120 -H "Authorization: Bearer $TOKEN" \
-    -F "archivo=@$archivo" "${campos[@]}" "$BASE/api/adjuntos"
+  respuesta="$(curl -sS --max-time 120 -H "Authorization: Bearer $TOKEN" \
+    -F "archivo=@$archivo" "${campos[@]}" -w $'\n%{http_code}' "$BASE/api/adjuntos" \
+    2>/dev/null || printf '\n000')"
+  codigo="${respuesta##*$'\n'}"
+  salida="${respuesta%$'\n'*}"
+  case "$codigo" in
+  2*)
+    printf '%s\n' "$salida"
+    ;;
+  000)
+    echo "Sin respuesta del servidor ($BASE) al subir $archivo." >&2
+    return 1
+    ;;
+  *)
+    echo "El servidor no aceptó $archivo ($codigo): $salida" >&2
+    return 1
+    ;;
+  esac
 }
 
 # Manda un pedido y devuelve el cuerpo y el código, separados por un salto.
