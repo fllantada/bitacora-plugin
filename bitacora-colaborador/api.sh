@@ -867,8 +867,9 @@ aplicar)
 #      DISPOSITIVO son las capturas (`dispositivo`: escritorio | celular) lo deduce la
 #      página de la imagen; se declara cuando la de escritorio es a página entera.
 #   3. La persona ACEPTA, RECHAZA o PIDE MÁS CONTEXTO cada paso EN LA WEB, comparando el
-#      antes con el después: lado a lado las de celular, con un barrido a todo el ancho
-#      las de escritorio. Con la última decisión el chequeo pasa solo a `contestado`.
+#      antes con el después: lado a lado las de celular, y las de escritorio en el mismo
+#      lugar con los botones «Antes» y «Después». Con la última decisión el chequeo pasa
+#      solo a `contestado`.
 #   4. `visto <id>` trae lo que dijo de cada paso; los rechazos son la ronda siguiente del
 #      plan, sobre la misma rama. `aplicar-chequeo <id>` lo cierra.
 #

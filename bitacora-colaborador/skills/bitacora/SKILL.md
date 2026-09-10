@@ -550,7 +550,7 @@ judgeable.
 | `queCuenta` | two lines on what that screen says and what to look at |
 | `propuesta` + `porque` | the session's recommendation and its reason, in one phrase |
 | `flujo` | the slug of the run that moment belongs to |
-| `dispositivo` | `escritorio` or `celular`: which device the captures come from, because it decides HOW the page compares them — side by side for phone captures, a full-width wipe slider for desktop ones. The page infers it from the image when absent (landscape means desktop); **declare it when a desktop capture is full-page**, taller than wide, which would otherwise read as a phone |
+| `dispositivo` | `escritorio` or `celular`: which device the captures come from, because it decides HOW the page compares them — side by side for phone captures, and for desktop ones stacked in the same place, with a Before and an After button to pick which one shows. The page infers it from the image when absent (landscape means desktop); **declare it when a desktop capture is full-page**, taller than wide, which would otherwise read as a phone |
 
 **Captures go up first and the step names them by their path.** Each one enters through the
 attachments door —one request per file, so a long check has no size ceiling— and `capturar`
