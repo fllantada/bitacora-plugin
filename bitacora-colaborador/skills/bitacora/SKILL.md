@@ -671,8 +671,9 @@ entries* above): its `brief` says what it is about.
 **The plan comes out of what was already discussed.** A title that states the conclusion,
 a `cierraEn` saying where it closes — the door demands it: without a close there is no
 plan — and a body carrying the reasoning the conversation produced. Write it with
-`$API plan <thread>` and finish the gesture by handing the user the item's address, so
-they can keep reading it in the web app. The tie-break between types is the standing one
+`$API plan <thread>` and finish the gesture by handing the user the `enlace` the response
+returns — the item's full address — so they can keep reading it in the web app. The
+tie-break between types is the standing one
 (see *Plans* above): understanding left asks for an analysis, executing asks for a plan,
 choosing between exclusive paths asks for a decision.
 
