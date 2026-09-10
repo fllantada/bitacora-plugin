@@ -1448,7 +1448,7 @@ Escritura (el cuerpo JSON entra por stdin):
                                                         "propuesta":"la recomendación: lo que la sesión haría","porque":"su porqué, en una o dos frases"}]}
         el human in the loop: nace `abierta`; la persona ACEPTA, RECHAZA o PIDE MÁS CONTEXTO en cada recomendación EN LA WEB y pasa sola a `contestada`
   bitacora-api chequeo <hilo>               {"titulo":"…","queEs":"qué cambió y qué se le pide al que aprueba","flujos":["<slug-del-recorrido>"],
-                                             "pasos":[{"titulo":"la pantalla o el momento","queCuenta":"qué cuenta esta pantalla y qué hay que mirar",
+                                             "pasos":[{"titulo":"la pantalla o el momento","queCuenta":"qué mirar, desde el usuario que usa la pantalla",
                                                        "despues":"<ruta de la captura como queda>","antes":"<ruta en la base — vacía cuando estrena>",
                                                        "origen":"<ruta de la pantalla desde la que se viene>","gesto":"qué se tocó para llegar acá",
                                                        "flujo":"<slug — cuando el chequeo cruza más de un recorrido>",

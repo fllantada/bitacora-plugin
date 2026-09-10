@@ -544,10 +544,10 @@ judgeable.
 |---|---|
 | `titulo` | the screen or the moment, in a few words |
 | `despues` | **the capture under judgement**: the screen as it ends up with the change. Always there |
-| `antes` | that same screen on the base branch. **Empty when the step DEBUTS the screen**, which turns the question from «did it improve» into «is it right as it is» |
+| `antes` | that same screen on the base branch. **Always there when the screen already existed**, also when the check approves what ships in a release: without it the page marks the screen «New screen». **Empty only when the step DEBUTS the screen**, which turns the question from «did it improve» into «is it right as it is» |
 | `origen` | the screen you come from, with the control you tap marked on it |
 | `gesto` | what you tapped to go from `origen` to `despues` — «tap Discount» |
-| `queCuenta` | two lines on what that screen says and what to look at |
+| `queCuenta` | **what to look at, from the seat of the user who uses that screen**: their situation, what the screen shows them, what changed for them and the question the approver decides (how to write it, below) |
 | `propuesta` + `porque` | the session's recommendation and its reason, in one phrase |
 | `flujo` | the slug of the run that moment belongs to |
 | `dispositivo` | `escritorio` or `celular`: which device the captures come from, because it decides HOW the page compares them — side by side for phone captures, and for desktop ones stacked in the same place, with a Before and an After button to pick which one shows. The page infers it from the image when absent (landscape means desktop); **declare it when a desktop capture is full-page**, taller than wide, which would otherwise read as a phone |
@@ -564,6 +564,40 @@ the step inherits it. The door requires it, because a screen that does not say w
 belongs to makes the approver reconstruct it. **And the navigation is paid from the second
 step on**: `origen` and `gesto` are always there except in the first, which you enter with
 no previous gesture.
+
+**What to look at is written from the seat of the user who uses the screen.** Whoever
+approves judges the screen by putting themselves in that place, and `queCuenta` is what seats
+them there. It carries four parts, in this order:
+
+1. **The user's situation**: who they are, what they came to do and what happened before
+   they got here.
+2. **The screen, with what it says**: its texts and buttons as they appear. «Slider»,
+   «card», «CTA» or a piece's internal name are words from the code.
+3. **What changed for that user**, or what it solves for them if the screen is new.
+4. **The question the approver decides**: what could be wrong from the user's side. A bare
+   «check X» leaves them guessing what is being judged.
+
+**The capture's technical trail goes to the «Evidence» of the plan's report**: the PRs, the
+commits, the branch, the port, the paths, the device serial, the script or skill that
+captured and how the test account was set up — including the provenance line a project's
+capture skill produces. What every step shares, the device and the account, is said once in
+the check's `queEs`, and when a step was captured on a different device, that device goes in
+its `titulo`. **The test before uploading**: read it as the user looking over your shoulder;
+every word that needs the repo to be understood gets rewritten.
+
+Written from the code:
+
+> The slider and the shortcut grid with the single scale (PR #122, #125), and the «You
+> already have a 20% discount» warning because the 20 is already in the game. Check the
+> four-column grid and the red warning. Captured with scripts/capture-step.sh: Galaxy S21
+> (R58N12ABCDE), Metro on 8081 over the clone on master (66d7c1f).
+
+The same step, written from the user:
+
+> You are setting up a game that already has a 20% discount and went in to create a custom
+> prize. You pick the percentage with the bar or by tapping one below —the same ones Discount
+> offers—, and since the 20 is already in the game, it warns you in red «You already have a
+> 20% discount». Is it clear how to pick, and does the warning tell you what to do?
 
 | Desk | What it is | Who moves it |
 |---|---|---|
@@ -584,18 +618,19 @@ $API -p <project> chequeo <thread> <<'JSON'
  "flujos":["<run-slug>"],
  "pasos":[
    {"titulo":"The wizard, on the data step",
-    "queCuenta":"The screen you enter prizes from. The continue button is now pinned to the foot.",
+    "queCuenta":"You are signing up your tour and just finished the data: from here you go on to prizes. The Continue button is now pinned to the foot, so you see it with the keyboard open. Can you find it without scrolling?",
     "despues":"<thread>/step1-after.png",
     "antes":"<thread>/step1-before.png",
     "propuesta":"Keep it pinned to the foot.",
     "porque":"On an S21 the button fell below the fold with the keyboard open."},
    {"titulo":"Prizes, with the new summary",
-    "queCuenta":"The summary at the foot now adds up the chosen prizes. Check the total does not cover the button.",
+    "queCuenta":"You picked your prizes and at the foot you see how many you have: the summary now adds them up. Does the total read well, with Continue in sight?",
     "origen":"<thread>/step1-after.png",
-    "gesto":"tap Next",
+    "gesto":"tap Continue",
     "despues":"<thread>/step2-after.png",
+    "antes":"<thread>/step2-before.png",
     "propuesta":"Keep the summary as it is.",
-    "porque":"It is a new screen and the total reads without covering anything."}]}
+    "porque":"The total reads in full and Continue stays in sight."}]}
 JSON
 
 # 3. … the person approves step by step on the web; the check moves to «contestado» by itself …
