@@ -284,7 +284,7 @@ subir() {
   local archivo="$1" respuesta codigo salida
   shift
   # El archivo se busca antes de mandarlo: con rutas relativas, la carpeta suele ser la causa.
-  [ -r "$archivo" ] || { echo "No se puede leer $archivo desde $PWD: revisá la ruta." >&2; return 1; }
+  { [ -f "$archivo" ] && [ -r "$archivo" ]; } || { echo "No se puede leer $archivo desde $PWD: revisá la ruta." >&2; return 1; }
   local campos=()
   for par in "$@"; do campos+=(-F "$par"); done
   respuesta="$(curl -sS --max-time 120 -H "Authorization: Bearer $TOKEN" \
