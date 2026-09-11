@@ -224,7 +224,16 @@ if [ "${1:-}" = "abrir" ]; then
     echo "No se pudo pedir el enlace de entrada. ¿La llave sigue viva? Probá: bitacora-api renovar" >&2
     exit 1
   }
-  URL_ABRIR="$(printf '%s' "$RESPUESTA" | jq -r .url)"
+  # Con un destino —la ruta o el enlace entero de una pieza— el enlace cae en esa página y
+  # no en el tablero: es cómo la sesión abre lo que acaba de escribir. Se reemplaza el
+  # destino que el servidor ya puso (la casa del proyecto); el segundo `a=` se ignoraría.
+  if [ -n "${2:-}" ]; then
+    DESTINO="$(printf '%s' "$2" | sed -E 's#^https?://[^/]+##; s/[#?].*$//')"
+    case "$DESTINO" in /*) ;; *) DESTINO="/$DESTINO" ;; esac
+    URL_ABRIR="$(printf '%s' "$RESPUESTA" | jq -r --arg a "$DESTINO" '.url | sub("(?<s>[&?])a=[^&]*"; "\(.s)a=\($a)")')"
+  else
+    URL_ABRIR="$(printf '%s' "$RESPUESTA" | jq -r .url)"
+  fi
   if command -v open >/dev/null 2>&1; then
     open "$URL_ABRIR"
   elif command -v xdg-open >/dev/null 2>&1; then
@@ -234,7 +243,11 @@ if [ "${1:-}" = "abrir" ]; then
     echo "$URL_ABRIR"
     exit 0
   fi
-  echo "El tablero de «${PROYECTO}» se está abriendo en tu navegador."
+  if [ -n "${2:-}" ]; then
+    echo "«${DESTINO}» se está abriendo en tu navegador."
+  else
+    echo "El tablero de «${PROYECTO}» se está abriendo en tu navegador."
+  fi
   exit 0
 fi
 
@@ -1389,7 +1402,8 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
                                              la que quedó sin acceso la dice con qué pedir — lo corre /thinking al arrancar)
 
 El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
-  bitacora-api abrir                        (el tablero en tu navegador, sin login: enlace fresco de un solo uso)
+  bitacora-api abrir [destino]              (el tablero en tu navegador, sin login: enlace fresco de un solo uso;
+                                             con la ruta o el enlace de una pieza, abre esa página)
   bitacora-api tablero                      (los hilos con su área y sus ítems, las áreas, lo pendiente por escritorio, la tríada contada)
   bitacora-api bandeja                      (sin -p: las consultas que esperan tu respuesta y los planes entregados, en curso y encargados de TODOS los proyectos)
   bitacora-api encargados · en-curso · entregados   (el ciclo del encargo, por escritorio; cada plan con su hilo y su área)

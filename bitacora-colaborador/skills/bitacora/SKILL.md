@@ -379,13 +379,26 @@ waiting for a session to take it), `en-curso` (a session took it; the note names
 worktree), `entregado` (the PR is open and the report written; waiting for sign-off), then
 `hecho`. One plan is one PR. **The body and the report are a contract the server
 enforces.** Entering `encargado` requires the body to carry six sections as markdown
-headings, each with content below: `# Task`, `# Destination`, `# Context`,
+headings, each with content below: `# Task`, `# The idea`, `# Destination`, `# Context`,
 `# Pattern to follow`, `# Scope`, `# Out of scope`. Reaching `entregado` requires
-`ficha.pr` and a `reporte` with six sections: `## Done`, `## Evidence`, `## Decisions
-along the way` with content, and `## Frictions`, `## To decide`, `## Pending out of scope`,
-which are always present and read "None" when there was nothing to report — an absent or
-empty section is a 400, because a blank reads as forgotten, not as answered. The door
-answers 400 naming everything missing at once, with what each section states.
+`ficha.pr` and a `reporte` with seven sections: `## Done`, `## How it turned out`,
+`## Evidence`, `## Decisions along the way` with content, and `## Frictions`,
+`## To decide`, `## Pending out of scope`, which are always present and read "None" when
+there was nothing to report — an absent or empty section is a 400, because a blank reads
+as forgotten, not as answered. The door answers 400 naming everything missing at once,
+with what each section states.
+
+**`# The idea` is the proposal, written as a proposal** — "the study would live in its
+thread": the present tense belongs to git. It carries the box diagram and the vertical
+sequence diagram when the plan adds a new path, and reads "None" for a rename or an
+adjustment with no new mechanism. **`## How it turned out` is its mirror on delivery**:
+the same explanation in the present tense, about what exists, with the diagrams redrawn
+where the build departed from the idea. The page draws the two side by side as the plan's
+pair. Diagrams travel compiled, in `diagramas`: whoever has the bitácora engine repo and
+`d2` installed — normally the project owner — compiles them with its CLI (`npm run -s
+diagramas < body.md`), and on delivery they add to the ones the item already has. Without
+that access, write the section as prose alone: the door accepts it, and a `d2` code block
+you leave in the text shows on the page as the code it is, until someone compiles it.
 
 **What it cost to build travels as data, in `consumo`.** One batch per round: each
 engine's tokens —input, output, cache read, cache write— with the price per million that
@@ -402,7 +415,8 @@ $API -p <project> encargados                 # what can be taken · also: en-cur
 $API bandeja                                 # without -p: every project this machine holds a key for
 $API -p <project> tomar <id> "worktree …"    # → en-curso; the note also lands in ficha.destino
 $API -p <project> entregar <id> <<'JSON'
-{"reporte":{"en":"## Done\n…\n\n## Evidence\n…\n\n## Decisions along the way\n…\n\n## Frictions\nNone\n\n## To decide\n…\n\n## Pending out of scope\nNone"},
+{"reporte":{"en":"## Done\n…\n\n## How it turned out\n…\n\n## Evidence\n…\n\n## Decisions along the way\n…\n\n## Frictions\nNone\n\n## To decide\n…\n\n## Pending out of scope\nNone"},
+ "diagramas":[],
  "ficha":{"pr":"https://github.com/…/pull/…","rama":"…"},
  "consumo":{"ronda":1,"preciosDe":"YYYY-MM-DD","modelos":[{"modelo":"…","entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0,"precio":{"entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0}}]},
  "nota":"PR open, one ASK"}
