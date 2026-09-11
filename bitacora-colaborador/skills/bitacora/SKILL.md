@@ -386,16 +386,26 @@ headings, each with content below: `# Task`, `# The idea`, `# Destination`, `# C
 `## To decide`, `## Pending out of scope`, which are always present and read "None" when
 there was nothing to report — an absent or empty section is a 400, because a blank reads
 as forgotten, not as answered. The door answers 400 naming everything missing at once,
-with what each section states.
+with what each section states. **`## Evidence` is one line**: the checks that passed,
+named, and the link to the review, where the detail lives — the door measures its visible
+text, each link counted by its text, and bounces a longer one. **`## Decisions along the
+way` puts the decision first**: each item is two sentences, what was decided in bold and
+then why. On a round, the report gets a `## Round N` block on top with the sections one
+level down (`### Done`, …); the door enforces the contract on that newest round. Its
+sections split in two kinds: the ones of the round tell only what this round did (Done,
+Evidence, Decisions along the way, Frictions), and the state ones are rewritten whole (How
+it turned out, To decide, Pending out of scope say how the work stands TODAY).
 
 **`# The idea` is the proposal, written as a proposal** — "the study would live in its
 thread": the present tense belongs to git. It carries the box diagram and the vertical
 sequence diagram when the plan adds a new path, and reads "None" for a rename or an
 adjustment with no new mechanism. **`## How it turned out` is its mirror on delivery**:
 the same explanation in the present tense, about what exists, with the diagrams redrawn
-where the build departed from the idea. The page of a delivered plan opens on the Result
-with the Plan one click away, and folds «The idea» under «How it turned out» — as it folds
-Scope under Done and Out of scope under Pending out of scope. Diagrams travel compiled, in
+where the build departed from the idea. The page of a delivered plan reads as steps in
+time — «Plan · Round 1 · … · Result» — and the Result opens by default with the chapter
+«How the AI worked» on top and the current delivery below, folding «The idea» under «How it
+turned out» — as it folds the round's request under Done and Out of scope under Pending
+out of scope. Diagrams travel compiled, in
 `diagramas`: whoever has the bitácora engine repo and
 `d2` installed — normally the project owner — compiles them with its CLI (`npm run -s
 diagramas < body.md`), and on delivery they add to the ones the item already has. Without
@@ -417,7 +427,7 @@ $API -p <project> encargados                 # what can be taken · also: en-cur
 $API bandeja                                 # without -p: every project this machine holds a key for
 $API -p <project> tomar <id> "worktree …"    # → en-curso; the note also lands in ficha.destino
 $API -p <project> entregar <id> <<'JSON'
-{"reporte":{"en":"## Done\n…\n\n## How it turned out\n…\n\n## Evidence\n…\n\n## Decisions along the way\n…\n\n## Frictions\nNone\n\n## To decide\n…\n\n## Pending out of scope\nNone"},
+{"reporte":{"en":"## Done\n…\n\n## How it turned out\n…\n\n## Evidence\n<one line: checks green, guardian score, review verdict with its link>\n\n## Decisions along the way\n1. **<What was decided.>** <Why.>\n\n## Frictions\nNone\n\n## To decide\n…\n\n## Pending out of scope\nNone"},
  "diagramas":[],
  "ficha":{"pr":"https://github.com/…/pull/…","rama":"…"},
  "consumo":{"ronda":1,"preciosDe":"YYYY-MM-DD","modelos":[{"modelo":"…","entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0,"precio":{"entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0}}]},
