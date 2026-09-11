@@ -393,8 +393,10 @@ thread": the present tense belongs to git. It carries the box diagram and the ve
 sequence diagram when the plan adds a new path, and reads "None" for a rename or an
 adjustment with no new mechanism. **`## How it turned out` is its mirror on delivery**:
 the same explanation in the present tense, about what exists, with the diagrams redrawn
-where the build departed from the idea. The page draws the two side by side as the plan's
-pair. Diagrams travel compiled, in `diagramas`: whoever has the bitácora engine repo and
+where the build departed from the idea. The page of a delivered plan opens on the Result
+with the Plan one click away, and folds «The idea» under «How it turned out» — as it folds
+Scope under Done and Out of scope under Pending out of scope. Diagrams travel compiled, in
+`diagramas`: whoever has the bitácora engine repo and
 `d2` installed — normally the project owner — compiles them with its CLI (`npm run -s
 diagramas < body.md`), and on delivery they add to the ones the item already has. Without
 that access, write the section as prose alone: the door accepts it, and a `d2` code block
