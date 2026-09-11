@@ -4,16 +4,21 @@
 # ~/.local/bin son los paths estables que ven los consumidores:
 #   bitacora-api      → api.sh, el cliente de la bitácora
 #   bitacora-consumo  → skills/coding/scripts/consumo.py, los tokens y el costo de la
-#                       sesión (solo el plugin del dueño lo trae: el colaborador comparte
-#                       este hook y no lo enlaza)
-# Corre en SessionStart y es silencioso: su stdout entraría al contexto de la sesión.
+#                       sesión
+#   bitacora-frentes  → skills/thinking/scripts/frentes.sh, el mapa de los frentes de tmux
+#                       y el gesto de escribirles un comando de la CLI
+# Los dos últimos los trae solo el plugin del dueño: el colaborador comparte este hook y
+# enlaza lo que encuentra. Corre en SessionStart y es silencioso: su stdout entraría al
+# contexto de la sesión.
 set -euo pipefail
 
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || exit 0
 mkdir -p "$HOME/.local/bin"
 ln -sfn "$CLAUDE_PLUGIN_ROOT/api.sh" "$HOME/.local/bin/bitacora-api"
-CONSUMO="$CLAUDE_PLUGIN_ROOT/skills/coding/scripts/consumo.py"
-if [ -f "$CONSUMO" ]; then
-  chmod +x "$CONSUMO" 2>/dev/null || true
-  ln -sfn "$CONSUMO" "$HOME/.local/bin/bitacora-consumo"
-fi
+for par in "skills/coding/scripts/consumo.py bitacora-consumo" "skills/thinking/scripts/frentes.sh bitacora-frentes"; do
+  SCRIPT="$CLAUDE_PLUGIN_ROOT/${par% *}"
+  if [ -f "$SCRIPT" ]; then
+    chmod +x "$SCRIPT" 2>/dev/null || true
+    ln -sfn "$SCRIPT" "$HOME/.local/bin/${par#* }"
+  fi
+done
