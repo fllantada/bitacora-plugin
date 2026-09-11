@@ -410,12 +410,13 @@ The page of a delivered plan reads as steps in
 time — «Plan · Round 1 · … · Result» — and the Result opens by default with the chapter
 «How the AI worked» on top and the current delivery below, folding «The idea» under «How it
 turned out» — as it folds the round's request under Done and Out of scope under Pending
-out of scope. Diagrams travel compiled, in
+out of scope. Diagrams are written in `d2` and travel compiled, in
 `diagramas`: whoever has the bitácora engine repo and
 `d2` installed — normally the project owner — compiles them with its CLI (`npm run -s
-diagramas < body.md`), and on delivery they add to the ones the item already has. Without
-that access, write the section as prose alone: the door accepts it, and a `d2` code block
-you leave in the text shows on the page as the code it is, until someone compiles it.
+diagramas < body.md`), which fails naming any block left uncompiled, and on delivery they
+add to the ones the item already has. Without that access, write the section as prose
+alone: the door accepts it, and a `d2` code block you leave in the text shows on the page
+as the code it is, until someone compiles it.
 
 **What it cost to build travels as data, in `consumo`.** One batch per round: each
 engine's tokens —input, output, cache read, cache write— with the price per million that
