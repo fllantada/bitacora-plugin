@@ -378,7 +378,7 @@ came back, and its desk says whose hands it is in — `encargado` (the brief is 
 waiting for a session to take it), `en-curso` (a session took it; the note names its
 worktree), `entregado` (the PR is open and the report written; waiting for sign-off), then
 `hecho`. One plan is one PR. **The body and the report are a contract the server
-enforces.** Entering `encargado` requires the body to carry six sections as markdown
+enforces.** Entering `encargado` requires the body to carry seven sections as markdown
 headings, each with content below: `# Task`, `# The idea`, `# Destination`, `# Context`,
 `# Pattern to follow`, `# Scope`, `# Out of scope`. Reaching `entregado` requires
 `ficha.pr` and a `reporte` with seven sections: `## Done`, `## How it turned out`,
@@ -401,7 +401,12 @@ thread": the present tense belongs to git. It carries the box diagram and the ve
 sequence diagram when the plan adds a new path, and reads "None" for a rename or an
 adjustment with no new mechanism. **`## How it turned out` is its mirror on delivery**:
 the same explanation in the present tense, about what exists, with the diagrams redrawn
-where the build departed from the idea. The page of a delivered plan reads as steps in
+where the build departed from the idea. Diagrams follow the house dialect, on top of the
+`a1`..`a4` fills and `l1`..`l4` strokes: `carril` groups by who —a container whose label
+reads «01 / Name», drawn as a dashed frame—, `principal` marks the path that matters and
+`lateral` what departs from it, and a box reads in three lines, `"Name\nwhat it
+does\ntag"` —the name in bold, what it does in soft ink, and a short tag in its accent—.
+The page of a delivered plan reads as steps in
 time — «Plan · Round 1 · … · Result» — and the Result opens by default with the chapter
 «How the AI worked» on top and the current delivery below, folding «The idea» under «How it
 turned out» — as it folds the round's request under Done and Out of scope under Pending
