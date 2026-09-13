@@ -160,7 +160,7 @@ door, its desks and its colour:
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
-| **Consultation** | the human in the loop: what the session asks the person, point by point; the person accepts, rejects or asks for more context on each recommendation ON THE WEB | its `queEs` —where the points come from and what happens with what is decided— and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
+| **Consultation** | the human in the loop: what the session asks the person —or the client, with `decide`— point by point; the person accepts, rejects, picks another option in one click, or asks for more context, ON THE WEB | its `queEs` —where the points come from and what happens with what is decided— and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
 | **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
 
 ```bash
@@ -431,6 +431,7 @@ returns it summed per engine, with cost and tokens resolved.
 ```bash
 $API -p <project> encargados                 # what can be taken · also: en-curso · entregados
 $API bandeja                                 # without -p: every project this machine holds a key for
+                                             # what is marked «decide: cliente» comes last, with its mark: it waits on the other side of the counter
 $API -p <project> tomar <id> "worktree …"    # → en-curso; the note also lands in ficha.destino
 $API -p <project> entregar <id> <<'JSON'
 {"reporte":{"en":"## Done\n…\n\n## How it turned out\n…\n\n## Evidence\n<one line: checks green, guardian score, review verdict with its link>\n\n## Decisions along the way\n1. **<What was decided.>** <Why.>\n\n## Frictions\nNone\n\n## To decide\n…\n\n## Pending out of scope\nNone"},
@@ -538,13 +539,41 @@ what is decided, and it is all the context the person reads before the first poi
 itself to `contestada` with the last answer, and the session moves it to `aplicada` once
 it took the answers — decisions to the book with the answer as verdict, a round written.
 
+**Every option is picked in one click.** The point names with **`recomiendo`** the POSITION
+of the option it recommends —`0` is the first—, and with that the options stop being a list
+to read: tapping the recommended one accepts it, and tapping any other rejects it leaving
+that option written as what goes instead. What the session reads when applying is the name
+of the chosen option, exactly as it wrote it, so **write each option's `titulo` as the
+instruction you will carry out** rather than as a label. The comment box stays for what no
+option says.
+
+**And what can be drawn, gets drawn.** `queCambia` takes a ` ```d2 ` block like any body and
+renders it as a figure — compiled where `d2` lives and travelling in the same write as the
+text, paired by the hash of its block. And `"flujos":["<slug>"]` names the runs of the
+system the decision touches: the page puts them on top as a strip leading to the whole run,
+which is the context you would otherwise rewrite inside each point.
+
+**When the decisions belong to the CLIENT**, the same consultation carries
+`"decide":"cliente"`: the header says the client decides, the project home lists it under
+«In the client's hands» instead of what awaits the owner, and the client answers it on the
+web once the thread is shared with their email. Write those points in the client's own
+vocabulary and about what their business decides, never about how it gets built. The mark
+comes back with the item and on every `bandeja` row, so a session knows who it is waiting
+on without opening the web.
+
+**When you rewrite `opciones`, send `recomiendo` again.** The list is replaced whole and the
+index survives from the stored point, so an old one would name a position of the previous
+list; the door measures it on the merged point and answers 400 before storing it.
+
 ```bash
 $API -p <project> consulta <thread> <<'JSON'
 {"titulo":"The seven changes to the record: what goes in",
  "queEs":"The record decisions that came out of the reviews; with the answers the next round gets written.",
  "puntos":[{"titulo":"The key of each record",
             "queCambia":"Today it is the route slug plus the tour slug; a rename orphans the record.",
-            "opciones":[{"titulo":"Tour.id","implica":"the permanent reference the contract declares"}],
+            "opciones":[{"titulo":"Tour.id","implica":"the permanent reference the contract declares"},
+                        {"titulo":"Keep the slugs","implica":"a rename orphans the record"}],
+            "recomiendo":0,
             "propuesta":"Use Tour.id.","porque":"The permanent reference the contract declares; the three fronts agree."}]}
 JSON
 # … the person answers on the web; the consultation moves to «contestada» by itself …

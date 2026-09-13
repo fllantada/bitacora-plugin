@@ -149,20 +149,22 @@ if [ "${1:-}" = "bandeja" ]; then
          | {proyecto: $p, tipo: "plan", estado, hilo, area, titulo, id, ficha}'
       # Las consultas que esperan a la persona son la mano que falta: van primero, porque solo
       # ella las destraba. La abierta cuyo resto pidió más contexto espera a la sesión y no va.
+      # La marcada `decide: cliente` viaja con su marca y va al final: espera del otro lado del
+      # mostrador, así que se lee para recordárselo y no para contestarla.
       consultas="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
         "$BASE/api/items/consultas?estado=abierta" 2>/dev/null)" || continue
       printf '%s' "$consultas" | jq -c --arg p "$tenant" \
         '.items[] | select(((.faltan // []) | length) > 0)
-         | {proyecto: $p, tipo: "consulta", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto}'
+         | {proyecto: $p, tipo: "consulta", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto, decide}'
       # Y los chequeos visuales que esperan sus ojos, por la misma razón: lo que se aprueba
       # mirando solo lo destraba la persona, y una PR se queda esperando ese sí.
       chequeos="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
         "$BASE/api/items/chequeos?estado=abierto" 2>/dev/null)" || continue
       printf '%s' "$chequeos" | jq -c --arg p "$tenant" \
         '.items[] | select(((.faltan // []) | length) > 0)
-         | {proyecto: $p, tipo: "chequeo", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto}'
+         | {proyecto: $p, tipo: "chequeo", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto, decide}'
     done
-  } | jq -s 'sort_by(if .tipo == "consulta" or .tipo == "chequeo" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
+  } | jq -s 'sort_by(if .decide == "cliente" then 4 elif .tipo == "consulta" or .tipo == "chequeo" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
   exit 0
 fi
 
@@ -838,7 +840,7 @@ decidido)
     leer "/api/items/chequeos?abiertos" | jq '[.items[] | . + {tipo: "chequeo"}]'
   } | jq -s 'add | [.[]
     | select(.estado == "contestada" or .estado == "contestado" or ((.pidenContexto // []) | length) > 0)
-    | {id, tipo, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, actualizado}]
+    | {id, tipo, estado, hilo, area, titulo, decide, respuestas, faltan, pidenContexto, actualizado}]
     | sort_by(if (.estado | startswith("contestad")) then 0 else 1 end)'
   ;;
 # Lo que la persona dijo, punto por punto: aceptó o rechazó cada recomendación, o pidió más
@@ -846,7 +848,7 @@ decidido)
 # los pedidos de contexto que ese punto ya recibió y la sesión atendió reescribiéndolo.
 respuestas)
   exige 1 "respuestas <id>" "$@"
-  leer "/api/items/consultas/$(uri "$1")" | jq '{estado, hilo, titulo, respuestas, faltan, pidenContexto, puntos: [.puntos[] | {id, titulo, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
+  leer "/api/items/consultas/$(uri "$1")" | jq '{estado, hilo, titulo, decide, respuestas, faltan, pidenContexto, puntos: [.puntos[] | {id, titulo, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
   ;;
 # Corregir o reescribir puntos mientras la consulta está abierta: por id el que se corrige,
 # sin id el que nace entero. Es cómo se atiende un pedido de contexto: el punto reescrito
@@ -908,7 +910,7 @@ capturar)
 # paso ya recibió y la sesión atendió recapturándolo.
 visto)
   exige 1 "visto <id>" "$@"
-  leer "/api/items/chequeos/$(uri "$1")" | jq '{estado, hilo, titulo, flujos, respuestas, faltan, pidenContexto, pasos: [.pasos[] | {id, titulo, flujo, estrena, gesto, queCuenta, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
+  leer "/api/items/chequeos/$(uri "$1")" | jq '{estado, hilo, titulo, decide, flujos, respuestas, faltan, pidenContexto, pasos: [.pasos[] | {id, titulo, flujo, estrena, gesto, queCuenta, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
   ;;
 # Corregir o agregar pasos mientras el chequeo está abierto: por id el que se corrige, sin
 # id el que nace entero. Es cómo se atiende un pedido de contexto —el paso recapturado
