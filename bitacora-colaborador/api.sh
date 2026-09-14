@@ -743,8 +743,8 @@ soltar)
 # entrega; /thinking lo firma, o lo devuelve con la ronda siguiente en el cuerpo. Son
 # azúcar sobre `mover planes <id>`: el estado lo pone el verbo, así nadie lo tipea mal.
 # El servidor cobra el contrato en las dos puntas: para entrar a encargado, el cuerpo
-# con sus seis secciones (Tarea · Destino · Contexto · Patrón a seguir ·
-# Alcance · Fuera de alcance); para llegar a entregado, el reporte con las suyas
+# con sus ocho secciones (Qué cambia · Tarea · La idea · Destino · Contexto ·
+# Patrón a seguir · Alcance · Fuera de alcance) y su queEs; para llegar a entregado, el reporte con las suyas
 # (Hecho · Evidencia · Decisiones sobre la marcha · Fricciones · Para decidir ·
 # Pendientes fuera de alcance, las tres últimas van siempre y dicen «Ninguna» cuando no
 # hubo: una sección ausente o vacía rebota como olvido) y la PR en la ficha.
@@ -770,14 +770,14 @@ firmar)
     escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
 devolver)
-  exige 1 "devolver <id>   < {\"cuerpo\":{\"es\":\"<el cuerpo entero, con sus seis secciones y su ## Ronda N>\"},\"nota\":\"…\"}" "$@"
+  exige 1 "devolver <id>   < {\"cuerpo\":{\"es\":\"<el cuerpo entero, con sus ocho secciones y su ## Ronda N>\"},\"nota\":\"…\"}" "$@"
   vaciar_cola
   # Devolver es agregar la ronda: un cuerpo vacío se contesta acá con la forma, porque el
   # verbo pone el estado y el servidor recibiría un movimiento sin ronda que parece válido.
   cuerpo_devuelto="$(cat)"
   if [ -z "$(printf '%s' "$cuerpo_devuelto" | jq -r '.cuerpo // empty' 2>/dev/null)" ]; then
     echo "devolver lleva el cuerpo ENTERO del plan con la ronda nueva al final:" >&2
-    echo '  {"cuerpo":{"es":"# Tarea\n…\n# Destino\n…\n# Contexto\n…\n# Patrón a seguir\n…\n# Alcance\n…\n# Fuera de alcance\n…\n\n## Ronda N\nqué → por qué → corrección propuesta"},"nota":"vuelve: <por qué, en una frase>"}' >&2
+    echo '  {"cuerpo":{"es":"# Qué cambia\n…\n# Tarea\n…\n# La idea\n…\n# Destino\n…\n# Contexto\n…\n# Patrón a seguir\n…\n# Alcance\n…\n# Fuera de alcance\n…\n\n## Ronda N\nqué → por qué → corrección propuesta"},"nota":"vuelve: <por qué, en una frase>"}' >&2
     echo "  Se lee con: bitacora-api item planes <id>   (el cuerpo actual, para agregarle la ronda)" >&2
     exit 1
   fi
@@ -1455,7 +1455,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api analisis <hilo>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
   bitacora-api plan <hilo>                  {"titulo":"…","cierraEn":"…","cuerpo":{"es":"# …"},"flujos":["…"]}
         con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;
-        el servidor exige seis secciones en el cuerpo: # Tarea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance
+        el servidor exige ocho secciones en el cuerpo —# Qué cambia (para la persona, sin código) · # Tarea · # La idea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance— y el queEs, la bajada en una línea
   bitacora-api bug <hilo>                   {"titulo":"…","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
   bitacora-api client-report <hilo>         {"titulo":"…","cuerpo":{"es":"# …"}}
@@ -1507,8 +1507,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                              las tres últimas van siempre y dicen «Ninguna» cuando no hubo, porque ausente o vacía rebota;
                                              la review publicada en la bitácora va en ficha.review)
   bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada
-  bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con sus seis secciones y su ## Ronda N>"},"nota":"…"} → encargado
-                                            (entrar a encargado cobra las seis secciones del cuerpo; sin cuerpo, imprime la forma)
+  bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con sus ocho secciones y su ## Ronda N>"},"nota":"…"} → encargado
+                                            (entrar a encargado cobra las ocho secciones del cuerpo y el queEs; sin cuerpo, imprime la forma)
   bitacora-api sacar <tipo> <id>            (el que se abrió por error — dueño)
   bitacora-api entrada <slug>               {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
   bitacora-api superar <slug> <id-entrada>  {"superadaPor":"…"}
