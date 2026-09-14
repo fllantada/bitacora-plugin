@@ -720,6 +720,23 @@ mover)
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
+# LO QUE ABRE EL HILO — la pieza clavada arriba.
+#
+# Un hilo ordena sus piezas por el trabajo: lo que se está haciendo arriba, lo cerrado al
+# pie. Lo que ese orden no puede contestar es cuál de todas cuenta DE QUÉ SE TRATA el
+# ticket —suele ser un análisis, que no tiene escritorio y cae en el medio—. Fijarla la
+# pone primera en la página del hilo y en el menú. Azúcar sobre `mover`.
+fijar)
+  exige 2 "fijar <tipo> <id>" "$@"
+  vaciar_cola
+  printf '{"fijado":true}' | escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
+  ;;
+soltar)
+  exige 2 "soltar <tipo> <id>" "$@"
+  vaciar_cola
+  printf '{"fijado":false}' | escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
+  ;;
+# ─────────────────────────────────────────────────────────────────────────────
 # EL CICLO DEL ENCARGO — el plan lleva el handoff en el cuerpo y el reporte al volver.
 #
 # /thinking lo escribe con `plan <hilo>` y "estado":"encargado"; /coding lo toma y lo
@@ -1479,6 +1496,8 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
                                             · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)
         la decisión NO tiene escritorios: nace tomada y se corrige con corregir
+  bitacora-api fijar <tipo> <id>            la clava arriba de su hilo: es la pieza por la que el hilo abre, en su página y en el menú
+  bitacora-api soltar <tipo> <id>           la devuelve al orden del trabajo (azúcar sobre mover con {"fijado":true|false})
   El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
   bitacora-api tomar <id> [nota]            → en-curso; la nota (y ficha.destino) es el worktree o la copia que lo tiene
   bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…","review":"…"},"consumo":{…},"nota":"…"} → entregado

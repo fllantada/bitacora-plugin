@@ -183,7 +183,20 @@ $API -p <project> abiertos bugs               # the bugs still open, across thre
 $API -p <project> item planes <id>            # one whole: its body and how it moved
 $API -p <project> mover planes <id> <<< '{"estado":"hecho","nota":"how it closed"}'
 $API -p <project> mover planes <id> <<< '{"hilo":"the-thread-it-belongs-to"}'   # move it to its thread (slug or alias)
+$API -p <project> fijar analisis <id>         # pin it to the top: the piece its thread opens with
+$API -p <project> soltar analisis <id>        # back to the work order
 ```
+
+**THE PIECE A THREAD OPENS WITH IS PINNED TO THE TOP.** A thread orders its pieces by the
+work — what is being built on top, what closed at the foot — and that order answers what is
+being done right now. The other question, which of these pieces tells what the ticket is
+about, is what pinning answers: it is usually an analysis, material that gets read and
+therefore sits mid-list under every plan someone moved. Pinned, it comes first on the
+thread page and on its branch of the menu, marked `▲` in the margin, because the top of a
+list also holds whatever was touched a minute ago. Between two pinned ones, the latest
+wins. The field travels in the generic patch too (`{"fijado":true}`) and comes back in the
+thread and item reads, and the person pins from the web with the **«▲ Pin to top»** button
+in the right-hand column of the piece's own page.
 
 **A piece hangs from the thread that already holds its topic.** Before writing, ask which
 thread this is the analysis (or plan, or bug) of, and write it there; a new thread opens
