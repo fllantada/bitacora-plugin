@@ -223,7 +223,7 @@ that show it again). They are charged when it is opened, because a defect is tol
 is fresh: whoever saw it is the only one who can write them, and without them whoever picks
 it up months later has to rediscover the defect first. And the reproduction is what gives a
 bug its own expiry: it gets run before the fix, and one that no longer shows up is closed
-saying exactly that.
+saying exactly that. A person can also close it from the bug's page, with **Resolve** (to `arreglado`, with a line saying what happened) and **Ignore** (to `descartado`, one click): the move lands in the history with its note, so a session coming back to the bug reads who closed it and why.
 
 **The Simulation is the experiment before adopting a change**, and the run produces while
 the grading decides: the session designs it and runs the arms over a sample, leaving what
