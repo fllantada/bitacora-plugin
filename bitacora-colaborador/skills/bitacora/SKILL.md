@@ -414,9 +414,13 @@ out of scope. Diagrams are written in `d2` and travel compiled, in
 `diagramas`: whoever has the bitácora engine repo and
 `d2` installed — normally the project owner — compiles them with its CLI (`npm run -s
 diagramas < body.md`), which fails naming any block left uncompiled, and on delivery they
-add to the ones the item already has. Without that access, write the section as prose
-alone: the door accepts it, and a `d2` code block you leave in the text shows on the page
-as the code it is, until someone compiles it.
+add to the ones the item already has. **The door charges the same**: a diagram block
+without its drawing answers 400 naming it, and one written in another language answers 400
+with the rule — diagrams here are written in `d2`, which is the one the page tints with the
+house colors. That also covers the body you REWRITE: a drawing is paired by the hash of its
+block, so touching one line of the code leaves the previous SVG ownerless and the page
+starts serving the code. Recompile the whole body and send what the CLI prints in the same
+`PATCH`. Without that access, write the section as prose alone.
 
 **What it cost to build travels as data, in `consumo`.** One batch per round: each
 engine's tokens —input, output, cache read, cache write— with the price per million that
