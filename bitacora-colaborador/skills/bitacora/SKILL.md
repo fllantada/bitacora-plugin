@@ -311,7 +311,7 @@ ones are the history, walked one step back at a time with "Previous". The body h
 sections, from the broadest to the most specific, and the server requires them in this
 order: `# Where we stand` (the big picture in a few sentences, without code), `# The map`
 (a `d2` drawing of the pieces with their state), `# In flight`, `# What's next` and
-`# Waiting on others`. Read it with `$API estado <slug>`; taking a new snapshot is the
+`# Waiting on others` — the two that can have nothing to say still go, and say "None". Read it with `$API estado <slug>`; taking a new snapshot is the
 owner's call at the close of an important change (`$API escribir-estado <slug>`).
 
 The API stores a thread as `lineas` — the collection and the `lineaSlug` field keep the
