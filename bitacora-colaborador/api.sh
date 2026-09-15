@@ -599,6 +599,20 @@ areas | area)
     leer "/api/areas"
   fi
   ;;
+# El estado del área: la foto de dónde está ese mundo hoy, con su historia detrás.
+#
+# Contesta la vigente entera —su cuerpo con las cinco secciones, su hito, el plan que la
+# produjo— más la cadena (`anterior`, `siguiente`, `fotos`) y `desde`: lo que se firmó y
+# qué fuente cambió después de tomarla, que es la señal de que toca renovarla. Con
+# `--version N` contesta una foto anterior. Sin ninguna foto, 404 diciendo cómo se toma.
+estado)
+  exige 1 "estado <area> [--version N]" "$@"
+  if [ "${2:-}" = "--version" ] && [ -n "${3:-}" ]; then
+    leer "/api/areas/$(uri "$1")/estado?version=$(uri "$3")"
+  else
+    leer "/api/areas/$(uri "$1")/estado"
+  fi
+  ;;
 secciones) leer "/api/secciones" ;;
 reviews) leer "/api/reviews" ;;
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1304,6 +1318,28 @@ sincronizar-skills)
   # el reporte dicen lo mismo con las mismas palabras.
   printf '%s' "$respuesta" | jq -r '"Skills (\(.vistas)): " + .resumen'
   ;;
+# La foto nueva del estado de un área, y la corrección de la vigente.
+#
+# `escribir-estado` toma una foto: el cuerpo con sus cinco secciones —# Dónde estamos ·
+# # El mapa · # En vuelo · # Lo que sigue · # Lo que espera de otros—, el `hito` que la
+# produjo (la firma de un plan, una decisión del cliente, una fuente que movió el terreno),
+# el `plan` cuya firma fue el hito cuando lo hubo, y los `diagramas` compilados con
+# `npm run -s diagramas`. El servidor cobra el contrato —«Dónde estamos» sin código y en
+# cuatro oraciones, «El mapa» con su dibujo— y sella las fuentes del área; la foto anterior
+# queda como historia. `editar-estado` corrige la vigente sin abrir versión: una frase, un
+# diagrama recompilado, el hito, o la capa traducida con la huella del original.
+#   bitacora-api escribir-estado <area> < estado.json
+#   bitacora-api editar-estado <area> <<< '{"hito":"…"}'
+escribir-estado)
+  exige 1 "escribir-estado <area>   < {\"cuerpo\":{\"es\":\"# Dónde estamos\\n…\"},\"hito\":\"…\",\"plan\":\"<id>\",\"diagramas\":[…]}" "$@"
+  vaciar_cola
+  escribir PUT "/api/areas/$(uri "$1")/estado"
+  ;;
+editar-estado)
+  exige 1 "editar-estado <area>   < {\"cuerpo\":…} · {\"hito\":\"…\"} · {\"traduccion\":{\"idioma\":\"en\",\"cuerpo\":\"…\",\"hash\":\"…\"}}" "$@"
+  vaciar_cola
+  escribir PATCH "/api/areas/$(uri "$1")/estado"
+  ;;
 escribir-instrucciones)
   vaciar_cola
   if [ "${1:-}" = "--json" ]; then
@@ -1429,7 +1465,10 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api hilos                        (= lineas)
   bitacora-api hilo <slug|alias>            (= linea)
   bitacora-api areas                        (los mundos del proyecto, con sus hilos)
-  bitacora-api area <slug>                  (un área con los hilos que viven ahí; `areas <slug>` es lo mismo)
+  bitacora-api area <slug>                  (un área con los hilos que viven ahí y su `estado` resumido —la foto vigente,
+                                             su panorama y lo que se firmó y cambió desde que se tomó—; `areas <slug>` es lo mismo)
+  bitacora-api estado <area> [--version N]  (el estado del área entero: la foto vigente —o una anterior— con sus cinco secciones,
+                                             su hito, su cadena de anteriores y `desde`: la señal de que toca renovarla)
   bitacora-api buscar <texto>
   bitacora-api documento <linea|seccion|flujo> <contenedor> <slug>
   bitacora-api secciones · bitacora-api horas (dueño) · bitacora-api adjuntos [linea] · bitacora-api reviews
@@ -1449,7 +1488,8 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api decidido                     (lo que la persona ya dijo y espera a la sesión: las decididas enteras, y las abiertas con puntos que pidieron más contexto)
   bitacora-api contestadas                  (las que la persona ya decidió enteras: lo que la sesión tiene que aplicar)
   bitacora-api respuestas <id>              (punto por punto: la recomendación, si la persona la aceptó, la rechazó o pidió más contexto, y su comentario)
-  bitacora-api por-traducir [idioma]        (documentos y fichas: lo que falta y lo que quedó viejo)
+  bitacora-api por-traducir [idioma]        (documentos, ítems, fichas y el estado vigente de cada área: lo que falta y lo que quedó viejo,
+                                             cada lista con su puerta de vuelta — el estado vuelve por editar-estado con `traduccion`)
 
 Escritura (el cuerpo JSON entra por stdin):
   bitacora-api analisis <hilo>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
@@ -1555,6 +1595,13 @@ Escritura (el cuerpo JSON entra por stdin):
                                              su última línea nombra lo nuevo, lo que cambió, las notas que quedaron viejas
                                              y cuántas siguen sin contar; los <repo> extra son otras carpetas del mismo tenant)
                                             la corre la skill /skills, a mano; su última línea dice qué cambió y es su plan de trabajo
+  bitacora-api escribir-estado <area>       {"cuerpo":{"es":"# Dónde estamos\n…\n# El mapa\n…\n# En vuelo\n…\n# Lo que sigue\n…\n# Lo que espera de otros\n…"},
+                                             "hito":"…","plan":"<id>","diagramas":[…]}
+        toma la FOTO nueva del estado del área, al cierre de un cambio importante: cinco secciones de lo amplio a lo específico
+        («Dónde estamos» sin código y en cuatro oraciones; «El mapa» con su dibujo d2), el hito que la produjo y el plan firmado
+        cuando fue uno; la foto anterior queda como historia y se recorre con «Anterior»
+  bitacora-api editar-estado <area>         {"cuerpo":…} · {"hito":"…"} · {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}
+        corrige la foto vigente sin abrir versión
   bitacora-api escribir-instrucciones       < instrucciones.md   (el markdown entero por stdin; reemplaza; crea la sección la primera vez)
   bitacora-api escribir-dominio             < dominio.md          (el negocio del cliente, con sus palabras; reemplaza)
         las dos aceptan · --json < {"cuerpo":{"es":"…","en":"…"},"queEs":"…"}   (en dos idiomas)

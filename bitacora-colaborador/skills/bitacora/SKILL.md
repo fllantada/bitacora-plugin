@@ -114,7 +114,8 @@ $API -p <project> nota-skill <name>   # tell it for a person: {"paraQue":"…","
 $API -p <project> tablero       # the board: every thread of work, grouped by area
 $API -p <project> hilo <slug>   # one thread: its entries, decisions and documents
 $API -p <project> areas         # the project's areas, with how many threads live in each
-$API -p <project> area <slug>   # ONE area: its name and the threads living in it
+$API -p <project> area <slug>   # ONE area: its name, the threads living in it, and its `estado` —where that world stands today
+$API -p <project> estado <slug> # the area's state in full: the current snapshot with its five sections, its milestone and its chain of earlier ones
 $API -p <project> buscar "x"    # search across everything you can see
 $API -p <project> documento linea <thread> <doc>   # a document's raw markdown
 ```
@@ -301,6 +302,17 @@ entries: what happened, when, why in that order).
 menu is the list of areas, each one holding its live threads, and every area has its own
 board. Inside an area the order is last touch, so the thread being worked right now sits on
 top of its world. A project small enough to need no areas keeps them all in one group.
+
+**And every area carries its state**: a snapshot of where that world stands today, read on
+top of the area's page and in full at `/<project>/area/<slug>/estado`. It is a series of
+snapshots and the latest one is read; each carries the milestone that produced it —a
+relevant plan signed, a client decision, a source that moved the ground— and the earlier
+ones are the history, walked one step back at a time with "Previous". The body has five
+sections, from the broadest to the most specific, and the server requires them in this
+order: `# Where we stand` (the big picture in a few sentences, without code), `# The map`
+(a `d2` drawing of the pieces with their state), `# In flight`, `# What's next` and
+`# Waiting on others`. Read it with `$API estado <slug>`; taking a new snapshot is the
+owner's call at the close of an important change (`$API escribir-estado <slug>`).
 
 The API stores a thread as `lineas` — the collection and the `lineaSlug` field keep the
 name they were born with, and the client accepts both words (`hilo` and `linea`,
