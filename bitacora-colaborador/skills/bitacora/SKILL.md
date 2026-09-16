@@ -148,7 +148,7 @@ JSON
 $API -p <project> corregir <id> <<< '{"veredicto":"…"}'
 ```
 
-## A thread holds EIGHT TYPES, each with its own door
+## A thread holds NINE TYPES, each with its own door
 
 A **thread** is the ticket, and what hangs from it has a type. The type is what sets its
 door, its desks and its colour:
@@ -162,6 +162,7 @@ door, its desks and its colour:
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
 | **Consultation** | the human in the loop: what the session asks the person —or the client, with `decide`— point by point; the person accepts, rejects, picks another option in one click, or asks for more context, ON THE WEB | its `queEs` —where the points come from and what happens with what is decided— and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
+| **Client Question** | what the CLIENT decides, with the person as go-between: the session prepares each question with its analysis, the person takes it to the client and loads what the client answered ON THE WEB | its `queEs` and its questions: each with the text to send, what it blocks, why it's urgent, the options with what they imply and what to recommend | por-preguntar · preguntada · respondida · aplicada · descartada |
 | **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
 
 ```bash
@@ -625,6 +626,50 @@ The answer belongs to the person: `respuesta` and the `contestada` state return 
 the API, naming the web. A decided point is never rewritten — what changed is a new point;
 the point that asked for more context is the deliberate exception, because rewriting it is
 how the request is answered.
+
+## The Client Question — what the client decides, with the person as go-between
+
+**The consultation carries what the person decides; this one carries what the CLIENT
+decides.** The person asks the client —in a meeting, on Slack, by email— and to advise them
+needs to understand what to ask, what stays blocked until they answer, why it's urgent and
+what each option implies. **The session writes that analysis question by question; the
+person takes it, marks it asked, and loads on the web what the client answered, in their
+own words.** It is the one type painted with a solid fill, in red: what isn't asked in time
+blocks work that can't be unblocked from inside.
+
+Each question carries `titulo`, `pregunta` —the text ready to send, in the client's words
+and language—, `bloquea` (what it blocks), `urgencia` (why it's urgent) with `para`
+(YYYY-MM-DD, when there is a date), `opciones` each with its `implica` —required here—,
+`recomiendo`, and `propuesta` with its `porque` (what to recommend to the client, and why).
+
+```bash
+$API -p <project> consulta-cliente <thread> <<'JSON'
+{"titulo":"What goes into the public catalogue",
+ "queEs":"The questions come from the catalogue audit; the answers settle what the search indexes.",
+ "preguntas":[{"titulo":"Do private tours go into the public catalogue?",
+               "pregunta":"Should private tours be published on the website?",
+               "bloquea":"The index can't settle which records go in.",
+               "urgencia":"The index demo is next week.","para":"2026-09-22",
+               "opciones":[{"titulo":"They are published","implica":"they enter the index flagged as private"},
+                           {"titulo":"They are not published","implica":"they are filtered out before indexing"}],
+               "recomiendo":1,
+               "propuesta":"Don't publish them yet.","porque":"The catalogue has no public price for private tours."}]}
+JSON
+# … the person takes it to the client and marks it asked on the web …
+$API -p <project> preguntada <id> "Slack"          # or the session, when it knows it was sent
+# … the person loads what the client answered; with the last answer it moves to «respondida» by itself …
+$API -p <project> lo-que-contesto <id>             # question by question: the client's text, the option they chose, where they said it
+$API -p <project> preguntas <id> <<'JSON'
+{"preguntas":[{"id":"p1","bloquea":"…what was missing to advise, written in full…"}]}
+JSON
+$API -p <project> aplicar-cliente <id> "two answers to the book"   # → aplicada
+```
+
+What the client answered belongs to the web: `respuesta` and the `respondida` state return
+400 through the API. Questions are corrected while still to ask; the one that asked for more
+context is the exception, because rewriting it is how the request is answered. Each answer
+goes to the thread's book as a decision, with the client's text as the verdict and where they
+said it.
 
 ## The Visual Check — what gets approved by LOOKING
 

@@ -163,8 +163,16 @@ if [ "${1:-}" = "bandeja" ]; then
       printf '%s' "$chequeos" | jq -c --arg p "$tenant" \
         '.items[] | select(((.faltan // []) | length) > 0)
          | {proyecto: $p, tipo: "chequeo", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto, decide}'
+      # Las consultas al cliente: por preguntar es la mano de la persona —llevársela—, y va
+      # con las que esperan; preguntada espera al cliente, con los días que lleva y la fecha
+      # para la que hace falta, y va al final con lo que se empuja con un recordatorio.
+      alcliente="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
+        "$BASE/api/items/consultas-cliente?abiertos" 2>/dev/null)" || continue
+      printf '%s' "$alcliente" | jq -c --arg p "$tenant" \
+        '.items[] | select((.estado == "por-preguntar" or .estado == "preguntada") and ((.faltan // []) | length) > 0)
+         | {proyecto: $p, tipo: "consulta-cliente", estado, hilo, area, titulo, id, faltan, pidenContexto, para, diasEnElCliente}'
     done
-  } | jq -s 'sort_by(if .decide == "cliente" then 4 elif .tipo == "consulta" or .tipo == "chequeo" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
+  } | jq -s 'sort_by(if .decide == "cliente" or .estado == "preguntada" then 4 elif .tipo == "consulta" or .tipo == "chequeo" or .tipo == "consulta-cliente" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
   exit 0
 fi
 
@@ -714,7 +722,7 @@ traducir-item)
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
-analisis | plan | bug | client-report | simulacion | consulta | chequeo)
+analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente | chequeo)
   exige 1 "$comando <hilo>   < JSON" "$@"
   vaciar_cola
   case "$comando" in
@@ -724,6 +732,7 @@ analisis | plan | bug | client-report | simulacion | consulta | chequeo)
     client-report) ruta_tipo=client-reports ;;
     simulacion) ruta_tipo=simulaciones ;;
     consulta) ruta_tipo=consultas ;;
+    consulta-cliente) ruta_tipo=consultas-cliente ;;
     chequeo) ruta_tipo=chequeos ;;
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
@@ -869,10 +878,13 @@ decidido)
     # El chequeo visual entra en la misma bandeja: lo que la persona aprobó mirando también
     # espera que la sesión lo tome, y leerlo en otro comando sería dejarlo sin mirar.
     leer "/api/items/chequeos?abiertos" | jq '[.items[] | . + {tipo: "chequeo"}]'
+    # Y la consulta al cliente respondida entera: lo que contestó el cliente espera que la
+    # sesión lo aplique, y la pregunta que pidió contexto, que la reescriba.
+    leer "/api/items/consultas-cliente?abiertos" | jq '[.items[] | . + {tipo: "consulta-cliente"}]'
   } | jq -s 'add | [.[]
-    | select(.estado == "contestada" or .estado == "contestado" or ((.pidenContexto // []) | length) > 0)
+    | select(.estado == "contestada" or .estado == "contestado" or .estado == "respondida" or ((.pidenContexto // []) | length) > 0)
     | {id, tipo, estado, hilo, area, titulo, decide, respuestas, faltan, pidenContexto, actualizado}]
-    | sort_by(if (.estado | startswith("contestad")) then 0 else 1 end)'
+    | sort_by(if (.estado | startswith("contestad")) or .estado == "respondida" then 0 else 1 end)'
   ;;
 # Lo que la persona dijo, punto por punto: aceptó o rechazó cada recomendación, o pidió más
 # contexto (`decision: "pide-contexto"`, con qué le faltó en `comentario`); `pedidos` son
@@ -895,6 +907,54 @@ aplicar)
   vaciar_cola
   jq -cn --arg n "${2:-}" '{estado:"aplicada"} + (if $n == "" then {} else {nota:$n} end)' |
     escribir PATCH "/api/items/consultas/$(uri "$1")"
+  ;;
+# ─────────────────────────────────────────────────────────────────────────────
+# LA CONSULTA AL CLIENTE — lo que la persona le lleva al cliente, y lo que contestó.
+#
+# Para lo que decide la persona está la consulta; esto es para lo que decide el CLIENTE, con
+# la persona de interlocutor. El orden es siempre el mismo:
+#
+#   1. `consulta-cliente <hilo>` la abre con sus `preguntas`, cada una con el mini análisis
+#      con el que la persona asesora: el texto listo para mandar (`pregunta`, con las
+#      palabras del cliente y en su idioma), qué frena (`bloquea`), por qué urge
+#      (`urgencia`, y `para` con la fecha AAAA-MM-DD cuando la hay), las opciones con lo que
+#      implica cada una, `recomiendo`, y qué recomendarle (`propuesta`) con su `porque`.
+#   2. La persona se la lleva al cliente y la marca preguntada en la web —o la sesión con
+#      `preguntada <id>` cuando sabe que ya salió—: pasa a «En manos del cliente».
+#   3. La persona CARGA EN LA WEB lo que contestó el cliente, con sus palabras, la opción que
+#      eligió y dónde lo dijo; o pide más contexto si el análisis no le alcanza para
+#      asesorar. Con la última respuesta la consulta pasa sola a `respondida`.
+#   4. `lo-que-contesto <id>` trae cada respuesta; la sesión la aplica —al libro del hilo,
+#      al registro del cliente— y la cierra con `aplicar-cliente <id>`. La pregunta que pidió
+#      contexto se reescribe con `preguntas <id>` y vuelve a la persona.
+# ─────────────────────────────────────────────────────────────────────────────
+consultas-cliente) leer "/api/items/consultas-cliente${1:+?estado=$(uri "${1:-}")}" ;;
+# Lo que contestó el cliente, pregunta por pregunta: su texto, la opción que eligió por su
+# nombre, dónde lo dijo y quién lo cargó; o el pedido de contexto con lo que faltó.
+lo-que-contesto)
+  exige 1 "lo-que-contesto <id>" "$@"
+  leer "/api/items/consultas-cliente/$(uri "$1")" | jq '{estado, hilo, titulo, preguntadaAt, diasEnElCliente, para, respuestas, faltan, pidenContexto, preguntas: [.preguntas[] | . as $q | {id, titulo, recomendacion: .propuesta, decision: (.respuesta.decision // null), contesto: (.respuesta.texto // null), eligio: (if (.respuesta.opcion // null) == null then null else $q.opciones[.respuesta.opcion].titulo end), donde: (.respuesta.donde // null), cargo: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
+  ;;
+# Corregir o reescribir preguntas mientras está por preguntar: por id la que se corrige, sin
+# id la que nace entera. Así se atiende un pedido de contexto. La ya contestada, 400.
+preguntas)
+  exige 1 "preguntas <id>   < {\"preguntas\":[{\"id\":\"p2\",\"bloquea\":\"…\",\"urgencia\":\"…\"}]}" "$@"
+  vaciar_cola
+  escribir PATCH "/api/items/consultas-cliente/$(uri "$1")"
+  ;;
+# La persona ya se la llevó al cliente: pasa a esperarlo y empieza a contar los días.
+preguntada)
+  exige 1 "preguntada <id> [nota]" "$@"
+  vaciar_cola
+  jq -cn --arg n "${2:-}" '{estado:"preguntada"} + (if $n == "" then {} else {nota:$n} end)' |
+    escribir PATCH "/api/items/consultas-cliente/$(uri "$1")"
+  ;;
+# La sesión tomó lo que contestó el cliente: la consulta cierra. Sin respondida entera, 400.
+aplicar-cliente)
+  exige 1 "aplicar-cliente <id> [nota]" "$@"
+  vaciar_cola
+  jq -cn --arg n "${2:-}" '{estado:"aplicada"} + (if $n == "" then {} else {nota:$n} end)' |
+    escribir PATCH "/api/items/consultas-cliente/$(uri "$1")"
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
 # EL CHEQUEO VISUAL — lo que se aprueba MIRANDO, paso por paso.
@@ -1477,11 +1537,16 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando hilos)
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
   bitacora-api abiertos <tipo>              (los que quedaron sin cerrar; el análisis y la decisión no tienen)
-        tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas | chequeos
+        tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
   bitacora-api capturar <hilo> <archivo...> (sube las capturas y devuelve la ruta de cada una)
+  bitacora-api consultas-cliente [estado]   (lo que se le lleva al cliente; `por-preguntar` espera que se lo lleves, `preguntada` espera al cliente)
+  bitacora-api lo-que-contesto <id>         (lo que contestó el cliente, pregunta por pregunta: su texto, la opción que eligió y dónde lo dijo)
+  bitacora-api preguntas <id>               < {"preguntas":[{"id":"p1","urgencia":"…"}]}   (corregir o reescribir mientras está por preguntar)
+  bitacora-api preguntada <id> [nota]       (ya se la llevaste al cliente: pasa a esperarlo)
+  bitacora-api aplicar-cliente <id> [nota]  (la sesión tomó lo que contestó el cliente: la consulta cierra)
   bitacora-api visto <id>                   (lo que la persona dijo de cada paso del chequeo)
   bitacora-api pasos <id>                   < {"pasos":[{"id":"p2","despues":"<ruta>","queCuenta":"…"}]}
   bitacora-api aplicar-chequeo <id> [nota]  (la sesión tomó lo aprobado: el chequeo cierra)
@@ -1520,6 +1585,13 @@ Escritura (el cuerpo JSON entra por stdin):
                                                         "opciones":[{"titulo":"…","implica":"…"}],
                                                         "propuesta":"la recomendación: lo que la sesión haría","porque":"su porqué, en una o dos frases"}]}
         el human in the loop: nace `abierta`; la persona ACEPTA, RECHAZA o PIDE MÁS CONTEXTO en cada recomendación EN LA WEB y pasa sola a `contestada`
+  bitacora-api consulta-cliente <hilo>      {"titulo":"…","queEs":"de dónde salen las preguntas y qué se hace con lo que conteste, en una o dos frases",
+                                             "preguntas":[{"titulo":"la pregunta en una línea","pregunta":"el texto listo para mandarle, con sus palabras y en su idioma",
+                                                           "bloquea":"qué trabajo queda frenado mientras no conteste","urgencia":"por qué urge","para":"AAAA-MM-DD",
+                                                           "opciones":[{"titulo":"…","implica":"qué implica elegirla"}],"recomiendo":0,
+                                                           "propuesta":"qué le recomendarías al cliente","porque":"su porqué, en una o dos frases"}]}
+        lo que decide el CLIENTE, con la persona de interlocutor: nace `por-preguntar`; la persona se la lleva, la marca preguntada
+        y CARGA EN LA WEB lo que contestó el cliente, con sus palabras; pasa sola a `respondida` con la última respuesta
   bitacora-api chequeo <hilo>               {"titulo":"…","queEs":"qué cambió y qué se le pide al que aprueba","flujos":["<slug-del-recorrido>"],
                                              "pasos":[{"titulo":"la pantalla o el momento","queCuenta":"qué mirar, desde el usuario que usa la pantalla",
                                                        "despues":"<ruta de la captura como queda>","antes":"<ruta en la base — vacía cuando estrena>",
