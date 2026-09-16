@@ -149,20 +149,18 @@ if [ "${1:-}" = "bandeja" ]; then
          | {proyecto: $p, tipo: "plan", estado, hilo, area, titulo, id, ficha}'
       # Las consultas que esperan a la persona son la mano que falta: van primero, porque solo
       # ella las destraba. La abierta cuyo resto pidió más contexto espera a la sesión y no va.
-      # La marcada `decide: cliente` viaja con su marca y va al final: espera del otro lado del
-      # mostrador, así que se lee para recordárselo y no para contestarla.
       consultas="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
         "$BASE/api/items/consultas?estado=abierta" 2>/dev/null)" || continue
       printf '%s' "$consultas" | jq -c --arg p "$tenant" \
         '.items[] | select(((.faltan // []) | length) > 0)
-         | {proyecto: $p, tipo: "consulta", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto, decide}'
+         | {proyecto: $p, tipo: "consulta", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto}'
       # Y los chequeos visuales que esperan sus ojos, por la misma razón: lo que se aprueba
       # mirando solo lo destraba la persona, y una PR se queda esperando ese sí.
       chequeos="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
         "$BASE/api/items/chequeos?estado=abierto" 2>/dev/null)" || continue
       printf '%s' "$chequeos" | jq -c --arg p "$tenant" \
         '.items[] | select(((.faltan // []) | length) > 0)
-         | {proyecto: $p, tipo: "chequeo", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto, decide}'
+         | {proyecto: $p, tipo: "chequeo", estado, hilo, area, titulo, id, respuestas, faltan, pidenContexto}'
       # Las consultas al cliente: por preguntar es la mano de la persona —llevársela—, y va
       # con las que esperan; preguntada espera al cliente, con los días que lleva y la fecha
       # para la que hace falta, y va al final con lo que se empuja con un recordatorio.
@@ -172,7 +170,7 @@ if [ "${1:-}" = "bandeja" ]; then
         '.items[] | select((.estado == "por-preguntar" or .estado == "preguntada") and ((.faltan // []) | length) > 0)
          | {proyecto: $p, tipo: "consulta-cliente", estado, hilo, area, titulo, id, faltan, pidenContexto, para, diasEnElCliente}'
     done
-  } | jq -s 'sort_by(if .decide == "cliente" or .estado == "preguntada" then 4 elif .tipo == "consulta" or .tipo == "chequeo" or .tipo == "consulta-cliente" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
+  } | jq -s 'sort_by(if .estado == "preguntada" then 4 elif .tipo == "consulta" or .tipo == "chequeo" or .tipo == "consulta-cliente" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
   exit 0
 fi
 
@@ -882,16 +880,19 @@ decidido)
     # sesión lo aplique, y la pregunta que pidió contexto, que la reescriba.
     leer "/api/items/consultas-cliente?abiertos" | jq '[.items[] | . + {tipo: "consulta-cliente"}]'
   } | jq -s 'add | [.[]
-    | select(.estado == "contestada" or .estado == "contestado" or .estado == "respondida" or ((.pidenContexto // []) | length) > 0)
-    | {id, tipo, estado, hilo, area, titulo, decide, respuestas, faltan, pidenContexto, actualizado}]
+    | select(.estado == "contestada" or .estado == "contestado" or .estado == "respondida" or ((.pidenContexto // []) | length) > 0 or ((.delCliente // []) | length) > 0)
+    | {id, tipo, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, delCliente, actualizado}]
     | sort_by(if (.estado | startswith("contestad")) or .estado == "respondida" then 0 else 1 end)'
   ;;
-# Lo que la persona dijo, punto por punto: aceptó o rechazó cada recomendación, o pidió más
-# contexto (`decision: "pide-contexto"`, con qué le faltó en `comentario`); `pedidos` son
-# los pedidos de contexto que ese punto ya recibió y la sesión atendió reescribiéndolo.
+# Lo que la persona dijo, punto por punto: aceptó o rechazó cada recomendación, pidió más
+# contexto (`decision: "pide-contexto"`, con qué le faltó en `comentario`), o dijo que lo
+# decide el cliente (`decision: "del-cliente"`): ese punto se lleva a una consulta al cliente
+# y se enlaza con `puntos <id>` < {"puntos":[{"id":"p3","consultaCliente":"<id>"}]} — sin el
+# enlace, la consulta no se aplica. `pedidos` son los pedidos de contexto que ese punto ya
+# recibió y la sesión atendió reescribiéndolo; `llevadoA`, la consulta al cliente que lo tomó.
 respuestas)
   exige 1 "respuestas <id>" "$@"
-  leer "/api/items/consultas/$(uri "$1")" | jq '{estado, hilo, titulo, decide, respuestas, faltan, pidenContexto, puntos: [.puntos[] | {id, titulo, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
+  leer "/api/items/consultas/$(uri "$1")" | jq '{estado, hilo, titulo, respuestas, faltan, pidenContexto, delCliente, puntos: [.puntos[] | {id, titulo, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), llevadoA: (.consultaCliente // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
   ;;
 # Corregir o reescribir puntos mientras la consulta está abierta: por id el que se corrige,
 # sin id el que nace entero. Es cómo se atiende un pedido de contexto: el punto reescrito
@@ -1001,7 +1002,7 @@ capturar)
 # paso ya recibió y la sesión atendió recapturándolo.
 visto)
   exige 1 "visto <id>" "$@"
-  leer "/api/items/chequeos/$(uri "$1")" | jq '{estado, hilo, titulo, decide, flujos, respuestas, faltan, pidenContexto, pasos: [.pasos[] | {id, titulo, flujo, estrena, gesto, queCuenta, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
+  leer "/api/items/chequeos/$(uri "$1")" | jq '{estado, hilo, titulo, flujos, respuestas, faltan, pidenContexto, pasos: [.pasos[] | {id, titulo, flujo, estrena, gesto, queCuenta, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
   ;;
 # Corregir o agregar pasos mientras el chequeo está abierto: por id el que se corrige, sin
 # id el que nace entero. Es cómo se atiende un pedido de contexto —el paso recapturado
@@ -1584,7 +1585,7 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "puntos":[{"titulo":"…","queCambia":"qué se decide y qué cambia con cada respuesta",
                                                         "opciones":[{"titulo":"…","implica":"…"}],
                                                         "propuesta":"la recomendación: lo que la sesión haría","porque":"su porqué, en una o dos frases"}]}
-        el human in the loop: nace `abierta`; la persona ACEPTA, RECHAZA o PIDE MÁS CONTEXTO en cada recomendación EN LA WEB y pasa sola a `contestada`
+        el human in the loop: nace `abierta`; la persona ACEPTA, RECHAZA, PIDE MÁS CONTEXTO o dice que LO DECIDE EL CLIENTE en cada recomendación EN LA WEB y pasa sola a `contestada`; el punto `del-cliente` se lleva a una consulta al cliente y se enlaza con `puntos <id>` < {"puntos":[{"id":"p3","consultaCliente":"<id>"}]}
   bitacora-api consulta-cliente <hilo>      {"titulo":"…","queEs":"de dónde salen las preguntas y qué se hace con lo que conteste, en una o dos frases",
                                              "preguntas":[{"titulo":"la pregunta en una línea","pregunta":"el texto listo para mandarle, con sus palabras y en su idioma",
                                                            "bloquea":"qué trabajo queda frenado mientras no conteste","urgencia":"por qué urge","para":"AAAA-MM-DD",

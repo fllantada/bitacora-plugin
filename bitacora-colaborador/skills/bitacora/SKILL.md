@@ -161,7 +161,7 @@ door, its desks and its colour:
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
-| **Consultation** | the human in the loop: what the session asks the person —or the client, with `decide`— point by point; the person accepts, rejects, picks another option in one click, or asks for more context, ON THE WEB | its `queEs` —where the points come from and what happens with what is decided— and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
+| **Consultation** | the human in the loop: what the session asks the person, point by point; the person accepts, rejects, picks another option in one click, asks for more context, or says the client decides, ON THE WEB | its `queEs` —where the points come from and what happens with what is decided— and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
 | **Client Question** | what the CLIENT decides, with the person as go-between: the session prepares each question with its analysis, the person takes it to the client and loads what the client answered ON THE WEB | its `queEs` and its questions: each with the text to send, what it blocks, why it's urgent, the options with what they imply and what to recommend | por-preguntar · preguntada · respondida · aplicada · descartada |
 | **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
 
@@ -467,7 +467,7 @@ returns it summed per engine, with cost and tokens resolved.
 ```bash
 $API -p <project> encargados                 # what can be taken · also: en-curso · entregados
 $API bandeja                                 # without -p: every project this machine holds a key for
-                                             # what is marked «decide: cliente» comes last, with its mark: it waits on the other side of the counter
+                                             # client questions already asked come last, with the days they have waited
 $API -p <project> tomar <id> "worktree …"    # → en-curso; the note also lands in ficha.destino
 $API -p <project> entregar <id> <<'JSON'
 {"reporte":{"en":"## Done\n…\n\n## How it turned out\n…\n\n## Evidence\n<one line: checks green, guardian score, review verdict with its link>\n\n## Decisions along the way\n1. **<What was decided.>** <Why.>\n\n## Frictions\nNone\n\n## To decide\n…\n\n## Pending out of scope\nNone"},
@@ -589,13 +589,14 @@ text, paired by the hash of its block. And `"flujos":["<slug>"]` names the runs 
 system the decision touches: the page puts them on top as a strip leading to the whole run,
 which is the context you would otherwise rewrite inside each point.
 
-**When the decisions belong to the CLIENT**, the same consultation carries
-`"decide":"cliente"`: the header says the client decides, the project home lists it under
-«In the client's hands» instead of what awaits the owner, and the client answers it on the
-web once the thread is shared with their email. Write those points in the client's own
-vocabulary and about what their business decides, never about how it gets built. The mark
-comes back with the item and on every `bandeja` row, so a session knows who it is waiting
-on without opening the web.
+**When a point is not the person's to decide**, they answer it «The client decides» — the
+fourth gesture, next to accept, reject and ask for context. The point is settled on their
+side, and the session that applies the consultation takes it to a **client question**
+(§The Client Question): it rewrites each `del-cliente` point as a question, opens the client
+question, and links each point to it with `puntos <id>` <
+`{"puntos":[{"id":"p3","consultaCliente":"<id>"}]}`. Without the link the consultation
+can't be applied (`delClienteSinLlevar`). A rejection whose comment says the client decides
+is handled the same way.
 
 **When you rewrite `opciones`, send `recomiendo` again.** The list is replaced whole and the
 index survives from the stored point, so an old one would name a position of the previous
@@ -613,7 +614,7 @@ $API -p <project> consulta <thread> <<'JSON'
             "propuesta":"Use Tour.id.","porque":"The permanent reference the contract declares; the three fronts agree."}]}
 JSON
 # … the person answers on the web; the consultation moves to «contestada» by itself …
-$API -p <project> decidido               # what the person already said and the session has to take: fully decided ones, and points that asked for context
+$API -p <project> decidido               # what the person already said and the session has to take: fully decided ones, points that asked for context, and points the client decides
 $API -p <project> contestadas            # the ones fully decided, ready to apply
 $API -p <project> respuestas <id>        # point by point: the recommendation, accepted, rejected or sent back for context, and the comment
 $API -p <project> puntos <id> <<'JSON'
