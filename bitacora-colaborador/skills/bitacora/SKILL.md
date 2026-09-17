@@ -192,9 +192,19 @@ $API -p <project> abiertos bugs               # the bugs still open, across sub-
 $API -p <project> item planes <id>            # one whole: its body and how it moved
 $API -p <project> mover planes <id> <<< '{"estado":"hecho","nota":"how it closed"}'
 $API -p <project> mover planes <id> <<< '{"hilo":"the-sub-area-it-belongs-to"}'   # move it to its sub-area (slug or alias)
+$API -p <project> mover planes <id> <<< '{"tambienEn":["mobile"]}'   # also visible from other sub-areas: the whole list, [] for one place
 $API -p <project> fijar analisis <id>         # pin it to the top: the piece its sub-area opens with
 $API -p <project> soltar analisis <id>        # back to the work order
 ```
+
+**A PIECE CAN BE SEEN FROM MORE THAN ONE SUB-AREA.** It is one single element: it lives
+in the sub-area where it is written —its address, its number, its screenshots— and
+`tambienEn` names the other sub-areas it is also seen from. The menu, each sub-area's page,
+the area's map, timeline and state show it as their own. The test is the reader's question:
+does whoever opens that sub-area need to see this piece? A pricing plan that changes the
+whole app lives in Commercial › Monetization and is also seen from Product › Mobile. Declare
+it in the same act you choose the sub-area (`"tambienEn":["mobile"]` when opening it), with
+the same names a route takes —slug, alias, or an area, which shows it on its floor—.
 
 **THE PIECE A SUB-AREA OPENS WITH IS PINNED TO THE TOP.** A sub-area orders its pieces by the
 work — what is being built on top, what closed at the foot — and that order answers what is

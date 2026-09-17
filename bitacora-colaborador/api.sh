@@ -1633,6 +1633,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api traducir-item <tipo> <id>    {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}
   bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
                                             · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)
+                                            · {"tambienEn":["mobile"]} la muestra además desde esas sub-áreas (la lista entera; [] la deja en un solo lugar)
         la decisión NO tiene escritorios: nace tomada y se corrige con corregir
   bitacora-api fijar <tipo> <id>            la clava arriba de su sub-área: es la pieza por la que la sub-área abre, en su página y en el menú
   bitacora-api soltar <tipo> <id>           la devuelve al orden del trabajo (azúcar sobre mover con {"fijado":true|false})
