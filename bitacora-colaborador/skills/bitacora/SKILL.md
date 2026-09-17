@@ -26,6 +26,11 @@ name the right door whenever something moved. And if the check can't reach the s
 — no network, or your key expired — it stops nothing either: carry on with the work,
 writes queue themselves, and an expired key is renewed with `bitacora-api renovar`.
 
+**And if step zero prints «⚠ Adaptación pendiente», the logbook's model changed and this
+project's material still carries the previous shape.** The notice says what changed and
+which gesture adapts it. Tell the person in one line and leave the call to them: adapting
+means reclassifying the project's own material, and that belongs to whoever owns it.
+
 ## Setup — once per machine
 
 Your invitation email carries a one-time claim code. Exchange it for your personal API
@@ -68,15 +73,15 @@ in order:
    the board while you talk.
 3. **Read the project yourself, quietly**: `$API contexto` (the glossary, stack and
    flows — skip if you already read it this session) and `$API tablero`.
-4. **Present a two-line pulse and ask.** Name what's actually alive — the threads at the
+4. **Present a two-line pulse and ask.** Name what's actually alive — the sub-areas at the
    front, the pending plans (that is where work resumes), the freshest thing that happened
    — and ask what they'd like to do: resume a plan, write an analysis, log something that
    happened, record a decision that was made, or just read. For example: *"The board is
-   open in your browser. Two threads are moving — the search migration and the pricing
+   open in your browser. Two sub-areas are moving — the search migration and the pricing
    page — with three pending plans between them. What would you like to dig into?"*
    Always offer from the REAL board, never a generic menu.
 
-From there, conversation: answer questions from the logbook's content (search, threads,
+From there, conversation: answer questions from the logbook's content (search, sub-areas,
 documents, decisions), record what they tell you as entries, record decision points when
 a real trade-off gets settled. You are the project's memory speaking.
 
@@ -84,18 +89,18 @@ a real trade-off gets settled. You are the project's memory speaking.
 
 | The user says | What you do |
 |---|---|
-| `/bitacora <thread>` | Open that thread (`$API hilo <slug>`): its brief, pending plans, latest entries and documents. The argument may be an alias — the server resolves it. |
-| `/bitacora <thread> <something that happened>` | Write the dated entry (see *Writing entries* below). |
-| `/bitacora <thread> decision <what was decided>` | Record the point — ALREADY made — in the thread's decision book, with its full frame and its verdict, or the server rejects it. |
-| `/bitacora <thread> we need to <something to do>` | Open the plan: how it gets solved and where it closes. |
-| `/bitacora plan <topic>` | Build the plan out of what was just discussed: ask FIRST which area or thread it joins, require where it closes, and write it into the thread (see *Planning* below). |
+| `/bitacora <subarea>` | Open that sub-area (`$API subarea <slug>`): its brief, pending plans, latest entries and documents. The argument may be an alias — the server resolves it. |
+| `/bitacora <subarea> <something that happened>` | Write the dated entry (see *Writing entries* below). |
+| `/bitacora <subarea> decision <what was decided>` | Record the point — ALREADY made — in the sub-area's decision book, with its full frame and its verdict, or the server rejects it. |
+| `/bitacora <subarea> we need to <something to do>` | Open the plan: how it gets solved and where it closes. |
+| `/bitacora plan <topic>` | Build the plan out of what was just discussed: ask FIRST which area or sub-area it joins, require where it closes, and write it into the sub-area (see *Planning* below). |
 | `/bitacora what is left to do` | The project's execution front. |
 | `/bitacora sources` · `/bitacora what do we have on <topic>` | The source register: what the client handed over, how old each thing is and which one rules (see *The sources* below). |
 | `/bitacora refresh the sources` · `/bitacora are the sources up to date?` | Fetches the live ones by their origin, compares the fingerprint and stamps the mirror (`refrescar`); the one it could not reach it names, with what to ask for (see *The sources*). |
 | `/bitacora record this source <what arrived>` | Register it: its kind, where it is read from, who produced it, its date and its tags. |
 | `/bitacora I just pulled <the source>` | Record the copy and move its date (`sincronizada`). |
-| `/bitacora area <name>` | Read that area (`$API area <slug>`): its name and the threads living in it, each with its state. What is open to decide there, and its timeline, live on the area's page in the browser. |
-| Something that matches nothing | It's probably a thread that doesn't exist yet — list the threads and ask, rather than failing. |
+| `/bitacora area <name>` | Read that area (`$API area <slug>`): its name and the sub-areas living in it, each with its state. What is open to decide there, and its timeline, live on the area's page in the browser. |
+| Something that matches nothing | It's probably a topic whose place does not exist yet — list the sub-areas and ask, rather than failing. A new place is opened by the person, on the area's page in the web. |
 
 Nothing runs on its own: the logbook is written when invoked, never by a hook — a
 record that writes itself stops being judgment and becomes a log.
@@ -111,13 +116,13 @@ $API -p <project> skills        # the tools at hand here: what each one is for, 
 $API -p <project> skill <name>  # one whole: how it is told, what it chains with, and its SKILL.md
 $API -p <project> nota-skill <name>   # tell it for a person: {"paraQue":"…","cuando":"…","deja":"…","ojo":"…"}
                                 #   write it right after reading that skill's text — the catalogue lists it uncounted until someone does
-$API -p <project> tablero       # the board: every thread of work, grouped by area
-$API -p <project> hilo <slug>   # one thread: its entries, decisions and documents
-$API -p <project> areas         # the project's areas, with how many threads live in each
-$API -p <project> area <slug>   # ONE area: its name, the threads living in it, and its `estado` —where that world stands today
+$API -p <project> tablero       # the board: every sub-area, grouped by area
+$API -p <project> subarea <slug> # one sub-area: its entries, decisions and documents
+$API -p <project> areas         # the project's areas, with how many sub-areas live in each
+$API -p <project> area <slug>   # ONE area: its name, the sub-areas living in it, and its `estado` —where that world stands today
 $API -p <project> estado <slug> # the area's state in full: the current snapshot with its five sections, its milestone and its chain of earlier ones
 $API -p <project> buscar "x"    # search across everything you can see
-$API -p <project> documento linea <thread> <doc>   # a document's raw markdown
+$API -p <project> documento linea <subarea> <doc>   # a document's raw markdown
 ```
 
 The project resolves from your working directory when it sits under a workspace root —
@@ -130,13 +135,13 @@ resolved.
 Writes take a JSON body on stdin:
 
 ```bash
-$API -p <project> entrada <thread-slug> <<'JSON'
+$API -p <project> entrada <subarea-slug> <<'JSON'
 {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
 JSON
 
 # A decision is recorded ALREADY MADE, and goes in whole or not at all — the server
 # rejects one without its frame or its verdict:
-$API -p <project> decision <thread-slug> <<'JSON'
+$API -p <project> decision <subarea-slug> <<'JSON'
 {"titulo":"…","veredicto":"what was decided",
  "bloquea":"what was blocked while this stayed undecided",
  "opciones":[{"titulo":"…","implica":"what choosing it costs"},
@@ -148,10 +153,12 @@ JSON
 $API -p <project> corregir <id> <<< '{"veredicto":"…"}'
 ```
 
-## A thread holds NINE TYPES, each with its own door
+## A sub-area holds NINE TYPES, each with its own door
 
-A **thread** is the ticket, and what hangs from it has a type. The type is what sets its
-door, its desks and its colour:
+A **sub-area** is a permanent PLACE inside its area — search, the engine's infrastructure,
+the contract — and what hangs from it has a type. A topic of a few weeks is a piece and
+hangs from the place it belongs to. The type is what sets its door, its desks and its
+colour:
 
 | Type | What it is | What opening it costs | Desks |
 |---|---|---|---|
@@ -166,44 +173,48 @@ door, its desks and its colour:
 | **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
 
 ```bash
-$API -p <project> analisis <thread> <<'JSON'
+$API -p <project> analisis <subarea> <<'JSON'
 {"titulo":"…","queEs":"what the reader will find","cuerpo":{"en":"# …"}}
 JSON
-$API -p <project> plan <thread> <<'JSON'
+$API -p <project> plan <subarea> <<'JSON'
 {"titulo":"…","cierraEn":"the PR that brings it","cuerpo":{"en":"# How it gets solved\n…"}}
 JSON
-$API -p <project> bug <thread> <<'JSON'
+$API -p <project> bug <subarea> <<'JSON'
 {"titulo":"…","cuerpo":{"en":"# What happens\n…\n\n# Where\n…\n\n# How to reproduce\n1. …\n2. …"}}
 JSON
-$API -p <project> client-report <thread> <<'JSON'
+$API -p <project> client-report <subarea> <<'JSON'
 {"titulo":"…","ficha":{"For":"who receives it"},"cuerpo":{"en":"# …"}}
 JSON
 
-$API -p <project> del-hilo <thread> planes    # a thread's plans, with their bodies
+$API -p <project> de-la-subarea <subarea> planes    # a sub-area's plans, with their bodies
 $API -p <project> tipo planes                 # every plan in the project
-$API -p <project> abiertos bugs               # the bugs still open, across threads
+$API -p <project> abiertos bugs               # the bugs still open, across sub-areas
 $API -p <project> item planes <id>            # one whole: its body and how it moved
 $API -p <project> mover planes <id> <<< '{"estado":"hecho","nota":"how it closed"}'
-$API -p <project> mover planes <id> <<< '{"hilo":"the-thread-it-belongs-to"}'   # move it to its thread (slug or alias)
-$API -p <project> fijar analisis <id>         # pin it to the top: the piece its thread opens with
+$API -p <project> mover planes <id> <<< '{"hilo":"the-sub-area-it-belongs-to"}'   # move it to its sub-area (slug or alias)
+$API -p <project> fijar analisis <id>         # pin it to the top: the piece its sub-area opens with
 $API -p <project> soltar analisis <id>        # back to the work order
 ```
 
-**THE PIECE A THREAD OPENS WITH IS PINNED TO THE TOP.** A thread orders its pieces by the
+**THE PIECE A SUB-AREA OPENS WITH IS PINNED TO THE TOP.** A sub-area orders its pieces by the
 work — what is being built on top, what closed at the foot — and that order answers what is
-being done right now. The other question, which of these pieces tells what the ticket is
+being done right now. The other question, which of these pieces tells what the place is
 about, is what pinning answers: it is usually an analysis, material that gets read and
 therefore sits mid-list under every plan someone moved. Pinned, it comes first on the
-thread page and on its branch of the menu, marked `▲` in the margin, because the top of a
+sub-area page and on its branch of the menu, marked `▲` in the margin, because the top of a
 list also holds whatever was touched a minute ago. Between two pinned ones, the latest
 wins. The field travels in the generic patch too (`{"fijado":true}`) and comes back in the
-thread and item reads, and the person pins from the web with the **«▲ Pin to top»** button
+sub-area and item reads, and the person pins from the web with the **«▲ Pin to top»** button
 in the right-hand column of the piece's own page.
 
-**A piece hangs from the thread that already holds its topic.** Before writing, ask which
-thread this is the analysis (or plan, or bug) of, and write it there; a new thread opens
-when the person asks for one. A piece left on the wrong sibling thread moves with `mover`
-and `hilo`: it lands after the ones already there and keeps its address unless it clashes.
+**A piece hangs from the sub-area that already holds its topic.** Before writing, ask which
+sub-area this is the analysis (or plan, or bug) of, and write it there. **Opening a sub-area
+belongs to the person and happens on the WEB**, from the area's page — the API answers 400
+(`subareaEsDeLaPersona`) naming it. While the place is missing, the piece hangs from the
+area's **floor**: name the AREA instead of a sub-area (`$API plan <area>`) and it lands
+there, and you propose the place that is missing. A piece left on the wrong sibling sub-area
+moves with `mover` and `hilo` —which also takes an area, landing on its floor—: it lands
+after the ones already there and keeps its address unless it clashes.
 
 **An analysis goes up SETTLED.** Clear the open questions first, in the session where
 the person who can answer them is — then write. An analysis arriving with ten questions
@@ -253,7 +264,7 @@ leaves the workshop split: the interface in theirs, the board in someone else's.
 Any text field takes its layers where it used to take a phrase:
 
 ```bash
-$API -p <project> entrada <thread-slug> <<'JSON'
+$API -p <project> entrada <subarea-slug> <<'JSON'
 {"tipo":"hallazgo",
  "titulo":{"en":"Facets are counted per record","es":"Los facets se cuentan por registro"},
  "cuerpo":{"en":"# …","es":"# …"}}
@@ -268,11 +279,11 @@ picked up later; writing both in the same act is what asserts they say the same 
 what keeps the board from reading half-and-half in the meantime.
 
 **`escritoEn` is the record's original language**, declared once for the whole record: a
-thread's name and its brief are born together and in the same language. It defaults to the
+sub-area's name and its brief are born together and in the same language. It defaults to the
 project's first declared language; name it when you write in another one:
 
 ```bash
-$API -p <project> entrada <thread-slug> <<'JSON'
+$API -p <project> entrada <subarea-slug> <<'JSON'
 {"escritoEn":"en","tipo":"hallazgo",
  "titulo":{"en":"Facets are counted per record","es":"Los facets se cuentan por registro"},
  "cuerpo":{"en":"# …","es":"# …"}}
@@ -280,7 +291,7 @@ JSON
 ```
 
 **To READ in your language, the `-i` flag.** It applies to everything the command brings
-back: the board, a thread with its chronology, the glossary, the stack, the flows and the
+back: the board, a sub-area with its chronology, the glossary, the stack, the flows and the
 search.
 
 ```bash
@@ -292,17 +303,20 @@ Without the flag you get the project's own layer, and whatever lacks the languag
 for falls back to its original — honest material in the language it was written in, never a
 blank screen.
 
-## The unit is the thread
+## The unit is the sub-area
 
-A **thread** is a topic worked over time — a migration, a feature area, a long
-conversation. Its dimensions: the **analyses** (processed documents), the **decision
-book** (what needs deciding, one point at a time), and the **chronology** (dated
-entries: what happened, when, why in that order).
+A **sub-area** is a permanent place inside its area — search, the engine's infrastructure,
+the contract — and it is still there once today's work is done. Its dimensions: the
+**analyses** (processed documents), the **decision book** (what needs deciding, one point at
+a time), and the **chronology** (dated entries: what happened, when, why in that order). A
+topic of a few weeks is a **piece** and hangs from the place it belongs to.
 
-**Every thread lives in an area**, and the area is how the workshop is navigated: the left
-menu is the list of areas, each one holding its live threads, and every area has its own
-board. Inside an area the order is last touch, so the thread being worked right now sits on
-top of its world. A project small enough to need no areas keeps them all in one group.
+**Every sub-area lives in a named area**, and the area is how the workshop is navigated: the
+left menu is the list of areas, each one holding its live sub-areas, and every area has its
+own board. Each area carries its **floor** — the sub-area where whatever still waits for its
+place hangs, first in the list and marked «floor»; naming the AREA instead of a sub-area
+lands there. A floor that fills up is the sign that a sub-area is missing. Inside an area the
+order is last touch, so the sub-area being worked right now sits on top of its world.
 
 **And every area carries its state**: a snapshot of where that world stands today, read on
 top of the area's page and in full at `/<project>/area/<slug>/estado`. It is a series of
@@ -315,9 +329,10 @@ order: `# Where we stand` (the big picture in a few sentences, without code), `#
 `# Waiting on others` — the two that can have nothing to say still go, and say "None". Read it with `$API estado <slug>`; taking a new snapshot is the
 owner's call at the close of an important change (`$API escribir-estado <slug>`).
 
-The API stores a thread as `lineas` — the collection and the `lineaSlug` field keep the
-name they were born with, and the client accepts both words (`hilo` and `linea`,
-`editar-hilo` and `editar-linea`). Read «thread»; type either.
+The API stores a sub-area as `lineas` — the collection and the `lineaSlug` field keep the
+name they were born with, and the client accepts all three words (`subarea`, `hilo` —the
+previous name— and `linea`; `editar-subarea`, `editar-hilo` and `editar-linea`;
+`de-la-subarea` and `del-hilo`). Read «sub-area»; type any of them.
 
 ## Writing entries — the craft
 
@@ -329,10 +344,10 @@ name they were born with, and the client accepts both words (`hilo` and `linea`,
 - **Titles inform, stand alone, and fit in one phrase.** "Notes from Tuesday" says
   nothing: the title states the processed conclusion, so that reading it alone on the
   board you know what's inside. It names the topic in the words the topic is asked for —
-  one leaning on another thread ("Case B: …") sends whoever opens it looking for case A.
-  And the API measures it: **60 characters** for a thread's name, **80** for the title of
+  one leaning on another sub-area ("Case B: …") sends whoever opens it looking for case A.
+  And the API measures it: **60 characters** for a sub-area's name, **80** for the title of
   what hangs from it and of the day's entry, with the rule inside the 400. It can be short
-  because the substance has its own fields — the `brief` on the thread, `queEs` and
+  because the substance has its own fields — the `brief` on the sub-area, `queEs` and
   `cuerpo` on the item.
 - **The writing test:** *can this be reconstructed from the diff, the issue tracker or
   an existing analysis?* If yes, don't write it. The logbook keeps what has no other
@@ -389,7 +404,7 @@ name — that history is the project's "how we decided" view.
 ## Plans — what is left to do
 
 The decision book answers *what was decided*; the plans answer *what is left to do* —
-**the front of a thread is its pending plans**, deciding included: a choice still open
+**the front of a sub-area is its pending plans**, deciding included: a choice still open
 lives as a plan ("decide X"), and when it settles, the decision is recorded already made.
 
 **What its door asks for is the body and the named close** — without the close nobody can
@@ -429,7 +444,7 @@ Evidence, Decisions along the way, Frictions), and the state ones are rewritten 
 it turned out, To decide, Pending out of scope say how the work stands TODAY).
 
 **`# The idea` is the proposal, written as a proposal** — "the study would live in its
-thread": the present tense belongs to git. It carries the box diagram and the vertical
+sub-area": the present tense belongs to git. It carries the box diagram and the vertical
 sequence diagram when the plan adds a new path, and reads "None" for a rename or an
 adjustment with no new mechanism. **`## How it turned out` is its mirror on delivery**:
 the same explanation in the present tense, about what exists, with the diagrams redrawn
@@ -487,7 +502,7 @@ and why today is not the day. That is what the old model called a deferred decis
 pending item with a trigger is work that waits, and the type that waits is the plan.
 
 ```bash
-$API -p <project> plan <thread> <<'JSON'
+$API -p <project> plan <subarea> <<'JSON'
 {"titulo":"Decide where the axis rule lives","cierraEn":"the schema PR",
  "cuerpo":{"en":"# What wakes this up\nPete's second localisation proposal.\n\n# The analysis so far\n…"}}
 JSON
@@ -502,8 +517,8 @@ Dropping goes through the same door as finishing:
 Before a change in how the project works gets adopted — a harness piece, a process, a
 tool, a model — it gets **simulated**: the same items —the **sample**— down two or more
 **arms**, with a **rubric** and a **success criterion written BEFORE running**, and a
-**person grading at the end**. The simulation hangs from the thread of its topic, like an
-analysis does, and a decision in the thread's book ratifies what it showed.
+**person grading at the end**. The simulation hangs from the sub-area of its topic, like an
+analysis does, and a decision in the sub-area's book ratifies what it showed.
 
 **The run produces and the grading decides, and they have different owners.** The session
 designs, runs the arms and leaves the **outputs** — what each arm produced for each item.
@@ -530,7 +545,7 @@ criteria where lower is better, which the rubric declares.
 **Registering one and running it** — the session's doors, the same as the owner's:
 
 ```bash
-$API -p <project> simulacion <thread> <<'JSON'
+$API -p <project> simulacion <subarea> <<'JSON'
 {"titulo":"…","hipotesis":"what we believe will happen",
  "criterioExito":"metric, threshold and what disqualifies — written BEFORE running",
  "brazos":[{"clave":"A","nombre":"the proposed path","comoCorre":"model and mechanics"},
@@ -562,7 +577,7 @@ arm's cost and the run's dates. Nobody writes the matrix by hand.
 
 When a session reaches decisions that belong to the person — several points to read
 calmly, each changing what a PR writes, a vocabulary, a key, a path between two — it
-writes a **consultation** in the thread instead of a list in the chat. Each **point**
+writes a **consultation** in the sub-area instead of a list in the chat. Each **point**
 carries its title, **what changes** with each decision, the live **options** when there is
 more than one, and the **recommendation** with its **why** in a sentence or two; the person
 **accepts** the recommendation in one click, **rejects** it saying what goes instead, or
@@ -603,7 +618,7 @@ index survives from the stored point, so an old one would name a position of the
 list; the door measures it on the merged point and answers 400 before storing it.
 
 ```bash
-$API -p <project> consulta <thread> <<'JSON'
+$API -p <project> consulta <subarea> <<'JSON'
 {"titulo":"The seven changes to the record: what goes in",
  "queEs":"The record decisions that came out of the reviews; with the answers the next round gets written.",
  "puntos":[{"titulo":"The key of each record",
@@ -644,7 +659,7 @@ and language—, `bloquea` (what it blocks), `urgencia` (why it's urgent) with `
 `recomiendo`, and `propuesta` with its `porque` (what to recommend to the client, and why).
 
 ```bash
-$API -p <project> consulta-cliente <thread> <<'JSON'
+$API -p <project> consulta-cliente <subarea> <<'JSON'
 {"titulo":"What goes into the public catalogue",
  "queEs":"The questions come from the catalogue audit; the answers settle what the search indexes.",
  "preguntas":[{"titulo":"Do private tours go into the public catalogue?",
@@ -669,7 +684,7 @@ $API -p <project> aplicar-cliente <id> "two answers to the book"   # → aplicad
 What the client answered belongs to the web: `respuesta` and the `respondida` state return
 400 through the API. Questions are corrected while still to ask; the one that asked for more
 context is the exception, because rewriting it is how the request is answered. Each answer
-goes to the thread's book as a decision, with the client's text as the verdict and where they
+goes to the sub-area's book as a decision, with the client's text as the verdict and where they
 said it.
 
 ## The Visual Check — what gets approved by LOOKING
@@ -697,7 +712,7 @@ judgeable.
 **Captures go up first and the step names them by their path.** Each one enters through the
 attachments door —one request per file, so a long check has no size ceiling— and `capturar`
 returns each path: **no path is ever written by hand**, and the check's door verifies that
-every one named exists as a file of that thread and is an image. A mistyped path comes back
+every one named exists as a file of that sub-area and is an image. A mistyped path comes back
 as a 400 saying which, instead of showing up as a hole where the owner had to decide.
 
 **The context is half the value: which screen, of which run.** The check declares the runs
@@ -750,27 +765,27 @@ The same step, written from the user:
 
 ```bash
 # 1. The captures go up and return their path: that is what the step names them by.
-$API -p <project> capturar <thread> step1-origin.png step1-before.png step1-after.png
-# → {"step1-origin.png":"<thread>/step1-origin.png", …}
+$API -p <project> capturar <subarea> step1-origin.png step1-before.png step1-after.png
+# → {"step1-origin.png":"<subarea>/step1-origin.png", …}
 
 # 2. The check, with its run and its steps.
-$API -p <project> chequeo <thread> <<'JSON'
+$API -p <project> chequeo <subarea> <<'JSON'
 {"titulo":"The prizes step of the wizard, on a Galaxy S21",
  "queEs":"PR #212 rebuilds the prizes step of the sign-up wizard. Nine screens of the run, on an S21: what changed is the order of the fields and the summary at the foot.",
  "flujos":["<run-slug>"],
  "pasos":[
    {"titulo":"The wizard, on the data step",
     "queCuenta":"You are signing up your tour and just finished the data: from here you go on to prizes. The Continue button is now pinned to the foot, so you see it with the keyboard open. Can you find it without scrolling?",
-    "despues":"<thread>/step1-after.png",
-    "antes":"<thread>/step1-before.png",
+    "despues":"<subarea>/step1-after.png",
+    "antes":"<subarea>/step1-before.png",
     "propuesta":"Keep it pinned to the foot.",
     "porque":"On an S21 the button fell below the fold with the keyboard open."},
    {"titulo":"Prizes, with the new summary",
     "queCuenta":"You picked your prizes and at the foot you see how many you have: the summary now adds them up. Does the total read well, with Continue in sight?",
-    "origen":"<thread>/step1-after.png",
+    "origen":"<subarea>/step1-after.png",
     "gesto":"tap Continue",
-    "despues":"<thread>/step2-after.png",
-    "antes":"<thread>/step2-before.png",
+    "despues":"<subarea>/step2-after.png",
+    "antes":"<subarea>/step2-before.png",
     "propuesta":"Keep the summary as it is.",
     "porque":"The total reads in full and Continue stays in sight."}]}
 JSON
@@ -778,7 +793,7 @@ JSON
 # 3. … the person approves step by step on the web; the check moves to «contestado» by itself …
 $API -p <project> visto <id>     # step by step: what was approved, what was rejected and with which comment
 $API -p <project> pasos <id> <<'JSON'
-{"pasos":[{"id":"p2","despues":"<thread>/step2-recaptured.png","queCuenta":"…what was missing to see…"}]}
+{"pasos":[{"id":"p2","despues":"<subarea>/step2-recaptured.png","queCuenta":"…what was missing to see…"}]}
 JSON
 $API -p <project> aplicar-chequeo <id> "round 2 written in the plan · two screens rebuilt"
 ```
@@ -798,14 +813,15 @@ deliberate exception, because recapturing it is how the request is answered.
 
 ## Planning — the same gesture in every project
 
-**Every piece of planning ends as a logbook plan, hanging from its thread.** The method
+**Every piece of planning ends as a logbook plan, hanging from its sub-area.** The method
 is one and it lives here: whichever project you plan in, planning is this same gesture
 through the same doors.
 
-**Where it hangs is settled first.** List the areas with their live threads
+**Where it hangs is settled first.** List the areas with their live sub-areas
 (`$API areas`) and ask the user which one the plan joins — the plan is theirs, and so is
-the topic it belongs to. When no thread hosts the topic yet, offer to open one
-(`$API abrir-hilo`, with its brief) and the plan is born inside it.
+the place it belongs to. When no sub-area hosts the topic yet, the plan is born on the
+area's **floor** —name the AREA instead of a sub-area (`$API plan <area>`)— and you propose
+the place that is missing, which the person opens on the web.
 
 **The name fits in one phrase of up to 60 characters and stands on its own** (see *Writing
 entries* above): its `brief` says what it is about.
@@ -813,7 +829,7 @@ entries* above): its `brief` says what it is about.
 **The plan comes out of what was already discussed.** A title that states the conclusion,
 a `cierraEn` saying where it closes — the door demands it: without a close there is no
 plan — and a body carrying the reasoning the conversation produced. Write it with
-`$API plan <thread>` and finish the gesture by handing the user the `enlace` the response
+`$API plan <subarea>` and finish the gesture by handing the user the `enlace` the response
 returns — the item's full address — so they can keep reading it in the web app. The
 tie-break between types is the standing one
 (see *Plans* above): understanding left asks for an analysis, executing asks for a plan,
@@ -821,11 +837,11 @@ choosing between exclusive paths asks for a decision.
 
 **Claude Code's plan mode (`/plan`, shift+tab) is the harness's working mode** for
 thinking a change through before touching it; the plan it produces is recorded through
-this same gesture — what was thought out hangs from its thread and outlives the session.
+this same gesture — what was thought out hangs from its sub-area and outlives the session.
 
 ```bash
-$API -p <project> areas          # where it hangs: the areas with their live threads — ask BEFORE writing
-$API -p <project> plan <thread> <<'JSON'
+$API -p <project> areas          # where it hangs: the areas with their live sub-areas — ask BEFORE writing
+$API -p <project> plan <subarea> <<'JSON'
 {"titulo":"…","cierraEn":"the PR that brings it","cuerpo":{"en":"# How it gets solved\n…"}}
 JSON
 ```
@@ -833,10 +849,10 @@ JSON
 ## What is someone else's
 
 - **Supersede, never edit.** When your work makes an existing entry obsolete, mark it
-  (`$API superar <thread> <entry-id>` with `{"superadaPor":"…"}`) and write the new one.
+  (`$API superar <subarea> <entry-id>` with `{"superadaPor":"…"}`) and write the new one.
   The record stays whole; the mark says history.
 - **Deleting is the owner's.** Your key can't delete anything — if something should
-  never have existed (a duplicate, a thread opened by mistake), tell the owner.
+  never have existed (a duplicate, a sub-area opened by mistake), tell the owner.
 - **The hours panel is the owner's.** It belongs to their client relationship and your
   key doesn't reach it.
 
@@ -880,8 +896,8 @@ having to pick one of the two readers.
 
 A **source** is what came from outside: a sheet the client keeps editing, a PDF, a Slack
 channel, a Figma file, a board. It is registered once at PROJECT level and its `tags` make it
-show up in every area and every thread it names — one channel talks about search, the CMS and
-the infrastructure in the same week, so hanging it off a single thread hides it from the
+show up in every area and every sub-area it names — one channel talks about search, the CMS and
+the infrastructure in the same week, so hanging it off a single sub-area hides it from the
 other two.
 
 What the card has to be enough for is **judging the material WITHOUT opening it**: which side
@@ -899,7 +915,7 @@ copy is current. Those four decide whether what it says still holds.
 | `superadaPor` | The slug of the one that replaced it: it gets marked and stays, like a glossary word |
 | `url` · `ref` | Where it lives outside, and the handle it is refreshed by (the doc id, the channel id, `fileKey/nodeId`) |
 | `espejo` | Our copy: its attachment, when it was taken, and the fingerprint of its content |
-| `tags` | Free slugs — areas, threads, stack pieces, words: this is what makes it appear in each area |
+| `tags` | Free slugs — areas, sub-areas, stack pieces, words: this is what makes it appear in each area |
 | `nota` | What you need to know to use it: the quota, the sharing permission, the sheet that matters |
 
 **Which one rules is DERIVED from the order**, so it cannot go stale: the client's live one
@@ -908,7 +924,7 @@ dimmed at the foot. No field declares precedence — it comes out of vigencia, s
 
 ```bash
 $API fuentes                    # the whole register, in that order
-$API fuentes algolia            # the ones on a topic: the slug of an area, a thread or a stack piece
+$API fuentes algolia            # the ones on a topic: the slug of an area, a sub-area or a stack piece
 $API fuentes "" hoja            # sheets only
 $API fuente attribute-register  # one whole, with its mirror
 $API por-sincronizar            # the live ones whose copy went stale, with their handle and fingerprint
@@ -976,15 +992,15 @@ $API refrescar attribute-register  # that one, even if up to date
 | `slack` · `jira` · `figma` | The profile skill that already holds the access (`/slack`, `/jira`, `/figma` within its quota), then `sincronizada <slug> <file>` | The skill says what it lacks: the workspace token, the site's API token, a View seat on the file. You get it there and come back |
 | `email` · `drive` · `miro` · `mano` | A person: a dated source refreshes when its author sends another one, which enters as a new source superseding the previous | — |
 
-**And a new source is recorded from the thread where it appeared.** A link to a sheet, a
+**And a new source is recorded from the sub-area where it appeared.** A link to a sheet, a
 document, a channel or a file that arrives while a topic is being thought enters with
-`anotar-fuente` carrying the tags of its area and its thread, and `refrescar <slug>` takes
+`anotar-fuente` carrying the tags of its area and its sub-area, and `refrescar <slug>` takes
 its first mirror: the area is a tag, so tying it is naming it.
 
 **`$API accesos` lists the project's quick links**, each with the credential it carries:
 the outside addresses you enter every day — the engine, the repo, the ticket board, the
 design file. They belong to the project
-and not to a thread, and the workshop keeps them one click away in the right-hand column.
+and not to a sub-area, and the workshop keeps them one click away in the right-hand column.
 Anote one you had to hunt for with `$API anotar-acceso <<< '{"nombre":"…","url":"https://…","nota":"staging"}'`
 — it is upsert by slug, so fixing a URL that moved is the same call. When the place asks you
 to sign in, `usuario` and `clave` go with it: the workshop keeps them folded under that link,

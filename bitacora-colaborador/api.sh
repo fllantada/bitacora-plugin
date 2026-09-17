@@ -459,20 +459,40 @@ version)
     echo "Para traerla:  $actualizar"
     echo "Rige en la próxima sesión, o ya con /reload-plugins."
   fi
+  # Lo que a ESTE proyecto le falta adaptar cuando el modelo de la bitácora cambió. Es un
+  # aviso y nunca una puerta: fuera de un proyecto, sin red o sin llave, no dice nada.
+  if [ -n "${TOKEN:-}" ]; then
+    leer "/api/adaptacion" 2>/dev/null | jq -r --arg n "$nombre" '
+      (if $n == "bitacora-colaborador" then "en" else "es" end) as $i
+      | .pendientes[]?
+      | "\n⚠ Adaptación pendiente «\(.clave)» (rige desde \(.desde)):\n  \(.queCambio[$i])\n  → \(.queHacer[$i])"
+        + (if (.senales.enCompartida // [] | length) > 0
+           then "\n  En «compartida» siguen: \(.senales.enCompartida | join(", "))" else "" end)
+    ' 2>/dev/null || true
+  fi
   ;;
 tablero) leer "/api/tablero" ;;
 # El ciclo del encargo, leído por escritorio: lo que una sesión /coding puede tomar, lo
 # que alguien tiene entre manos, y lo que espera la firma de /thinking. Cada plan trae
-# su hilo y su área; `item planes <id>` lo trae entero, con el handoff y el reporte.
+# su sub-área y su área; `item planes <id>` lo trae entero, con el handoff y el reporte.
 encargados) leer "/api/items/planes?estado=encargado" ;;
 en-curso) leer "/api/items/planes?estado=en-curso" ;;
 entregados) leer "/api/items/planes?estado=entregado" ;;
-# El taller dice HILO y la API dice `lineas`: los dos nombres alcanzan lo mismo, para que
-# la palabra que se lee y la que se tipea sean la misma.
-hilos | lineas) leer "/api/lineas" ;;
-hilo | linea)
-  exige 1 "hilo <slug|alias>" "$@"
+# El taller dice SUB-ÁREA —antes «hilo»— y la API dice `lineas`: los tres nombres alcanzan
+# lo mismo, para que la palabra que se lee y la que se tipea sean la misma.
+subareas | hilos | lineas) leer "/api/lineas" ;;
+subarea | hilo | linea)
+  exige 1 "subarea <slug|alias>" "$@"
   leer "/api/lineas/$(uri "$1")"
+  ;;
+# Las adaptaciones de modelo que este proyecto todavía no hizo, con lo que su material
+# dice hoy (`senales`), y las que ya cerró. El paso cero (`version`) las recuerda.
+adaptacion) leer "/api/adaptacion" ;;
+# Cierra una: el servidor comprueba lo comprobable y contesta 400 con lo que falta.
+adaptado)
+  exige 1 "adaptado <clave>   (p. ej. subareas)" "$@"
+  vaciar_cola
+  printf '{"clave":"%s"}' "$1" | escribir POST "/api/adaptacion"
   ;;
 buscar)
   exige 1 "buscar <texto>" "$@"
@@ -547,7 +567,7 @@ stack) leer "/api/stack${1:+?flujos=1}" ;;
 # algo sobre un tema, esto contesta qué material hay y cuál manda.
 #
 #   bitacora-api fuentes                 (todas)
-#   bitacora-api fuentes algolia         (las de ese tema: el slug de un área, de un hilo o de una pieza)
+#   bitacora-api fuentes algolia         (las de ese tema: el slug de un área, de una sub-área o de una pieza)
 #   bitacora-api fuentes "" hoja         (solo las hojas)
 fuentes)
   ruta="/api/fuentes"
@@ -572,7 +592,7 @@ por-sincronizar)
 # Los accesos directos del proyecto: las direcciones de afuera a las que se entra todos
 # los días — el engine, el repo, el tablero de tickets, el diseño.
 accesos) leer "/api/enlaces" ;;   # con su `usuario`/`clave`, el que la pide
-# Qué falta HACER: del proyecto entero, o de un hilo si se lo nombra. El segundo argumento
+# Qué falta HACER: del proyecto entero, o de una sub-área si se la nombra. El segundo argumento
 # filtra por estado — `acciones "" pendiente` es el frente del proyecto sin lo ya cerrado.
 # Los nombres anteriores al modelo de tipos. Siguen resolviendo contra su colección vieja
 # —una instalación sin actualizar no se queda sin puerta— y avisan por dónde va el trabajo
@@ -594,7 +614,7 @@ pieza)
   ;;
 # Lo que falta traducir: lo que no tiene la capa y lo que la tiene vieja.
 por-traducir) leer "/api/traducir?idioma=${1:-en}" ;;
-# Las áreas: los mundos del proyecto, con cuántos hilos vive cada uno.
+# Las áreas: los mundos del proyecto, con cuántas sub-áreas vive cada uno.
 #
 # Con un slug detrás contesta por ESA área, sea `areas` o `area`: quien tipeó el plural
 # con un slug quiso una sola, y devolverle la lista entera le daba otra cosa sin avisar.
@@ -629,7 +649,7 @@ reviews) leer "/api/reviews" ;;
 # piezas— sigue adentro, y el espejo público no tiene navegación, así que de una pieza
 # publicada no se llega a nada más.
 #
-# La pieza se nombra como se la lee: `<hilo> <slug>` para lo que cuelga de un hilo, y la
+# La pieza se nombra como se la lee: `<subarea> <slug>` para lo que cuelga de un hilo, y la
 # sección sola para una review, que es una sección de un solo documento. Publicar abre
 # también los archivos que ese texto muestra —las capturas, el PDF que un client-report
 # entregó— y `privado` los cierra con ella.
@@ -637,7 +657,7 @@ reviews) leer "/api/reviews" ;;
 # Es del dueño del proyecto: la llave de un colaborador recibe un 403.
 # ─────────────────────────────────────────────────────────────────────────────
 publicar | privado)
-  exige 1 "$comando <hilo> <slug>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>" "$@"
+  exige 1 "$comando <subarea> <slug>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>" "$@"
   vaciar_cola
   [ "$comando" = publicar ] && afuera=true || afuera=false
 
@@ -662,7 +682,7 @@ publicar | privado)
     ;;
   2:linea | 2:hilo | 2:seccion | 2:flujo)
     echo "A «$comando $1 $2» le falta el slug de la pieza." >&2
-    echo "  · $comando <hilo> <slug>" >&2
+    echo "  · $comando <subarea> <slug>" >&2
     echo "  · $comando <seccion>                                 (una review)" >&2
     echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
     exit 1
@@ -674,7 +694,7 @@ publicar | privado)
   # ser la palabra `linea` y el servidor contestaba sobre una sección que nadie nombró.
   *)
     echo "Sobran argumentos. Las tres formas son:" >&2
-    echo "  · $comando <hilo> <slug>" >&2
+    echo "  · $comando <subarea> <slug>" >&2
     echo "  · $comando <seccion>                                 (una review)" >&2
     echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
     exit 1
@@ -691,9 +711,9 @@ publicados) leer "/api/publicacion" ;;
 horas) leer "/api/trabajo" ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LOS TIPOS DE UN HILO — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas · chequeos
+# LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas · chequeos
 #
-# Un hilo es el ticket y adentro cuelgan cosas de tipo distinto. El tipo se nombra
+# Una sub-área es el lugar y adentro cuelgan cosas de tipo distinto. El tipo se nombra
 # en plural y en la misma palabra que se lee en la app, así lo que se escribe y lo
 # que se navega dicen igual.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -705,8 +725,8 @@ abiertos)
   exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos>" "$@"
   leer "/api/items/$(uri "$1")?abiertos"
   ;;
-del-hilo)
-  exige 2 "del-hilo <hilo> <tipo>" "$@"
+de-la-subarea | del-hilo)
+  exige 2 "de-la-subarea <subarea> <tipo>" "$@"
   leer "/api/hilos/$(uri "$1")/$(uri "$2")"
   ;;
 # Un ítem entero, con su cuerpo y su historia: es cómo se relee lo que se escribió.
@@ -721,7 +741,7 @@ traducir-item)
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
 analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente | chequeo)
-  exige 1 "$comando <hilo>   < JSON" "$@"
+  exige 1 "$comando <subarea>   < JSON" "$@"
   vaciar_cola
   case "$comando" in
     analisis) ruta_tipo=analisis ;;
@@ -741,12 +761,12 @@ mover)
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LO QUE ABRE EL HILO — la pieza clavada arriba.
+# LO QUE ABRE LA SUB-ÁREA — la pieza clavada arriba.
 #
-# Un hilo ordena sus piezas por el trabajo: lo que se está haciendo arriba, lo cerrado al
+# Una sub-área ordena sus piezas por el trabajo: lo que se está haciendo arriba, lo cerrado al
 # pie. Lo que ese orden no puede contestar es cuál de todas cuenta DE QUÉ SE TRATA el
 # ticket —suele ser un análisis, que no tiene escritorio y cae en el medio—. Fijarla la
-# pone primera en la página del hilo y en el menú. Azúcar sobre `mover`.
+# pone primera en la página de la sub-área y en el menú. Azúcar sobre `mover`.
 fijar)
   exige 2 "fijar <tipo> <id>" "$@"
   vaciar_cola
@@ -760,7 +780,7 @@ soltar)
 # ─────────────────────────────────────────────────────────────────────────────
 # EL CICLO DEL ENCARGO — el plan lleva el handoff en el cuerpo y el reporte al volver.
 #
-# /thinking lo escribe con `plan <hilo>` y "estado":"encargado"; /coding lo toma y lo
+# /thinking lo escribe con `plan <subarea>` y "estado":"encargado"; /coding lo toma y lo
 # entrega; /thinking lo firma, o lo devuelve con la ronda siguiente en el cuerpo. Son
 # azúcar sobre `mover planes <id>`: el estado lo pone el verbo, así nadie lo tipea mal.
 # El servidor cobra el contrato en las dos puntas: para entrar a encargado, el cuerpo
@@ -915,7 +935,7 @@ aplicar)
 # Para lo que decide la persona está la consulta; esto es para lo que decide el CLIENTE, con
 # la persona de interlocutor. El orden es siempre el mismo:
 #
-#   1. `consulta-cliente <hilo>` la abre con sus `preguntas`, cada una con el mini análisis
+#   1. `consulta-cliente <subarea>` la abre con sus `preguntas`, cada una con el mini análisis
 #      con el que la persona asesora: el texto listo para mandar (`pregunta`, con las
 #      palabras del cliente y en su idioma), qué frena (`bloquea`), por qué urge
 #      (`urgencia`, y `para` con la fecha AAAA-MM-DD cuando la hay), las opciones con lo que
@@ -963,10 +983,10 @@ aplicar-cliente)
 # Para lo que se decide leyendo está la consulta; esto es para lo que se decide con los
 # ojos: una PR que cambia lo que el usuario final ve. El orden es siempre el mismo:
 #
-#   1. `capturar <hilo> <archivo...>` sube las capturas y devuelve la RUTA de cada una.
+#   1. `capturar <subarea> <archivo...>` sube las capturas y devuelve la RUTA de cada una.
 #      Nunca se escribe una ruta a mano: la puerta del chequeo verifica que cada captura
 #      nombrada exista como archivo de ese hilo, y contesta 400 con la que falta.
-#   2. `chequeo <hilo>` lo abre con sus pasos, cada uno con la pantalla que se juzga
+#   2. `chequeo <subarea>` lo abre con sus pasos, cada uno con la pantalla que se juzga
 #      (`despues`), cómo se llega a ella (`origen` + `gesto`, desde el segundo paso), la
 #      pantalla en la base cuando el paso cambia algo que ya existía (`antes` — vacía
 #      cuando estrena), qué mirar (`queCuenta`), la recomendación y su porqué. Y de qué
@@ -986,7 +1006,7 @@ aplicar-cliente)
 chequeos) leer "/api/items/chequeos${1:+?estado=$(uri "${1:-}")}" ;;
 # Sube capturas al hilo y devuelve la ruta de cada una, que es con lo que el paso la nombra.
 capturar)
-  exige 2 "capturar <hilo> <archivo...>   (devuelve {archivo: ruta} para nombrarlas en los pasos)" "$@"
+  exige 2 "capturar <subarea> <archivo...>   (devuelve {archivo: ruta} para nombrarlas en los pasos)" "$@"
   hilo_captura="$1"
   shift
   # Cada archivo emite su par nombre → ruta y nada más: el `jq -s add` funde los pares en
@@ -1045,7 +1065,7 @@ decision)
 # encola —sin red, guardar el pedido sería guardar algo que el servidor va a rechazar
 # igual—; `hecha` sigue moviendo las que quedaron de antes, con el mismo aviso.
 accion)
-  exige 1 "accion <hilo>   (cerrado: el trabajo por hacer es un plan)" "$@"
+  exige 1 "accion <subarea>   (cerrado: el trabajo por hacer es un plan)" "$@"
   echo "El trabajo por hacer es un PLAN, que además lleva su análisis:" >&2
   echo "  bitacora-api plan $1 <<< '{\"titulo\":\"…\",\"cierraEn\":\"…\",\"cuerpo\":{\"es\":\"# …\"}}'" >&2
   exit 1
@@ -1068,7 +1088,7 @@ diferir)
   exige 1 "diferir <id>   (cerrado: lo que espera su momento es un plan)" "$@"
   echo "Diferir era del modelo anterior. Lo que espera su momento es un PLAN," >&2
   echo "con su gatillo escrito en el cuerpo:" >&2
-  echo "  bitacora-api plan <hilo> <<< '{\"titulo\":\"…\",\"cierraEn\":\"…\",\"cuerpo\":{\"es\":\"…\"}}'" >&2
+  echo "  bitacora-api plan <subarea> <<< '{\"titulo\":\"…\",\"cierraEn\":\"…\",\"cuerpo\":{\"es\":\"…\"}}'" >&2
   exit 1
   ;;
 # Corregir una decisión registrada: su veredicto, su marco, sus textos — o mudarla de hilo.
@@ -1082,8 +1102,8 @@ superar)
   vaciar_cola
   escribir PATCH "/api/lineas/$(uri "$1")/entradas/$(uri "$2")"
   ;;
-editar-hilo | editar-linea)
-  exige 1 "editar-hilo <slug>   < {\"estado\":\"resuelta\"} · {\"area\":\"infra\"}" "$@"
+editar-subarea | editar-hilo | editar-linea)
+  exige 1 "editar-subarea <slug>   < {\"estado\":\"resuelta\"} · {\"area\":\"infra\"} · {\"piso\":true}" "$@"
   vaciar_cola
   escribir PATCH "/api/lineas/$(uri "$1")"
   ;;
@@ -1266,12 +1286,12 @@ traducir)
   vaciar_cola
   escribir PUT "/api/traducir"
   ;;
-# abrir-area  ← {"nombre":"…"}   ·  nace vacía y se llena mudando hilos
+# abrir-area  ← {"nombre":"…"}   ·  nace vacía; la persona le abre sub-áreas en la web
 abrir-area)
   vaciar_cola
   escribir POST "/api/areas"
   ;;
-# El renombre toca un registro y ningún hilo: el slug es la dirección, el nombre lo que se lee.
+# El renombre toca un registro y ninguna sub-área: el slug es la dirección, el nombre lo que se lee.
 editar-area)
   exige 1 "editar-area <slug>   < {\"nombre\":\"…\"} · {\"orden\":2}" "$@"
   vaciar_cola
@@ -1478,7 +1498,10 @@ borrar)
   exige 1 "borrar <ruta-de-la-api>   (el servidor se niega si todavía cuelga algo)" "$@"
   curl -fsS --max-time 20 -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE$1"
   ;;
-abrir-hilo | abrir-linea)
+# Abrir una sub-área es de la PERSONA y se hace en la web, en la página del área. El
+# comando sigue existiendo para que quien lo tipee lea la respuesta del servidor, que dice
+# dónde se cuelga la pieza mientras tanto y cómo se pide el lugar que falta.
+abrir-subarea | abrir-hilo | abrir-linea)
   vaciar_cola
   escribir POST "/api/lineas"
   ;;
@@ -1517,16 +1540,18 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
   bitacora-api refrescar [slug]             (baja las vivas por su procedencia, compara la huella y estampa el espejo;
                                              la que quedó sin acceso la dice con qué pedir — lo corre /thinking al arrancar)
 
-El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
+El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la API lo guarda como `lineas`):
   bitacora-api abrir [destino]              (el tablero en tu navegador, sin login: enlace fresco de un solo uso;
                                              con la ruta o el enlace de una pieza, abre esa página)
-  bitacora-api tablero                      (los hilos con su área y sus ítems, las áreas, lo pendiente por escritorio, la tríada contada)
+  bitacora-api tablero                      (las sub-áreas con su área y sus ítems, las áreas, lo pendiente por escritorio, la tríada contada)
   bitacora-api bandeja                      (sin -p: las consultas que esperan tu respuesta y los planes entregados, en curso y encargados de TODOS los proyectos)
-  bitacora-api encargados · en-curso · entregados   (el ciclo del encargo, por escritorio; cada plan con su hilo y su área)
-  bitacora-api hilos                        (= lineas)
-  bitacora-api hilo <slug|alias>            (= linea)
-  bitacora-api areas                        (los mundos del proyecto, con sus hilos)
-  bitacora-api area <slug>                  (un área con los hilos que viven ahí y su `estado` resumido —la foto vigente,
+  bitacora-api encargados · en-curso · entregados   (el ciclo del encargo, por escritorio; cada plan con su sub-área y su área)
+  bitacora-api subareas                     (= hilos = lineas: los tres nombres llegan al mismo lugar)
+  bitacora-api subarea <slug|alias>         (= hilo = linea)
+  bitacora-api adaptacion                   (lo que a este proyecto le falta adaptar cuando el modelo cambió, con sus señales)
+  bitacora-api adaptado <clave>             (cierra la adaptación; 400 con lo que falta si el material todavía no está)
+  bitacora-api areas                        (los mundos del proyecto, con sus sub-áreas)
+  bitacora-api area <slug>                  (un área con las sub-áreas que viven ahí y su `estado` resumido —la foto vigente,
                                              su panorama y lo que se firmó y cambió desde que se tomó—; `areas <slug>` es lo mismo)
   bitacora-api estado <area> [--version N]  (el estado del área entero: la foto vigente —o una anterior— con sus cinco secciones,
                                              su hito, su cadena de anteriores y `desde`: la señal de que toca renovarla)
@@ -1534,15 +1559,15 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
   bitacora-api documento <linea|seccion|flujo> <contenedor> <slug>
   bitacora-api secciones · bitacora-api horas (dueño) · bitacora-api adjuntos [linea] · bitacora-api reviews
   bitacora-api publicados                   (lo que está afuera hoy, con el enlace de cada uno)
-  bitacora-api del-hilo <hilo> <tipo>       (lo que cuelga de un hilo, de un tipo)
-  bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando hilos)
+  bitacora-api de-la-subarea <subarea> <tipo>  (= del-hilo: lo que cuelga de una sub-área, de un tipo)
+  bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando sub-áreas)
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
   bitacora-api abiertos <tipo>              (los que quedaron sin cerrar; el análisis y la decisión no tienen)
         tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
-  bitacora-api capturar <hilo> <archivo...> (sube las capturas y devuelve la ruta de cada una)
+  bitacora-api capturar <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una)
   bitacora-api consultas-cliente [estado]   (lo que se le lleva al cliente; `por-preguntar` espera que se lo lleves, `preguntada` espera al cliente)
   bitacora-api lo-que-contesto <id>         (lo que contestó el cliente, pregunta por pregunta: su texto, la opción que eligió y dónde lo dijo)
   bitacora-api preguntas <id>               < {"preguntas":[{"id":"p1","urgencia":"…"}]}   (corregir o reescribir mientras está por preguntar)
@@ -1558,14 +1583,14 @@ El trabajo (en el taller un tema se llama HILO; la API lo guarda como `lineas`):
                                              cada lista con su puerta de vuelta — el estado vuelve por editar-estado con `traduccion`)
 
 Escritura (el cuerpo JSON entra por stdin):
-  bitacora-api analisis <hilo>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
-  bitacora-api plan <hilo>                  {"titulo":"…","cierraEn":"…","cuerpo":{"es":"# …"},"flujos":["…"]}
+  bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
+  bitacora-api plan <subarea>                  {"titulo":"…","cierraEn":"…","cuerpo":{"es":"# …"},"flujos":["…"]}
         con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;
         el servidor exige ocho secciones en el cuerpo —# Qué cambia (el TL;DR para la persona: de dos a cuatro oraciones, sin código) · # Tarea · # La idea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance— y el queEs, la bajada en una línea
-  bitacora-api bug <hilo>                   {"titulo":"…","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
+  bitacora-api bug <subarea>                   {"titulo":"…","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
-  bitacora-api client-report <hilo>         {"titulo":"…","cuerpo":{"es":"# …"}}
-  bitacora-api simulacion <hilo>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
+  bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"}}
+  bitacora-api simulacion <subarea>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
                                              "brazos":[{"clave":"A","nombre":"…","comoCorre":"…"},{"clave":"B","nombre":"…"}],
                                              "muestra":[{"clave":"i1","nombre":"…","queEs":"…"}],
                                              "rubrica":[{"clave":"fidelidad","nombre":"…","escala":{"min":1,"max":5},"mejor":"alto","ancla":"…"}],
@@ -1581,19 +1606,19 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api lista <id> [nota]            → calificando: la corrida terminó y la persona puede calificar (faltan salidas, 400)
   bitacora-api calificacion <id>            (lo que la persona decidió: matriz, elecciones, esperados con su cumplido, veredicto)
         calificar, elegir, marcar esperados y concluir son DE LA PERSONA y se hacen en la web: por esta puerta, 400
-  bitacora-api consulta <hilo>              {"titulo":"…","queEs":"de dónde salen los puntos y qué se hace con lo decidido, en una o dos frases",
+  bitacora-api consulta <subarea>              {"titulo":"…","queEs":"de dónde salen los puntos y qué se hace con lo decidido, en una o dos frases",
                                              "puntos":[{"titulo":"…","queCambia":"qué se decide y qué cambia con cada respuesta",
                                                         "opciones":[{"titulo":"…","implica":"…"}],
                                                         "propuesta":"la recomendación: lo que la sesión haría","porque":"su porqué, en una o dos frases"}]}
         el human in the loop: nace `abierta`; la persona ACEPTA, RECHAZA, PIDE MÁS CONTEXTO o dice que LO DECIDE EL CLIENTE en cada recomendación EN LA WEB y pasa sola a `contestada`; el punto `del-cliente` se lleva a una consulta al cliente y se enlaza con `puntos <id>` < {"puntos":[{"id":"p3","consultaCliente":"<id>"}]}
-  bitacora-api consulta-cliente <hilo>      {"titulo":"…","queEs":"de dónde salen las preguntas y qué se hace con lo que conteste, en una o dos frases",
+  bitacora-api consulta-cliente <subarea>      {"titulo":"…","queEs":"de dónde salen las preguntas y qué se hace con lo que conteste, en una o dos frases",
                                              "preguntas":[{"titulo":"la pregunta en una línea","pregunta":"el texto listo para mandarle, con sus palabras y en su idioma",
                                                            "bloquea":"qué trabajo queda frenado mientras no conteste","urgencia":"por qué urge","para":"AAAA-MM-DD",
                                                            "opciones":[{"titulo":"…","implica":"qué implica elegirla"}],"recomiendo":0,
                                                            "propuesta":"qué le recomendarías al cliente","porque":"su porqué, en una o dos frases"}]}
         lo que decide el CLIENTE, con la persona de interlocutor: nace `por-preguntar`; la persona se la lleva, la marca preguntada
         y CARGA EN LA WEB lo que contestó el cliente, con sus palabras; pasa sola a `respondida` con la última respuesta
-  bitacora-api chequeo <hilo>               {"titulo":"…","queEs":"qué cambió y qué se le pide al que aprueba","flujos":["<slug-del-recorrido>"],
+  bitacora-api chequeo <subarea>               {"titulo":"…","queEs":"qué cambió y qué se le pide al que aprueba","flujos":["<slug-del-recorrido>"],
                                              "pasos":[{"titulo":"la pantalla o el momento","queCuenta":"qué mirar, desde el usuario que usa la pantalla",
                                                        "despues":"<ruta de la captura como queda>","antes":"<ruta en la base — vacía cuando estrena>",
                                                        "origen":"<ruta de la pantalla desde la que se viene>","gesto":"qué se tocó para llegar acá",
@@ -1609,7 +1634,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
                                             · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)
         la decisión NO tiene escritorios: nace tomada y se corrige con corregir
-  bitacora-api fijar <tipo> <id>            la clava arriba de su hilo: es la pieza por la que el hilo abre, en su página y en el menú
+  bitacora-api fijar <tipo> <id>            la clava arriba de su sub-área: es la pieza por la que la sub-área abre, en su página y en el menú
   bitacora-api soltar <tipo> <id>           la devuelve al orden del trabajo (azúcar sobre mover con {"fijado":true|false})
   El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
   bitacora-api tomar <id> [nota]            → en-curso; la nota (y ficha.destino) es el worktree o la copia que lo tiene
@@ -1632,9 +1657,10 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "cierraEn":"…","cuerpo":"…","flujos":["…"]}
   bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
-  bitacora-api abrir-hilo                   {"slug":"…","nombre":"…","area":"…","brief":"…"}
-  bitacora-api editar-hilo <slug>           {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"}
-  bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena mudando hilos)
+  (abrir una sub-área es de la PERSONA: en la web, página del área, «+ Abrir una sub-área». `abrir-subarea` contesta 400 con la doctrina.
+   La pieza que espera su lugar cuelga del PISO: nombrá el área en lugar de la sub-área —`plan <area>`— y el servidor lo crea si falta.)
+  bitacora-api editar-subarea <slug>        {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"} · {"piso":true}   (= editar-hilo)
+  bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; la persona le abre sub-áreas en la web, o se llena mudando las que ya existen)
   bitacora-api editar-area <slug>           {"nombre":"…"} (renombra) · {"orden":2} (su lugar en el menú)
   bitacora-api fusionar <slug>              {"en":"la-que-queda"}
   bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime",
@@ -1696,19 +1722,19 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api mudar-documento <linea|seccion|flujo> <contenedor> <slug>   {"lineaSlug":"otra"}
 
 Poner una pieza afuera — se lee sin entrar, y nada más que esa pieza (dueño):
-  bitacora-api publicar <hilo> <slug>       → devuelve el `enlace` para mandar
+  bitacora-api publicar <subarea> <slug>       → devuelve el `enlace` para mandar
   bitacora-api publicar <seccion>           (una review: es una sección de un solo documento)
   bitacora-api publicar <linea|seccion|flujo> <contenedor> <slug>
                                             (la forma explícita: la sección con varios documentos
                                              o con archivos propios, y el texto de un flujo)
-  bitacora-api privado <hilo> <slug>        (la trae de vuelta adentro, con las mismas tres formas)
+  bitacora-api privado <subarea> <slug>        (la trae de vuelta adentro, con las mismas tres formas)
                                             publicar abre también los archivos que ese texto muestra
                                             —las capturas, el PDF que un client-report entregó—, y privado los cierra
 
 Archivos y bajas (borrar es del dueño):
   bitacora-api adjuntar <archivo> linea=<slug> [queEs="…"]
   bitacora-api borrar /api/lineas/<slug>     (se niega si todavía cuelga algo)
-  bitacora-api borrar /api/areas/<slug>      (se niega si algún hilo vive ahí)
+  bitacora-api borrar /api/areas/<slug>      (se niega si alguna sub-área vive ahí)
   bitacora-api borrar /api/enlaces/<slug>    (saca un acceso de la columna)
   bitacora-api pendientes                    (sube lo que quedó sin red)
 
