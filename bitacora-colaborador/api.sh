@@ -1498,9 +1498,9 @@ borrar)
   exige 1 "borrar <ruta-de-la-api>   (el servidor se niega si todavía cuelga algo)" "$@"
   curl -fsS --max-time 20 -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE$1"
   ;;
-# Abrir una sub-área es de la PERSONA y se hace en la web, en la página del área. El
-# comando sigue existiendo para que quien lo tipee lea la respuesta del servidor, que dice
-# dónde se cuelga la pieza mientras tanto y cómo se pide el lugar que falta.
+# Abrir la sub-área que falta: el lugar que ninguna de las que hay aloja. Lo hace la sesión
+# que lo descubre escribiendo, y lo dice en su reporte; en la web el mismo gesto vive en la
+# página del área.
 abrir-subarea | abrir-hilo | abrir-linea)
   vaciar_cola
   escribir POST "/api/lineas"
@@ -1658,10 +1658,11 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "cierraEn":"…","cuerpo":"…","flujos":["…"]}
   bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
-  (abrir una sub-área es de la PERSONA: en la web, página del área, «+ Abrir una sub-área». `abrir-subarea` contesta 400 con la doctrina.
-   La pieza que espera su lugar cuelga del PISO: nombrá el área en lugar de la sub-área —`plan <area>`— y el servidor lo crea si falta.)
+  bitacora-api abrir-subarea                {"slug":"el-alta","nombre":"El alta, pantalla por pantalla","area":"producto","brief":"…"}
+        el lugar que ninguna de las que hay aloja — se abre acá y se dice en el reporte (= abrir-hilo = abrir-linea)
+  (lo suelto que todavía no merece lugar propio cuelga del PISO: nombrá el área en lugar de la sub-área —`plan <area>`— y el servidor lo crea si falta.)
   bitacora-api editar-subarea <slug>        {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"} · {"piso":true}   (= editar-hilo)
-  bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; la persona le abre sub-áreas en la web, o se llena mudando las que ya existen)
+  bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena con sub-áreas nuevas o mudando las que ya existen)
   bitacora-api editar-area <slug>           {"nombre":"…"} (renombra) · {"orden":2} (su lugar en el menú)
   bitacora-api fusionar <slug>              {"en":"la-que-queda"}
   bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime",

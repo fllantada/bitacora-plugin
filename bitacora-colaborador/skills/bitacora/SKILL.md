@@ -218,11 +218,22 @@ sub-area and item reads, and the person pins from the web with the **«▲ Pin t
 in the right-hand column of the piece's own page.
 
 **A piece hangs from the sub-area that already holds its topic.** Before writing, ask which
-sub-area this is the analysis (or plan, or bug) of, and write it there. **Opening a sub-area
-belongs to the person and happens on the WEB**, from the area's page — the API answers 400
-(`subareaEsDeLaPersona`) naming it. While the place is missing, the piece hangs from the
+sub-area this is the analysis (or plan, or bug) of, and write it there. **When it fits none
+of them, open the sub-area that is missing** (`$API abrir-subarea`, with its slug, name,
+brief and area) and say so in your report: a sub-area is a permanent PLACE of its area —one
+that gathers pieces of several types for months and that someone asks for by name— and a
+topic of a few weeks is a piece.
+
+```bash
+$API -p <project> abrir-subarea <<'JSON'
+{"slug":"the-signup","nombre":"Sign-up, screen by screen","area":"product",
+ "brief":"The new user's run, from the first screen to the first saved tour."}
+JSON
+```
+
+What does not earn a place of its own yet hangs from the
 area's **floor**: name the AREA instead of a sub-area (`$API plan <area>`) and it lands
-there, and you propose the place that is missing. A piece left on the wrong sibling sub-area
+there. A piece left on the wrong sibling sub-area
 moves with `mover` and `hilo` —which also takes an area, landing on its floor—: it lands
 after the ones already there and keeps its address unless it clashes.
 
@@ -829,9 +840,10 @@ through the same doors.
 
 **Where it hangs is settled first.** List the areas with their live sub-areas
 (`$API areas`) and ask the user which one the plan joins — the plan is theirs, and so is
-the place it belongs to. When no sub-area hosts the topic yet, the plan is born on the
-area's **floor** —name the AREA instead of a sub-area (`$API plan <area>`)— and you propose
-the place that is missing, which the person opens on the web.
+the place it belongs to. When no sub-area hosts the topic yet, open the one that is missing
+(`$API -p <project> abrir-subarea`) and say so in your report; what does not earn a place of
+its own yet is born on the area's **floor** —name the AREA instead of a sub-area (`$API plan
+<area>`)—.
 
 **The name fits in one phrase of up to 60 characters and stands on its own** (see *Writing
 entries* above): its `brief` says what it is about.
