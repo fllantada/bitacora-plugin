@@ -674,12 +674,23 @@ person takes it, marks it asked, and loads on the web what the client answered, 
 own words.** It is the one type painted with a solid fill, in red: what isn't asked in time
 blocks work that can't be unblocked from inside.
 
+**Step one is CHECKING THE SOURCES.** The client already handed material over, and what
+they wrote themselves is read before writing to them: asking anyway spends the one thing the
+project can't replace —their time, and the credit of whoever asks—. `fuentes
+<area-or-subarea>` says which ones there are and which one rules, and **one subagent per
+source** —wide, independent readings— answers what each says about each question. What comes
+back answered goes to the sub-area's book as a decision with its quote; what stays open is
+what the client is asked, and its `queEs` says what was read first. The creation reminds
+you: the response carries `antesDePreguntar` with that area's sources named.
+
 Each question carries `titulo`, `pregunta` —the text ready to send, in the client's words
 and language—, `bloquea` (what it blocks), `urgencia` (why it's urgent) with `para`
 (YYYY-MM-DD, when there is a date), `opciones` each with its `implica` —required here—,
 `recomiendo`, and `propuesta` with its `porque` (what to recommend to the client, and why).
 
 ```bash
+$API -p <project> fuentes search,algolia # step one: what to check against, in the order that rules
+# … one subagent per source: what it says about each question, and where it says it …
 $API -p <project> consulta-cliente <subarea> <<'JSON'
 {"titulo":"What goes into the public catalogue",
  "queEs":"The questions come from the catalogue audit; the answers settle what the search indexes.",
@@ -947,6 +958,7 @@ dimmed at the foot. No field declares precedence — it comes out of vigencia, s
 ```bash
 $API fuentes                    # the whole register, in that order
 $API fuentes algolia            # the ones on a topic: the slug of an area, a sub-area or a stack piece
+$API fuentes search,algolia     # several topics, comma-separated: one tag is enough for a source to show
 $API fuentes "" hoja            # sheets only
 $API fuente attribute-register  # one whole, with its mirror
 $API por-sincronizar            # the live ones whose copy went stale, with their handle and fingerprint

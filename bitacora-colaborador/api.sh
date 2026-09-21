@@ -568,6 +568,7 @@ stack) leer "/api/stack${1:+?flujos=1}" ;;
 #
 #   bitacora-api fuentes                 (todas)
 #   bitacora-api fuentes algolia         (las de ese tema: el slug de un área, de una sub-área o de una pieza)
+#   bitacora-api fuentes busqueda,algolia (varios temas por coma: basta con que la fuente lleve uno — el área Y su sub-área)
 #   bitacora-api fuentes "" hoja         (solo las hojas)
 fuentes)
   ruta="/api/fuentes"
@@ -935,6 +936,10 @@ aplicar)
 # Para lo que decide la persona está la consulta; esto es para lo que decide el CLIENTE, con
 # la persona de interlocutor. El orden es siempre el mismo:
 #
+#   0. `fuentes <area-o-subarea>` dice contra qué se verifica, y un SUBAGENTE POR FUENTE
+#      contesta qué dice cada una de cada pregunta: lo que el cliente ya entregó por escrito
+#      se lee antes de escribirle. Lo contestado va al libro con su cita; lo que queda
+#      abierto es lo que se le pregunta. El alta lo recuerda en `antesDePreguntar`.
 #   1. `consulta-cliente <subarea>` la abre con sus `preguntas`, cada una con el mini análisis
 #      con el que la persona asesora: el texto listo para mandar (`pregunta`, con las
 #      palabras del cliente y en su idioma), qué frena (`bloquea`), por qué urge
@@ -1618,6 +1623,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                                            "propuesta":"qué le recomendarías al cliente","porque":"su porqué, en una o dos frases"}]}
         lo que decide el CLIENTE, con la persona de interlocutor: nace `por-preguntar`; la persona se la lleva, la marca preguntada
         y CARGA EN LA WEB lo que contestó el cliente, con sus palabras; pasa sola a `respondida` con la última respuesta
+        PASO UNO: `fuentes <area-o-subarea>` y un subagente por fuente — lo que el cliente ya entregó contesta solo,
+        y la respuesta del alta trae `antesDePreguntar` con las fuentes de ese mundo nombradas
   bitacora-api chequeo <subarea>               {"titulo":"…","queEs":"qué cambió y qué se le pide al que aprueba","flujos":["<slug-del-recorrido>"],
                                              "pasos":[{"titulo":"la pantalla o el momento","queCuenta":"qué mirar, desde el usuario que usa la pantalla",
                                                        "despues":"<ruta de la captura como queda>","antes":"<ruta en la base — vacía cuando estrena>",
