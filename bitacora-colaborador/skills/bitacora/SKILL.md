@@ -680,13 +680,23 @@ project can't replace —their time, and the credit of whoever asks—. `fuentes
 <area-or-subarea>` says which ones there are and which one rules, and **one subagent per
 source** —wide, independent readings— answers what each says about each question. What comes
 back answered goes to the sub-area's book as a decision with its quote; what stays open is
-what the client is asked, and its `queEs` says what was read first. The creation reminds
-you: the response carries `antesDePreguntar` with that area's sources named.
+what the client is asked: its `contexto` says what was read and what stayed open, and the
+client question declares those `fuentes` by their slug —the page lists them at the foot, and
+the door checks they exist (`fuenteInexistente`). The creation reminds you: the response
+carries `antesDePreguntar` with that area's sources named.
 
-Each question carries `titulo`, `pregunta` —the text ready to send, in the client's words
-and language—, `bloquea` (what it blocks), `urgencia` (why it's urgent) with `para`
+Each question carries `titulo`, `contexto` —**what you need to know to understand it
+without opening another piece**: today's situation, what the sources say and where, the names
+and figures the question uses; it is the first thing the page shows—, `pregunta` —the text
+ready to send, in the client's words and language—, `bloquea` (what it blocks), `urgencia` (why it's urgent) with `para`
 (YYYY-MM-DD, when there is a date), `opciones` each with its `implica` —required here—,
 `recomiendo`, and `propuesta` with its `porque` (what to recommend to the client, and why).
+
+**The client question reads on its own, and the door enforces it.** A bare «decision 31»,
+«point 5» or «PR #237» sends the person to look up that piece before understanding this one:
+in the `queEs` and in each question's analysis every reference is a link —`[decision
+31](<enlace>)`, with the address the API answers— or it tells what that piece says (400
+`referenciaSinEnlace`). The text to send stays out of the check: it is the client's.
 
 ```bash
 $API -p <project> fuentes search,algolia # step one: what to check against, in the order that rules
@@ -694,7 +704,9 @@ $API -p <project> fuentes search,algolia # step one: what to check against, in t
 $API -p <project> consulta-cliente <subarea> <<'JSON'
 {"titulo":"What goes into the public catalogue",
  "queEs":"The questions come from the catalogue audit; the answers settle what the search indexes.",
+ "fuentes":["attribute-register"],
  "preguntas":[{"titulo":"Do private tours go into the public catalogue?",
+               "contexto":"The catalogue carries tours flagged private. The attribute register doesn't say whether they are published, and today's site shows them only by direct link.",
                "pregunta":"Should private tours be published on the website?",
                "bloquea":"The index can't settle which records go in.",
                "urgencia":"The index demo is next week.","para":"2026-09-22",
@@ -708,7 +720,7 @@ $API -p <project> preguntada <id> "Slack"          # or the session, when it kno
 # … the person loads what the client answered; with the last answer it moves to «respondida» by itself …
 $API -p <project> lo-que-contesto <id>             # question by question: the client's text, the option they chose, where they said it
 $API -p <project> preguntas <id> <<'JSON'
-{"preguntas":[{"id":"p1","bloquea":"…what was missing to advise, written in full…"}]}
+{"preguntas":[{"id":"p1","contexto":"…what was missing to advise, written in full…"}]}
 JSON
 $API -p <project> aplicar-cliente <id> "two answers to the book"   # → aplicada
 ```

@@ -940,9 +940,10 @@ aplicar)
 #      contesta qué dice cada una de cada pregunta: lo que el cliente ya entregó por escrito
 #      se lee antes de escribirle. Lo contestado va al libro con su cita; lo que queda
 #      abierto es lo que se le pregunta. El alta lo recuerda en `antesDePreguntar`.
-#   1. `consulta-cliente <subarea>` la abre con sus `preguntas`, cada una con el mini análisis
-#      con el que la persona asesora: el texto listo para mandar (`pregunta`, con las
-#      palabras del cliente y en su idioma), qué frena (`bloquea`), por qué urge
+#   1. `consulta-cliente <subarea>` la abre con las `fuentes` que se leyeron y sus
+#      `preguntas`, cada una con el mini análisis con el que la persona asesora: lo que hay
+#      que saber para entenderla sola (`contexto`), el texto listo para mandar (`pregunta`,
+#      con las palabras del cliente y en su idioma), qué frena (`bloquea`), por qué urge
 #      (`urgencia`, y `para` con la fecha AAAA-MM-DD cuando la hay), las opciones con lo que
 #      implica cada una, `recomiendo`, y qué recomendarle (`propuesta`) con su `porque`.
 #   2. La persona se la lleva al cliente y la marca preguntada en la web —o la sesión con
@@ -964,7 +965,7 @@ lo-que-contesto)
 # Corregir o reescribir preguntas mientras está por preguntar: por id la que se corrige, sin
 # id la que nace entera. Así se atiende un pedido de contexto. La ya contestada, 400.
 preguntas)
-  exige 1 "preguntas <id>   < {\"preguntas\":[{\"id\":\"p2\",\"bloquea\":\"…\",\"urgencia\":\"…\"}]}" "$@"
+  exige 1 "preguntas <id>   < {\"preguntas\":[{\"id\":\"p2\",\"contexto\":\"…\"}]}" "$@"
   vaciar_cola
   escribir PATCH "/api/items/consultas-cliente/$(uri "$1")"
   ;;
@@ -1472,8 +1473,44 @@ anotar-acceso)
   ;;
 review)
   # review  ← {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
+  # review <archivo.md> --pr <owner/repo#n> [--titulo "…"] [--publicar] [--escrito-en <idioma>]
+  #
+  # La segunda forma sube el documento que /review deja en disco tal cual: el markdown
+  # viaja entero sin escaparlo a mano dentro de un JSON, y el título sale de su primer
+  # «# Review — PR #n: <título>». Con --publicar queda afuera en el mismo acto y la
+  # respuesta trae `publica.enlace`, la dirección que se le manda al autor.
   vaciar_cola
-  escribir POST "/api/reviews"
+  if [ "$#" -ge 1 ] && [ -f "$1" ]; then
+    archivo="$1"
+    shift
+    pr="" titulo="" publicar=false escrito=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+      --pr) pr="${2:-}" && shift 2 ;;
+      --titulo) titulo="${2:-}" && shift 2 ;;
+      --escrito-en) escrito="${2:-}" && shift 2 ;;
+      --publicar) publicar=true && shift ;;
+      *)
+        echo "No conozco «$1». Uso: bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar] [--escrito-en <idioma>]" >&2
+        exit 1
+        ;;
+      esac
+    done
+    [ -n "$pr" ] || {
+      echo "Falta --pr <owner/repo#n>: es con lo que la review se vuelve a encontrar y lo que abre la PR desde la página." >&2
+      exit 1
+    }
+    [ -n "$titulo" ] || titulo="$(grep -m1 '^# ' "$archivo" | sed -E 's/^#[[:space:]]+//; s/^(Review|Revisión)[^:]*:[[:space:]]*//')"
+    [ -n "$titulo" ] || {
+      echo "El archivo no abre con «# Review — PR #n: <título>»: pasá el título de la PR con --titulo." >&2
+      exit 1
+    }
+    cuerpo="$(jq -n --rawfile c "$archivo" --arg t "$titulo" --arg p "$pr" --argjson pub "$publicar" --arg e "$escrito" \
+      '{titulo:$t, pr:$p, cuerpo:$c} + (if $pub then {publicar:true} else {} end) + (if $e == "" then {} else {escritoEn:$e} end)')" || exit 1
+    printf '%s' "$cuerpo" | escribir POST "/api/reviews"
+  else
+    escribir POST "/api/reviews"
+  fi
   ;;
 rato)
   # rato  ← {"tarea":"…","tareaEn":"…","reloj":"1:30","epica":"…","epicaNombre":"…",
@@ -1617,7 +1654,10 @@ Escritura (el cuerpo JSON entra por stdin):
                                                         "propuesta":"la recomendación: lo que la sesión haría","porque":"su porqué, en una o dos frases"}]}
         el human in the loop: nace `abierta`; la persona ACEPTA, RECHAZA, PIDE MÁS CONTEXTO o dice que LO DECIDE EL CLIENTE en cada recomendación EN LA WEB y pasa sola a `contestada`; el punto `del-cliente` se lleva a una consulta al cliente y se enlaza con `puntos <id>` < {"puntos":[{"id":"p3","consultaCliente":"<id>"}]}
   bitacora-api consulta-cliente <subarea>      {"titulo":"…","queEs":"de dónde salen las preguntas y qué se hace con lo que conteste, en una o dos frases",
-                                             "preguntas":[{"titulo":"la pregunta en una línea","pregunta":"el texto listo para mandarle, con sus palabras y en su idioma",
+                                             "fuentes":["<slug del registro que se leyó antes>"],
+                                             "preguntas":[{"titulo":"la pregunta en una línea",
+                                                           "contexto":"lo que hay que saber para entenderla sin abrir otra pieza",
+                                                           "pregunta":"el texto listo para mandarle, con sus palabras y en su idioma",
                                                            "bloquea":"qué trabajo queda frenado mientras no conteste","urgencia":"por qué urge","para":"AAAA-MM-DD",
                                                            "opciones":[{"titulo":"…","implica":"qué implica elegirla"}],"recomiendo":0,
                                                            "propuesta":"qué le recomendarías al cliente","porque":"su porqué, en una o dos frases"}]}
@@ -1716,7 +1756,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api definir                      {"termino":"…","definicion":"…"}  (o una lista)
   bitacora-api anotar-acceso                {"nombre":"Engine API","url":"https://…","nota":"staging"}
                                             · con qué se entra: {"usuario":"…","clave":"…"}
-  bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
+  bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…","publicar":true}
+  bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar] [--escrito-en <idioma>]
+                                             (el documento de /review tal cual; --publicar lo pone afuera y contesta publica.enlace)
   bitacora-api rato (dueño)                 {"tarea":"…","reloj":"1:30"}   (el banco de horas)
                                             · la fila entera: {"tareaEn":"la fila en inglés, la que se carga","epica":"<código de la épica>","epicaNombre":"<su nombre>",
                                               "jira":{"clave":"<clave del ticket>","url":"…"}} — las instrucciones del tenant dicen cuáles van siempre
