@@ -128,7 +128,9 @@ $API -p <project> documento linea <subarea> <doc>   # a document's raw markdown
 The project resolves from your working directory when it sits under a workspace root —
 `~/ProyectosDev-Local`, plus any `raiz=<path>` line in `~/.config/bitacora/config.local`,
 which is how you add wherever your own projects live. A folder named differently from its
-project is translated with `alias.<folder>=<project>` in the same file. Outside every
+project is translated with an alias — `$API alias <folder> <project>` adds it, and
+`$API alias` lists the roots, the aliases and the projects with a key without showing any
+key; a numbered copy (`acme-2`, `acme3`) resolves to `acme` by itself. Outside every
 root, `-p <slug>` sets it explicitly and always works. `$API proyecto` says which one
 resolved.
 
@@ -448,8 +450,10 @@ code blocks there with `seccionConCodigo` and a long one with `seccionLarga`; a 
 drawing is allowed and not counted; the why belongs in Context and the mechanism in The
 idea) — then `# Task`, `# The idea`, `# Destination`, `# Context`,
 `# Pattern to follow`, `# Scope`, `# Out of scope`; plus the plan's `queEs`, its one-line
-blurb for the lists. Reaching `entregado` requires
-`ficha.pr` and a `reporte` with seven sections: `## Done`, `## How it turned out`,
+blurb for the lists, and its `visual` — what gets looked at in what it delivers (below).
+Reaching `entregado` requires where the work went back to —`ficha.pr` for code;
+`ficha.entregable`, the address of the piece, the commit or the campaign, for a content
+job— and a `reporte` with seven sections: `## Done`, `## How it turned out`,
 `## Evidence`, `## Decisions along the way` with content, and `## Frictions`,
 `## To decide`, `## Pending out of scope`, which are always present and read "None" when
 there was nothing to report — an absent or empty section is a 400, because a blank reads
@@ -500,6 +504,49 @@ round declares its own without reading the first, and `ronda` names which round 
 belongs to, so a round that arrived in two batches counts as one. `item planes <id>`
 returns it summed per engine, with cost and tokens resolved.
 
+**`visual` says what gets looked at in what the plan delivers, decided at design time.**
+`ninguna` when nothing on a screen changes (backend, data, infra, scripts, tests, harness, a
+refactor); `captura` when something on screen changes and the right result is already
+written (a text, a bug with its expected look, a style that exists elsewhere): whoever looks
+captures the before and the after, and they sit at the foot of the plan as evidence;
+`chequeo` when something on screen changes and whether it is right is the person's call (a
+screen, a state, a component or a run nobody approved on the device yet): a visual check is
+opened, the person answers it, and the plan is signed off after. With `chequeo`, signing off
+through the API waits for an answered check that declares this plan (400 `chequeoPendiente`);
+signing off on the web is the person's and warns instead of blocking. The guiding question:
+*is there something on screen the person has not approved yet?* → `chequeo`; *does it show,
+and is the right result already written?* → `captura`; *nothing on screen?* → `ninguna`.
+
+**And a plan carries REQUESTS between sessions — the short round trip between
+specialists.** The fronts of a project have roles (the one who builds, the one who looks
+—QA: devices, captures, tests, the visual check—, the one who produces content), and small
+work travels between them: the session that builds needs to SEE a screen mid-work and the
+device belongs to another front; at close, that front produces the visual check on the PR.
+A request is a sub-item of the plan (`plan.pedidos[]`), numbered inside it, read at the
+foot of its page under «Between sessions» and nowhere else: it leaves a record without
+taking a line of the home, the menu or the timeline. It carries `rol` (who takes it),
+`que` (what is needed, one sentence), `sobre` (the branch or PR; defaults to the plan's
+ficha), `aparato` (the device, when it matters) and `de` (the front that asked; defaults to
+the plan's destination); it is born `abierto`, the role marks it `tomado` and closes it
+`listo` with what came back —`nota`, `adjuntos` (the paths the upload returned) and
+`chequeo` (the id of the check it opened)—; `descartado` belongs to whoever asked. The
+message between sessions carries only the link; the record is the request.
+
+```bash
+$API -p <project> pedido <plan-id> <<'JSON'
+{"rol":"qa","que":"The shelf with an empty store and with three products, on the phone","sobre":"feat/shelf","aparato":"the Galaxy"}
+JSON
+# → numero and enlace (the plan page with the request's anchor): send ONE line to the role's front
+#   with the plan id and the link — «Request 2 of plan <plan-id> «<title>»: <link>» — since the taker's commands name the plan by id
+$API -p <project> pedidos --rol qa                 # the role's tray: live requests across plans, each with its plan
+$API -p <project> pedido <plan-id> 2 tomado
+$API -p <project> pedido <plan-id> 2 listo <<'JSON'
+{"nota":"Both screens on the Galaxy, on feat/shelf at its last commit.","adjuntos":["<subarea>/shelf-empty.png","<subarea>/shelf-three.png"],"chequeo":"<id, when the request was the visual check>"}
+JSON
+$API -p <project> pedido <plan-id> 2                # what came back, each attachment with its address
+$API -p <project> pedido <plan-id> 2 descartado     # when it stopped being needed
+```
+
 ```bash
 $API -p <project> encargados                 # what can be taken · also: en-curso · entregados
 $API bandeja                                 # without -p: every project this machine holds a key for
@@ -512,6 +559,7 @@ $API -p <project> entregar <id> <<'JSON'
  "consumo":{"ronda":1,"preciosDe":"YYYY-MM-DD","modelos":[{"modelo":"…","entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0,"precio":{"entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0}}]},
  "nota":"PR open, one ASK"}
 JSON
+# a content job closes with "entregable":"<the piece's address>" in the ficha instead of "pr"
 $API -p <project> firmar <id> "PR merged"    # → hecho
 $API -p <project> devolver <id> <<'JSON'
 {"cuerpo":{"en":"<the whole body, with a new ## Round 2 at the end>"},"nota":"back: why"}
@@ -812,10 +860,11 @@ The same step, written from the user:
 $API -p <project> capturar <subarea> step1-origin.png step1-before.png step1-after.png
 # → {"step1-origin.png":"<subarea>/step1-origin.png", …}
 
-# 2. The check, with its run and its steps.
+# 2. The check, with its run, the plan it reviews, and its steps.
 $API -p <project> chequeo <subarea> <<'JSON'
 {"titulo":"The prizes step of the wizard, on a Galaxy S21",
  "queEs":"PR #212 rebuilds the prizes step of the sign-up wizard. Nine screens of the run, on an S21: what changed is the order of the fields and the summary at the foot.",
+ "plan":"<the id of the plan it reviews>",
  "flujos":["<run-slug>"],
  "pasos":[
    {"titulo":"The wizard, on the data step",
@@ -841,6 +890,11 @@ $API -p <project> pasos <id> <<'JSON'
 JSON
 $API -p <project> aplicar-chequeo <id> "round 2 written in the plan · two screens rebuilt"
 ```
+
+**The check declares the plan it reviews** (`plan`, the plan's id, at creation or later
+through `mover chequeos`): that is what ties it to the PR it approves. The plan lists it in
+its access strip as «Check», its page links it from the request that opened it, and with
+`visual: chequeo` signing off through the API waits for it to be answered.
 
 **When you open a check and not a consultation.** The check is for what is decided with the
 eyes: a screen, a component, a run of the app. The consultation is for what is decided by

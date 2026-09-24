@@ -182,6 +182,43 @@ if [ -z "$PROYECTO" ]; then
     ALIAS="$(valor_de "alias.$PROYECTO" || true)"
     [ -n "$ALIAS" ] && PROYECTO="$ALIAS"
   fi
+  # Y la copia numerada de un tenant resuelve sola: `acme-2` y `acme2` son `acme`. Los
+  # frentes de un proyecto son clones con el sufijo `-N`, y cada uno pedía su línea de alias
+  # en el archivo de las llaves. La llave exacta manda cuando existe.
+  if [ -n "$PROYECTO" ] && [ -z "$(valor_de "$PROYECTO" || true)" ]; then
+    BASE_NUMERADA="$(printf '%s' "$PROYECTO" | sed -E 's/-?[0-9]+$//')"
+    if [ -n "$BASE_NUMERADA" ] && [ "$BASE_NUMERADA" != "$PROYECTO" ] && [ -n "$(valor_de "$BASE_NUMERADA" || true)" ]; then
+      PROYECTO="$BASE_NUMERADA"
+    fi
+  fi
+fi
+
+# --- los alias de carpeta, sin mostrar ninguna llave ------------------------------
+#
+# Qué carpeta resuelve a qué tenant vive en el mismo archivo que las llaves, y leerlo
+# para ver los alias las expone: esto lista solo esa parte, y agrega uno sin abrir el
+# archivo. La copia numerada (`acme-2` → `acme`) resuelve sola y no necesita alias.
+if [ "${1:-}" = "alias" ]; then
+  if [ -n "${2:-}" ]; then
+    NUEVO_TENANT="${3:?Falta el tenant: bitacora-api alias <carpeta> <tenant>}"
+    mkdir -p "$CONFIG_DIR"
+    touch "$CONFIG_DIR/config.local"
+    chmod 600 "$CONFIG_DIR/config.local"
+    grep -vE "^alias\.$2=" "$CONFIG_DIR/config.local" >"$CONFIG_DIR/config.local.tmp" || true
+    mv "$CONFIG_DIR/config.local.tmp" "$CONFIG_DIR/config.local"
+    chmod 600 "$CONFIG_DIR/config.local"
+    printf 'alias.%s=%s\n' "$2" "$NUEVO_TENANT" >>"$CONFIG_DIR/config.local"
+    echo "Listo: la carpeta «$2» resuelve al tenant «$NUEVO_TENANT»."
+    exit 0
+  fi
+  echo "raíces:"
+  raices | sed 's/^/  /'
+  echo "alias (carpeta → tenant):"
+  { grep -E '^alias\.' "$CONFIG" 2>/dev/null || true; } | sed -E 's/^alias\.([^=]+)=(.*)$/  \1 → \2/'
+  echo "tenants con llave:"
+  { grep -E '^[a-z0-9-]+=' "$CONFIG" 2>/dev/null | grep -vE '^(url|raiz)=' || true; } | cut -d= -f1 | sed 's/^/  /'
+  echo "(la copia numerada de un tenant —acme-2, acme3— resuelve sola a acme)"
+  exit 0
 fi
 
 if [ -z "$PROYECTO" ]; then
@@ -786,10 +823,13 @@ soltar)
 # azúcar sobre `mover planes <id>`: el estado lo pone el verbo, así nadie lo tipea mal.
 # El servidor cobra el contrato en las dos puntas: para entrar a encargado, el cuerpo
 # con sus ocho secciones (Qué cambia · Tarea · La idea · Destino · Contexto ·
-# Patrón a seguir · Alcance · Fuera de alcance) y su queEs; para llegar a entregado, el reporte con las suyas
+# Patrón a seguir · Alcance · Fuera de alcance), su queEs y su visual (ninguna · captura ·
+# chequeo: qué se mira de lo que entrega); para llegar a entregado, el reporte con las suyas
 # (Hecho · Evidencia · Decisiones sobre la marcha · Fricciones · Para decidir ·
 # Pendientes fuera de alcance, las tres últimas van siempre y dicen «Ninguna» cuando no
-# hubo: una sección ausente o vacía rebota como olvido) y la PR en la ficha.
+# hubo: una sección ausente o vacía rebota como olvido) y adónde volvió el trabajo en la
+# ficha: pr, o entregable cuando el encargo es contenido. Y para llegar a hecho por la API
+# con visual=chequeo, un chequeo contestado que declare el plan.
 # Un 400 nombra todo lo que falta de una vez, con lo que cada sección afirma.
 # La nota va también a `ficha.destino`: las listas —en-curso, bandeja— sirven la ficha y
 # no la historia, y quién tiene un plan se pregunta desde una lista.
@@ -1045,6 +1085,71 @@ aplicar-chequeo)
   vaciar_cola
   jq -cn --arg n "${2:-}" '{estado:"aplicado"} + (if $n == "" then {} else {nota:$n} end)' |
     escribir PATCH "/api/items/chequeos/$(uri "$1")"
+  ;;
+# ─────────────────────────────────────────────────────────────────────────────
+# EL PEDIDO — la vuelta corta entre especialistas, adentro del plan.
+#
+# Una sesión que construye necesita VER algo a mitad de trabajo y el aparato lo tiene otro
+# frente; al cerrar, el chequeo visual lo produce ese frente sobre la PR; marketing pide
+# grabar la app y QA entrega el video. El pedido es ese ida y vuelta, y vive ADENTRO del
+# plan —al pie de su página, en ninguna otra lista— para que deje registro sin volverse
+# ruido para la persona.
+#
+#   1. Quien lo necesita: `pedido <plan> < {"rol":"qa","que":"…","sobre":"<rama o PR>","aparato":"…"}`
+#      contesta el `numero` y el `enlace` (la página del plan con el ancla del pedido). Le
+#      manda al frente de ROL qa —el del bloque de frentes, columna ROL de `bitacora-frentes
+#      mapa`, esté libre u ocupado: lo toma cuando termina su turno— UNA línea con el id del
+#      plan y el enlace (SendMessage): «Pedido <n> del plan <plan-id> «<título>»: <enlace>».
+#      Y sigue con lo que no depende, o pausa.
+#   2. El frente que lo toma: `pedidos --rol qa` es su bandeja; `pedido <plan> <n> tomado`
+#      lo marca; produce con las herramientas del repo; sube con `capturar`; lo cierra
+#      `pedido <plan> <n> listo < {"nota":"…","adjuntos":["<ruta>"],"chequeo":"<id>"}` y
+#      contesta una línea con el enlace a quien lo pidió.
+#   3. Quien lo pidió: `pedido <plan> <n>` trae la vuelta, con la dirección de cada cosa.
+#
+# `descartado` es de quien lo pidió, cuando dejó de hacerle falta. Lo cerrado queda: si hace
+# falta de nuevo, es un pedido nuevo.
+# ─────────────────────────────────────────────────────────────────────────────
+pedidos)
+  # pedidos [--rol <rol>] [--estado <estado>]: sin estado, los vivos (abiertos y tomados).
+  rol_pedidos=""; estado_pedidos=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+    --rol) rol_pedidos="${2:?Falta el rol después de --rol}"; shift 2 ;;
+    --estado) estado_pedidos="${2:?Falta el estado después de --estado}"; shift 2 ;;
+    *) echo "uso: bitacora-api pedidos [--rol <rol>] [--estado abierto|tomado|listo|descartado]" >&2; exit 1 ;;
+    esac
+  done
+  leer "/api/pedidos?rol=$(uri "$rol_pedidos")&estado=$(uri "$estado_pedidos")"
+  ;;
+pedido)
+  exige 1 "pedido <plan-id>   < {\"rol\":\"qa\",\"que\":\"…\",\"sobre\":\"<rama o PR>\",\"aparato\":\"…\"}   (abre uno)
+  pedido <plan-id> <n>                        (lee uno, con su vuelta)
+  pedido <plan-id> <n> tomado [nota] · descartado [nota]
+  pedido <plan-id> <n> listo   < {\"nota\":\"…\",\"adjuntos\":[\"<ruta>\"],\"chequeo\":\"<id>\"}" "$@"
+  plan_pedido="$1"
+  if [ -z "${2:-}" ]; then
+    vaciar_cola
+    escribir POST "/api/items/planes/$(uri "$plan_pedido")/pedidos"
+  elif [ -z "${3:-}" ]; then
+    leer "/api/items/planes/$(uri "$plan_pedido")/pedidos/$(uri "$2")"
+  else
+    vaciar_cola
+    # `listo` lleva lo que volvió, y entra por stdin como toda entrega; `tomado` y
+    # `descartado` van sin cuerpo, con la nota como cuarto argumento, así ninguno de los dos
+    # espera un stdin que no viene.
+    case "$3" in
+    listo)
+      jq -c --arg e "$3" '. + {estado:$e}' |
+        escribir PATCH "/api/items/planes/$(uri "$plan_pedido")/pedidos/$(uri "$2")"
+      ;;
+    tomado | descartado)
+      jq -cn --arg e "$3" --arg n "${4:-}" '{estado:$e} + (if $n == "" then {} else {nota:$n} end)' |
+        escribir PATCH "/api/items/planes/$(uri "$plan_pedido")/pedidos/$(uri "$2")"
+      ;;
+    *) echo "el pedido pasa a tomado, listo o descartado: «$3» no es un escritorio del pedido." >&2; exit 1 ;;
+    esac
+  fi
   ;;
 # Sin stdin: un DELETE no lleva cuerpo, y esperarlo colgaría la terminal en un Ctrl-D.
 sacar)
@@ -1557,9 +1662,11 @@ pendientes) vaciar_cola ;;
 Uso: bitacora-api [-p <proyecto>] <comando>
   El proyecto se deduce de dónde estás parado, bajo ~/ProyectosDev-Local y bajo cada
   `raiz=<path>` de config.local (<raíz>/<proyecto> → <proyecto>, y
-  `alias.<carpeta>=<tenant>` traduce la que no se llama como su tenant);
-  -p lo fija a mano. Lo marcado (dueño) contesta 403 con la llave de un colaborador.
+  `alias.<carpeta>=<tenant>` traduce la que no se llama como su tenant, y la copia
+  numerada —acme-2, acme3— resuelve sola a acme); -p lo fija a mano.
+  Lo marcado (dueño) contesta 403 con la llave de un colaborador.
   bitacora-api proyecto                      (dice cuál resolvió)
+  bitacora-api alias [<carpeta> <tenant>]    (las raíces, los alias y los tenants con llave, sin mostrar ninguna llave; con dos argumentos agrega uno)
   bitacora-api version                       (la instalada contra la última publicada — lo primero de cada invocación)
 
 El sistema del proyecto — la tríada, las instrucciones y las skills. Primera lectura al llegar:
@@ -1610,6 +1717,8 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
   bitacora-api capturar <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una)
+  bitacora-api pedidos [--rol qa] [--estado …]  (los pedidos entre sesiones del proyecto, cruzando planes: la bandeja del frente que los toma; sin estado, los vivos)
+  bitacora-api pedido <plan-id> <n>         (uno, con su vuelta: la nota, los adjuntos por su dirección, el chequeo)
   bitacora-api consultas-cliente [estado]   (lo que se le lleva al cliente; `por-preguntar` espera que se lo lleves, `preguntada` espera al cliente)
   bitacora-api lo-que-contesto <id>         (lo que contestó el cliente, pregunta por pregunta: su texto, la opción que eligió y dónde lo dijo)
   bitacora-api preguntas <id>               < {"preguntas":[{"id":"p1","urgencia":"…"}]}   (corregir o reescribir mientras está por preguntar)
@@ -1628,7 +1737,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
   bitacora-api plan <subarea>                  {"titulo":"…","cierraEn":"…","cuerpo":{"es":"# …"},"flujos":["…"]}
         con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;
-        el servidor exige ocho secciones en el cuerpo —# Qué cambia (el TL;DR para la persona: de dos a cuatro oraciones, sin código) · # Tarea · # La idea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance— y el queEs, la bajada en una línea
+        el servidor exige ocho secciones en el cuerpo —# Qué cambia (el TL;DR para la persona: de dos a cuatro oraciones, sin código) · # Tarea · # La idea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance—, el queEs, la bajada en una línea,
+        y "visual": qué se mira de lo que entrega — ninguna (nada cambia en pantalla) · captura (algo en pantalla cambia y lo correcto ya está escrito:
+        el frente que mira captura el antes y el después) · chequeo (algo en pantalla cambia y que esté bien es el juicio de la persona: se abre el chequeo visual y se firma después)
   bitacora-api bug <subarea>                   {"titulo":"…","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
   bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"}}
@@ -1672,7 +1783,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                                        "flujo":"<slug — cuando el chequeo cruza más de un recorrido>",
                                                        "propuesta":"la recomendación","porque":"su porqué, en una frase"}]}
         lo que se aprueba MIRANDO: las capturas suben antes con `capturar` y el paso las nombra por su ruta, que la puerta verifica;
-        `origen` y `gesto` van desde el segundo paso, y la persona aprueba cada uno EN LA WEB comparando el antes con el después
+        `origen` y `gesto` van desde el segundo paso, y la persona aprueba cada uno EN LA WEB comparando el antes con el después;
+        "plan":"<id>" dice qué plan revisa: el plan lo lista en su tira, y con visual=chequeo la firma por la API espera a que esté contestado
   bitacora-api puntos <id>                  {"puntos":[{"id":"p2","queCambia":"…","porque":"…"},{"titulo":"…","queCambia":"…","propuesta":"…","porque":"…"}]}
         corregir por id o sumar sin id mientras está abierta; reescribir el punto que pidió contexto lo devuelve a la persona. El ya decidido, 400
   bitacora-api aplicar <id> [nota]          → aplicada: la sesión tomó lo decidido (la ronda, las decisiones al libro); sin decidir entera, 400
@@ -1684,11 +1796,20 @@ Escritura (el cuerpo JSON entra por stdin):
         la decisión NO tiene escritorios: nace tomada y se corrige con corregir
   bitacora-api fijar <tipo> <id>            la clava arriba de su sub-área: es la pieza por la que la sub-área abre, en su página y en el menú
   bitacora-api soltar <tipo> <id>           la devuelve al orden del trabajo (azúcar sobre mover con {"fijado":true|false})
+  El pedido entre sesiones (adentro del plan; la vuelta corta entre especialistas):
+  bitacora-api pedido <plan-id>             {"rol":"qa","que":"qué hace falta ver o producir","sobre":"<rama o PR>","aparato":"<cuando importa>"}
+                                            → contesta numero y enlace; se le manda UNA línea al frente de ROL qa (columna ROL de `bitacora-frentes mapa`,
+                                              libre u ocupado): «Pedido <n> del plan <plan-id> «<título>»: <enlace>» — el id, porque sus comandos nombran el plan así
+  bitacora-api pedido <plan-id> <n> tomado [nota]   (el frente del rol lo tiene)
+  bitacora-api pedido <plan-id> <n> listo   {"nota":"…","adjuntos":["<ruta que devolvió capturar>"],"chequeo":"<id del chequeo abierto>"}
+                                            (lo que volvió; se contesta con una línea y el enlace a quien lo pidió)
+  bitacora-api pedido <plan-id> <n> descartado [nota]   (de quien lo pidió, cuando dejó de hacerle falta)
   El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
   bitacora-api tomar <id> [nota]            → en-curso; la nota (y ficha.destino) es el worktree o la copia que lo tiene
   bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…","review":"…"},"consumo":{…},"nota":"…"} → entregado
                                             (el consumo son los tokens de cada motor con su precio de ese día: se suma a las tandas anteriores)
-                                            (el servidor exige ficha.pr y el reporte con sus seis secciones: ## Hecho · ## Evidencia ·
+                                            (el encargo de contenido cierra con ficha.entregable —la dirección de la pieza, el commit o la campaña— en lugar de ficha.pr)
+                                            (el servidor exige ficha.pr o ficha.entregable y el reporte con sus seis secciones: ## Hecho · ## Evidencia ·
                                              ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir · ## Pendientes fuera de alcance —
                                              las tres últimas van siempre y dicen «Ninguna» cuando no hubo, porque ausente o vacía rebota;
                                              la review publicada en la bitácora va en ficha.review)
