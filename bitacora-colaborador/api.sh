@@ -208,7 +208,7 @@ if [ "${1:-}" = "alias" ]; then
     mv "$CONFIG_DIR/config.local.tmp" "$CONFIG_DIR/config.local"
     chmod 600 "$CONFIG_DIR/config.local"
     printf 'alias.%s=%s\n' "$2" "$NUEVO_TENANT" >>"$CONFIG_DIR/config.local"
-    echo "Listo: la carpeta «$2» resuelve al tenant «$NUEVO_TENANT»."
+    echo "Listo: la carpeta «$2» resuelve al tenant «${NUEVO_TENANT}»."
     exit 0
   fi
   echo "raíces:"
@@ -798,6 +798,16 @@ mover)
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
+# Suma campos a la ficha de una pieza: el servidor la funde con la que tenía, así se agrega
+# la review o el entregable sin reescribir lo demás. Los campos van como tercer argumento o
+# por stdin.
+ficha)
+  exige 2 "ficha <tipo> <id> '{\"review\":\"…\"}'   (o el JSON por stdin)" "$@"
+  vaciar_cola
+  if [ "$#" -ge 3 ]; then campos="$3"; else campos="$(cat)"; fi
+  printf '%s' "$campos" | jq -ce 'if type == "object" then {ficha: .} else error("la ficha es un objeto: {\"clave\":\"valor\"}") end' |
+    escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
+  ;;
 # ─────────────────────────────────────────────────────────────────────────────
 # LO QUE ABRE LA SUB-ÁREA — la pieza clavada arriba.
 #
@@ -1203,10 +1213,16 @@ diferir)
   exit 1
   ;;
 # Corregir una decisión registrada: su veredicto, su marco, sus textos — o mudarla de hilo.
+# Corregir: con el tipo, cualquier pieza por su puerta genérica; con el id solo, una decisión
+# por la suya, que es la única con puerta propia.
 corregir)
-  exige 1 "corregir <id>   < {\"veredicto\":\"…\"} · {\"cuerpo\":{…}} · {\"lineaSlug\":\"…\"}" "$@"
+  exige 1 "corregir <id>   < {\"veredicto\":\"…\"} (una decisión) · corregir <tipo> <id>   < {\"cuerpo\":{…}} (cualquier otra pieza)" "$@"
   vaciar_cola
-  escribir PATCH "/api/decisiones/$(uri "$1")"
+  if [ "$#" -ge 2 ]; then
+    escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
+  else
+    escribir PATCH "/api/decisiones/$(uri "$1")"
+  fi
   ;;
 superar)
   exige 2 "superar <linea> <id-de-entrada>   < {\"superadaPor\":\"…\"}" "$@"
@@ -1579,28 +1595,41 @@ anotar-acceso)
 review)
   # review  ← {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
   # review <archivo.md> --pr <owner/repo#n> [--titulo "…"] [--publicar] [--escrito-en <idioma>]
+  #        [--traduccion <archivo.<idioma>.md>] [--hallazgos <hallazgos.json>]
   #
   # La segunda forma sube el documento que /review deja en disco tal cual: el markdown
   # viaja entero sin escaparlo a mano dentro de un JSON, y el título sale de su primer
   # «# Review — PR #n: <título>». Con --publicar queda afuera en el mismo acto y la
-  # respuesta trae `publica.enlace`, la dirección que se le manda al autor.
+  # respuesta trae `publica.enlace`, la dirección que se le manda al autor. Con
+  # --traduccion sube también la otra capa, sellada contra el original en el mismo acto: el
+  # idioma sale del nombre del archivo (`<doc>.en.md`). Con --hallazgos viajan los FIX del
+  # plan de acción como dato —la clase, la rule, el archivo y el peldaño de cada uno—.
   vaciar_cola
   if [ "$#" -ge 1 ] && [ -f "$1" ]; then
     archivo="$1"
     shift
-    pr="" titulo="" publicar=false escrito=""
+    pr="" titulo="" publicar=false escrito="" traduccion="" hallazgos=""
     while [ "$#" -gt 0 ]; do
       case "$1" in
       --pr) pr="${2:-}" && shift 2 ;;
       --titulo) titulo="${2:-}" && shift 2 ;;
       --escrito-en) escrito="${2:-}" && shift 2 ;;
       --publicar) publicar=true && shift ;;
+      --traduccion) traduccion="${2:-}" && shift 2 ;;
+      --hallazgos) hallazgos="${2:-}" && shift 2 ;;
       *)
-        echo "No conozco «$1». Uso: bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar] [--escrito-en <idioma>]" >&2
+        echo "No conozco «$1». Uso: bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar] [--escrito-en <idioma>] [--traduccion <archivo.<idioma>.md>] [--hallazgos <hallazgos.json>]" >&2
         exit 1
         ;;
       esac
     done
+    [ -z "$traduccion" ] || [ -f "$traduccion" ] || { echo "No encuentro la traducción «${traduccion}»." >&2; exit 1; }
+    [ -z "$hallazgos" ] || [ -f "$hallazgos" ] || { echo "No encuentro los hallazgos «${hallazgos}»." >&2; exit 1; }
+    idioma_trad=""
+    if [ -n "$traduccion" ]; then
+      idioma_trad="$(printf '%s' "$traduccion" | sed -nE 's/.*\.([a-z]{2})\.md$/\1/p')"
+      [ -n "$idioma_trad" ] || { echo "La traducción se llama <doc>.<idioma>.md —«${traduccion}» no dice su idioma—." >&2; exit 1; }
+    fi
     [ -n "$pr" ] || {
       echo "Falta --pr <owner/repo#n>: es con lo que la review se vuelve a encontrar y lo que abre la PR desde la página." >&2
       exit 1
@@ -1610,8 +1639,14 @@ review)
       echo "El archivo no abre con «# Review — PR #n: <título>»: pasá el título de la PR con --titulo." >&2
       exit 1
     }
+    titulo_trad=""
+    [ -z "$traduccion" ] || titulo_trad="$(grep -m1 '^# ' "$traduccion" | sed -E 's/^#[[:space:]]+//; s/^(Review|Revisión)[^:]*:[[:space:]]*//')"
     cuerpo="$(jq -n --rawfile c "$archivo" --arg t "$titulo" --arg p "$pr" --argjson pub "$publicar" --arg e "$escrito" \
-      '{titulo:$t, pr:$p, cuerpo:$c} + (if $pub then {publicar:true} else {} end) + (if $e == "" then {} else {escritoEn:$e} end)')" || exit 1
+      --arg ti "$idioma_trad" --arg tt "$titulo_trad" \
+      --rawfile tc "${traduccion:-/dev/null}" --slurpfile h "${hallazgos:-/dev/null}" \
+      '{titulo:$t, pr:$p, cuerpo:$c} + (if $pub then {publicar:true} else {} end) + (if $e == "" then {} else {escritoEn:$e} end)
+       + (if $ti == "" then {} else {traduccion: ({idioma:$ti, cuerpo:$tc} + (if $tt == "" then {} else {titulo:$tt} end))} end)
+       + (if ($h | length) == 0 then {} else {hallazgos: $h[0]} end)')" || exit 1
     printf '%s' "$cuerpo" | escribir POST "/api/reviews"
   else
     escribir POST "/api/reviews"
@@ -1789,7 +1824,9 @@ Escritura (el cuerpo JSON entra por stdin):
         corregir por id o sumar sin id mientras está abierta; reescribir el punto que pidió contexto lo devuelve a la persona. El ya decidido, 400
   bitacora-api aplicar <id> [nota]          → aplicada: la sesión tomó lo decidido (la ronda, las decisiones al libro); sin decidir entera, 400
         la respuesta es DE LA PERSONA y se escribe en la web: por esta puerta, 400
-  bitacora-api traducir-item <tipo> <id>    {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}
+  bitacora-api traducir-item <tipo> <id>    {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"},"diagramas":[…]}
+        los dibujos de la capa traducida van en diagramas, compilados con --idioma de esa capa; el bloque d2 sin su dibujo, 400
+  bitacora-api ficha <tipo> <id> '{"review":"…"}'   suma esos campos a la ficha, que el servidor funde con la que tenía
   bitacora-api mover <tipo> <id>            {"estado":"hecho","nota":"cómo cerró"}
                                             · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)
                                             · {"tambienEn":["mobile"]} la muestra además desde esas sub-áreas (la lista entera; [] la deja en un solo lugar)
@@ -1816,7 +1853,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada
   bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con sus ocho secciones y su ## Ronda N>"},"nota":"…"} → encargado
                                             (entrar a encargado cobra las ocho secciones del cuerpo y el queEs; sin cuerpo, imprime la forma)
-  bitacora-api sacar <tipo> <id>            (el que se abrió por error — dueño)
+  bitacora-api sacar <tipo> <id>            (el que se abrió por error y el duplicado — dueño)
   bitacora-api entrada <slug>               {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
   bitacora-api superar <slug> <id-entrada>  {"superadaPor":"…"}
   bitacora-api decision <slug>              se registra YA TOMADA, con su análisis entero:
@@ -1824,7 +1861,9 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "bloquea":"qué se frenaba","opciones":[{"titulo":"…","implica":"…"},…],
                                              "recomiendo":0,"recomendacion":"por qué esa",
                                              "cierraEn":"…","cuerpo":"…","flujos":["…"]}
-  bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}
+  bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}   (una decisión)
+  bitacora-api corregir <tipo> <id>         {"cuerpo":{…},"diagramas":[…]} · {"titulo":"…"} · {"queEs":"…"}   (cualquier otra pieza)
+  bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado)
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
   bitacora-api abrir-subarea                {"slug":"el-alta","nombre":"El alta, pantalla por pantalla","area":"producto","brief":"…"}
         el lugar que ninguna de las que hay aloja — se abre acá y se dice en el reporte (= abrir-hilo = abrir-linea)
@@ -1869,7 +1908,7 @@ Escritura (el cuerpo JSON entra por stdin):
         toma la FOTO nueva del estado del área, al cierre de un cambio importante: cinco secciones de lo amplio a lo específico
         («Dónde estamos» sin código y en cuatro oraciones; «El mapa» con su dibujo d2), el hito que la produjo y el plan firmado
         cuando fue uno; la foto anterior queda como historia y se recorre con «Anterior»
-  bitacora-api editar-estado <area>         {"cuerpo":…} · {"hito":"…"} · {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"}}
+  bitacora-api editar-estado <area>         {"cuerpo":…} · {"hito":"…"} · {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"},"diagramas":[…]}
         corrige la foto vigente sin abrir versión
   bitacora-api escribir-instrucciones       < instrucciones.md   (el markdown entero por stdin; reemplaza; crea la sección la primera vez)
   bitacora-api escribir-dominio             < dominio.md          (el negocio del cliente, con sus palabras; reemplaza)

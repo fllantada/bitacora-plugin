@@ -152,7 +152,9 @@ $API -p <project> decision <subarea-slug> <<'JSON'
  "cierraEn":"…","cuerpo":"…"}
 JSON
 
-$API -p <project> corregir <id> <<< '{"veredicto":"…"}'
+$API -p <project> corregir <id> <<< '{"veredicto":"…"}'                 # a decision, through its own door
+$API -p <project> corregir analisis <id> <<< '{"cuerpo":{"en":"…"},"diagramas":[…]}'   # any other piece
+$API -p <project> mover analisis <id> <<< '{"estado":"descartado","nota":"why it stopped holding"}'
 ```
 
 ## A sub-area holds NINE TYPES, each with its own door
@@ -164,7 +166,7 @@ colour:
 
 | Type | What it is | What opening it costs | Desks |
 |---|---|---|---|
-| **Analysis** | what was understood about a topic | its body | none: it is material you read |
+| **Analysis** | what was understood about a topic | its body | escrito, or descartado when it stopped holding: it is material you read |
 | **Plan** | how something gets solved — strategy AND execution; it also carries a dispatched job | its body and where it closes | pendiente · encargado · en-curso · entregado · hecho · descartado |
 | **Bug** | a defect found while doing something else | its body, with What happens · Where · How to reproduce | abierto · arreglado · descartado |
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
