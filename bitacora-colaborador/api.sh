@@ -749,18 +749,18 @@ publicados) leer "/api/publicacion" ;;
 horas) leer "/api/trabajo" ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas · chequeos
+# LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas · chequeos · preguntas-jev
 #
 # Una sub-área es el lugar y adentro cuelgan cosas de tipo distinto. El tipo se nombra
 # en plural y en la misma palabra que se lee en la app, así lo que se escribe y lo
 # que se navega dicen igual.
 # ─────────────────────────────────────────────────────────────────────────────
 tipo)
-  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos> [estado]" "$@"
+  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos|preguntas-jev> [estado]" "$@"
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
-  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos>" "$@"
+  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos|preguntas-jev>" "$@"
   leer "/api/items/$(uri "$1")?abiertos"
   ;;
 de-la-subarea | del-hilo)
@@ -778,7 +778,7 @@ traducir-item)
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
-analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente | chequeo)
+analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente | chequeo | pregunta-jev)
   exige 1 "$comando <subarea>   < JSON" "$@"
   vaciar_cola
   case "$comando" in
@@ -790,8 +790,38 @@ analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente
     consulta) ruta_tipo=consultas ;;
     consulta-cliente) ruta_tipo=consultas-cliente ;;
     chequeo) ruta_tipo=chequeos ;;
+    pregunta-jev) ruta_tipo=preguntas-jev ;;
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
+  ;;
+# Las clases de hallazgo de las reviews: cada una con sus reviews, el peldaño que debió
+# frenarla, su fila en el registro del harness y las preguntas de Jev que la reemplazan.
+hallazgos)
+  if [ "$#" -ge 1 ]; then leer "/api/hallazgos?clase=$(uri "$1")"; else leer "/api/hallazgos"; fi
+  ;;
+# Las corridas reales de Jev, como las manda el motor de /jev al commit: una o una tanda,
+# cada una con la clave de su pregunta.
+jev-corrida)
+  vaciar_cola
+  escribir POST "/api/jev/corridas"
+  ;;
+jev-corridas)
+  consulta=""
+  for arg in "$@"; do
+    case "$arg" in
+    --por-juzgar) consulta="${consulta:+$consulta&}porJuzgar=1" ;;
+    rojo | verde) consulta="${consulta:+$consulta&}resultado=$arg" ;;
+    *) consulta="${consulta:+$consulta&}clave=$(uri "$arg")" ;;
+    esac
+  done
+  leer "/api/jev/corridas${consulta:+?$consulta}"
+  ;;
+# El veredicto de quien firma sobre un rojo: el archivo estaba mal, o la pregunta está mal calibrada.
+jev-veredicto)
+  exige 2 "jev-veredicto <corrida> archivo|pregunta [nota]" "$@"
+  vaciar_cola
+  jq -cn --arg j "$2" --arg n "${3:-}" '{juicio:$j} + (if $n == "" then {} else {nota:$n} end)' |
+    escribir PATCH "/api/jev/corridas/$(uri "$1")"
   ;;
 mover)
   exige 2 "mover <tipo> <id>   < JSON" "$@"
@@ -1917,6 +1947,17 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api anotar-acceso                {"nombre":"Engine API","url":"https://…","nota":"staging"}
                                             · con qué se entra: {"usuario":"…","clave":"…"}
   bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…","publicar":true}
+  bitacora-api review <doc.md> --pr <owner/repo#n> [--traduccion <doc.en.md>] [--hallazgos <hallazgos.json>]
+        con --traduccion la otra capa nace sellada en el mismo acto; con --hallazgos viajan los FIX como dato:
+        [{"clase":"<kebab, la misma en cada review>","titulo":"…","rule":"…","archivo":"…","peldano":"mecanico"}]
+        la clase que ya llegó en otra review abre su fila en harness (o suma una entrada a la que ya existe)
+  bitacora-api hallazgos [clase]            las clases de FIX a lo largo de las reviews: sus reviews, sus peldaños, su fila y sus preguntas de Jev
+  bitacora-api pregunta-jev <subarea>       {"titulo":"…","queEs":"…","clave":"<id en la rule del repo>","pregunta":"<the question>","clase":"…","cuerpo":"…"}
+        su banco entra con corregir pregunta-jev <id> {"banco":{"rojo":[…],"verde":[…],"aprobado":[…],"barrera":0.5}};
+        su escritorio: propuesta · en-banco · informando · frena · retirada
+  bitacora-api jev-corrida                  {"clave":"…","archivo":"…","commit":"…","pr":"…","probabilidad":0.12,"resultado":"rojo"}  (o una lista)
+  bitacora-api jev-corridas [clave] [rojo|verde] [--por-juzgar]
+  bitacora-api jev-veredicto <corrida> archivo|pregunta [nota]   el rojo acertó, o la pregunta está mal calibrada
   bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar] [--escrito-en <idioma>]
                                              (el documento de /review tal cual; --publicar lo pone afuera y contesta publica.enlace)
   bitacora-api rato (dueño)                 {"tarea":"…","reloj":"1:30"}   (el banco de horas)

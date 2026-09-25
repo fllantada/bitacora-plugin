@@ -157,7 +157,7 @@ $API -p <project> corregir analisis <id> <<< '{"cuerpo":{"en":"…"},"diagramas"
 $API -p <project> mover analisis <id> <<< '{"estado":"descartado","nota":"why it stopped holding"}'
 ```
 
-## A sub-area holds NINE TYPES, each with its own door
+## A sub-area holds TEN TYPES, each with its own door
 
 A **sub-area** is a permanent PLACE inside its area — search, the engine's infrastructure,
 the contract — and what hangs from it has a type. A topic of a few weeks is a piece and
@@ -175,6 +175,7 @@ colour:
 | **Consultation** | the human in the loop: what the session asks the person, point by point; the person accepts, rejects, picks another option in one click, asks for more context, or says the client decides, ON THE WEB | its `queEs` —where the points come from and what happens with what is decided— and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
 | **Client Question** | what the CLIENT decides, with the person as go-between: the session prepares each question with its analysis, the person takes it to the client and loads what the client answered ON THE WEB | its `queEs` and its questions: each with the text to send, what it blocks, why it's urgent, the options with what they imply and what to recommend | por-preguntar · preguntada · respondida · aplicada · descartada |
 | **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
+| **Jev Question** | a semantic judgement that runs at commit, with its evidence: the bench over the red, the green and the approved, and its real runs with the signer's verdict on each red | its body, its `queEs`, its `clave` —the id in the repo's rule— and the `pregunta` | propuesta · en-banco · informando · frena · retirada |
 
 ```bash
 $API -p <project> analisis <subarea> <<'JSON'
@@ -910,6 +911,27 @@ produced them. The
 decision belongs to the person and enters through the web, same as the consultation: a step
 already decided is never rewritten, and the one that asked for more context is the
 deliberate exception, because recapturing it is how the request is answered.
+
+## The Jev Question — a semantic judgement, with its evidence
+
+When a project runs Jev questions at commit, **each question is a piece** of the `harness`
+area: its `clave` —the id the repo's rule gives it, unique in the project—, the `pregunta`
+Jev is asked, the FIX `clase` it comes to replace, and its `banco`: Jev's probability on
+each red, green and approved sample. Its desk is the path of every question —`propuesta`,
+`en-banco`, `informando`, `frena`, `retirada`— and what moves it from reporting to blocking
+comes from its real runs: the page reads the bench, the precision over the reds the signer
+judged, and whether its class kept reaching the review.
+
+```bash
+$API -p <project> pregunta-jev <subarea> <<'JSON'
+{"titulo":"…","queEs":"what class of fault it catches, and on which files","clave":"<id in the repo's rule>",
+ "pregunta":"<the question>","clase":"<the FIX class it replaces>","cuerpo":"<its scope in code and its criteria>"}
+JSON
+$API -p <project> corregir pregunta-jev <id> <<< '{"banco":{"rojo":[0.08],"verde":[0.91],"aprobado":[0.93]}}'
+$API -p <project> jev-corrida <<< '{"clave":"…","archivo":"src/x.ts","commit":"<sha>","probabilidad":0.12,"resultado":"rojo"}'
+$API -p <project> jev-veredicto <run> archivo      # the file was wrong: the question was right
+$API -p <project> jev-veredicto <run> pregunta     # the question is miscalibrated
+```
 
 ## Planning — the same gesture in every project
 
