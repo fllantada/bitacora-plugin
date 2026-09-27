@@ -1264,10 +1264,22 @@ editar-subarea | editar-hilo | editar-linea)
   vaciar_cola
   escribir PATCH "/api/lineas/$(uri "$1")"
   ;;
+# fusionar <sub-área> <destino> — la absorbe en otra sub-área o en su ÁREA (el lugar del
+# área). Las piezas guardan el nombre y el brief de la absorbida como su tema, su slug queda
+# de alias y quien la veía ve el lugar que la aloja.
 fusionar)
-  exige 1 "fusionar <slug-que-desaparece>   < {\"en\":\"el-que-queda\"}" "$@"
+  exige 1 "fusionar <sub-área> <área-o-sub-área>   (o {\"en\":\"…\"} por stdin)" "$@"
   vaciar_cola
-  escribir POST "/api/lineas/$(uri "$1")/fusionar"
+  if [ "$#" -ge 2 ]; then jq -cn --arg en "$2" '{en:$en}'; else cat; fi |
+    escribir POST "/api/lineas/$(uri "$1")/fusionar"
+  ;;
+# ascender <sub-área> [<área>] — la sub-área que es un mundo aparte pasa a ser un ÁREA, con
+# ella como su lugar: sus piezas, su cronología y su libro quedan en el mismo slug.
+ascender)
+  exige 1 "ascender <sub-área> [<slug-del-área-nueva>]" "$@"
+  vaciar_cola
+  if [ "$#" -ge 2 ]; then jq -cn --arg a "$2" '{area:$a}'; else printf '{}'; fi |
+    escribir POST "/api/lineas/$(uri "$1")/ascender"
   ;;
 # abrir-flujo  ← {"nombre":"…","queEs":"…","categoria":"runtime|editorial|ciclo-de-vida|migracion",
 #                 "pasos":[{"etapa":"…","actor":"…","que":"…","pieza":"<slug del stack>","detalle":"…"}]}
@@ -1895,13 +1907,15 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api corregir <tipo> <id>         {"cuerpo":{…},"diagramas":[…]} · {"titulo":"…"} · {"queEs":"…"}   (cualquier otra pieza)
   bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado)
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
-  bitacora-api abrir-subarea                {"slug":"el-alta","nombre":"El alta, pantalla por pantalla","area":"producto","brief":"…"}
-        el lugar que ninguna de las que hay aloja — se abre acá y se dice en el reporte (= abrir-hilo = abrir-linea)
-  (lo suelto que todavía no merece lugar propio cuelga del PISO: nombrá el área en lugar de la sub-área —`plan <area>`— y el servidor lo crea si falta.)
-  bitacora-api editar-subarea <slug>        {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"} · {"piso":true}   (= editar-hilo)
-  bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena con sub-áreas nuevas o mudando las que ya existen)
+  Cada pieza va a un ÁREA: `plan <area>`, `analisis <area>`… cae en su lugar, y el servidor lo crea si falta.
+  Todo proyecto trae Comercial (`comercial`, alias `marketing`), QA (`qa`), Nice To Have (`nice-to-have`, alias `nit`) y Harness.
+  bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena nombrándola al escribir)
   bitacora-api editar-area <slug>           {"nombre":"…"} (renombra) · {"orden":2} (su lugar en el menú)
-  bitacora-api fusionar <slug>              {"en":"la-que-queda"}
+  La sub-área, en el proyecto que todavía no cerró la adaptación sin-subareas:
+  bitacora-api fusionar <sub-área> <área>   la funde en el lugar del área; cada pieza guarda su nombre y su brief como tema
+  bitacora-api ascender <sub-área> [<slug>] la sub-área que es un mundo aparte pasa a ser un área, con ella como su lugar
+  bitacora-api abrir-subarea                {"slug":"…","nombre":"…","area":"…","brief":"…"}   (400 en el proyecto que ya adaptó)
+  bitacora-api editar-subarea <slug>        {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"} · {"piso":true}   (= editar-hilo)
   bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime",
                                              "pasos":[{"etapa":"…","actor":"…","que":"…","pieza":"algolia","detalle":"…"}]}
   bitacora-api editar-flujo <slug>          {"estado":"construido"} · {"sumarStack":[…]} · {"sumarGlosario":[…]}
