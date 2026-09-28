@@ -181,7 +181,7 @@ $API -p <project> analisis <area> <<'JSON'
 {"titulo":"…","queEs":"what the reader will find","cuerpo":{"en":"# …"}}
 JSON
 $API -p <project> plan <area> <<'JSON'
-{"titulo":"…","cierraEn":"the PR that brings it","cuerpo":{"en":"# How it gets solved\n…"}}
+{"titulo":"…","cierraEn":"the PR that brings it","prioridad":"alta","cuerpo":{"en":"# How it gets solved\n…"}}
 JSON
 $API -p <project> bug <area> <<'JSON'
 {"titulo":"…","cuerpo":{"en":"# What happens\n…\n\n# Where\n…\n\n# How to reproduce\n1. …\n2. …"}}
@@ -339,8 +339,10 @@ alias `nit`: the good ideas that showed up and wait for their moment) and **Harn
 (`harness`: the tooling the project works with). Whoever arrives at any project knows
 without asking where selling, testing, what waits and the tooling go.
 
-**And every area carries its state**: a snapshot of where that world stands today, read on
-top of the area's page and in full at `/<project>/area/<slug>/estado`. It is a series of
+**And every area carries its state**: a snapshot of where that world stands today, read in
+full on top of the area's page —its date, its milestone, the big picture, what happened since
+and its sections, with «← Previous» to the earlier one— and with its history at
+`/<project>/area/<slug>/estado`. It is a series of
 snapshots and the latest one is read; each carries the milestone that produced it —a
 relevant plan signed, a client decision, a source that moved the ground— and the earlier
 ones are the history, walked one step back at a time with "Previous". The body has five
@@ -438,6 +440,20 @@ say whether it is done. States: `pendiente` and `hecho` at the two ends, `encarg
 `en-curso` and `entregado` for a dispatched job in between (next paragraph), and
 `descartado` for what stopped applying — marking that one `hecho` would lie about work
 nobody did.
+
+**Every plan has a `prioridad`: `alta`, `media` or `baja`** — the order it is taken in among
+the plans waiting at its same desk. It is declared when opening the plan if you know it, and
+a plan that declares none is `media`: every read serves it, with that value. Within each step
+of the work order, `alta` goes first and `baja` last, and the clock decides inside each one
+—on the area's page, in the menu, in the home tray and on the by-type axis—; it orders what
+is still open, and closed plans go back to the clock. Rows show it in words («↑ high
+priority», «medium priority», «↓ low priority»), the menu carries the arrow of the high and
+the low ones, and the plan's header shows it next to its desk. It is corrected in any desk
+without moving the plan, and its history and contract stay as they were:
+
+```bash
+$API -p <project> corregir planes <id> <<< '{"prioridad":"alta"}'
+```
 
 **A plan also carries a dispatched job, end to end.** When a thinking session hands work
 to a coding session, the plan is the handoff: its body is the brief, its `reporte` is what
