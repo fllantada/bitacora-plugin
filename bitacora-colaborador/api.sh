@@ -667,8 +667,9 @@ areas | area)
 #
 # Contesta la vigente entera —su cuerpo con las cinco secciones, su hito, el plan que la
 # produjo— más la cadena (`anterior`, `siguiente`, `fotos`) y `desde`: lo que se firmó y
-# qué fuente cambió después de tomarla, que es la señal de que toca renovarla. Con
-# `--version N` contesta una foto anterior. Sin ninguna foto, 404 diciendo cómo se toma.
+# qué fuente cambió después de tomarla, y los planes abiertos del área que su «Lo que
+# sigue» no nombra (`desde.planes`, con su enlace), que es la señal de que toca renovarla.
+# Con `--version N` contesta una foto anterior. Sin ninguna foto, 404 diciendo cómo se toma.
 estado)
   exige 1 "estado <area> [--version N]" "$@"
   if [ "${2:-}" = "--version" ] && [ -n "${3:-}" ]; then
@@ -1575,8 +1576,10 @@ sincronizar-skills)
 # produjo (la firma de un plan, una decisión del cliente, una fuente que movió el terreno),
 # el `plan` cuya firma fue el hito cuando lo hubo, y los `diagramas` compilados con
 # `npm run -s diagramas`. El servidor cobra el contrato —«Dónde estamos» sin código y en
-# cuatro oraciones, «El mapa» con su dibujo— y sella las fuentes del área; la foto anterior
-# queda como historia. `editar-estado` corrige la vigente sin abrir versión: una frase, un
+# cuatro oraciones, «El mapa» con su dibujo, y con planes abiertos en el área «Lo que sigue»
+# con su dibujo de etapas, cada plan abierto por su enlace en la tabla | Etapa | Plan |
+# Avanza cuando | (400 `planesSinNombrar`, que los lista) y una o dos oraciones— y sella las
+# fuentes del área; la foto anterior queda como historia. `editar-estado` corrige la vigente sin abrir versión: una frase, un
 # diagrama recompilado, el hito, o la capa traducida con la huella del original.
 #   bitacora-api escribir-estado <area> < estado.json
 #   bitacora-api editar-estado <area> <<< '{"hito":"…"}'
@@ -1952,8 +1955,10 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api escribir-estado <area>       {"cuerpo":{"es":"# Dónde estamos\n…\n# El mapa\n…\n# En vuelo\n…\n# Lo que sigue\n…\n# Lo que espera de otros\n…"},
                                              "hito":"…","plan":"<id>","diagramas":[…]}
         toma la FOTO nueva del estado del área, al cierre de un cambio importante: cinco secciones de lo amplio a lo específico
-        («Dónde estamos» sin código y en cuatro oraciones; «El mapa» con su dibujo d2), el hito que la produjo y el plan firmado
-        cuando fue uno; la foto anterior queda como historia y se recorre con «Anterior»
+        («Dónde estamos» sin código y en cuatro oraciones; «El mapa» con su dibujo d2; con planes abiertos en el área,
+        «Lo que sigue» con su dibujo de etapas, cada plan abierto por su enlace en la tabla | Etapa | Plan | Avanza cuando |
+        y una o dos oraciones), el hito que la produjo y el plan firmado cuando fue uno; la foto anterior queda como
+        historia y se recorre con «Anterior»
   bitacora-api editar-estado <area>         {"cuerpo":…} · {"hito":"…"} · {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"},"diagramas":[…]}
         corrige la foto vigente sin abrir versión
   bitacora-api escribir-instrucciones       < instrucciones.md   (el markdown entero por stdin; reemplaza; crea la sección la primera vez)

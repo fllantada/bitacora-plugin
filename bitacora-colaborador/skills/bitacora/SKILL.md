@@ -350,6 +350,12 @@ sections, from the broadest to the most specific, and the server requires them i
 order: `# Where we stand` (the big picture in a few sentences, without code), `# The map`
 (a `d2` drawing of the pieces with their state), `# In flight`, `# What's next` and
 `# Waiting on others` — the two that can have nothing to say still go, and say "None".
+**While the area has open plans, `# What's next` is their order**: a `d2` drawing of
+stages —one lane per stage, one box per plan, arrows are dependencies—, a table
+`| Stage | Plan | Moves when |` with one row per open plan linked to its page, and one or two
+sentences on why that order. The server requires all three (400 `seccionSinDibujo`,
+400 `planesSinNombrar` listing each missing plan with its link, 400 `seccionLarga`), and the
+snapshot's `desde.planes` lists the open plans it does not name yet.
 **QA's snapshot carries a sixth, fixed section right after `# Where we stand`:
 `# How we test`** — what is tested, where each test lives, how it runs and what each layer
 isolates, with its `d2` drawing —, required once the project closes its `areas`
