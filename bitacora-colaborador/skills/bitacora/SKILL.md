@@ -347,7 +347,10 @@ their name and their existence fixed (renaming or deleting one answers 400 `area
 keeps it as its Commercial, and both names lead there), **QA** (`qa`: what is tested and how), **Nice To Have** (`nice-to-have`,
 alias `nit`: the good ideas that showed up and wait for their moment) and **Harness**
 (`harness`: the tooling the project works with). Whoever arrives at any project knows
-without asking where selling, testing, what waits and the tooling go.
+without asking where selling, testing, what waits and the tooling go. Two of them are the
+inbox of a role: what a review finds travels as a finding with its fate, and what can wait
+lands in Nice To Have —«To group», which the owner's `/nit` sorts— while what the process
+learnt —each FIX, what did not hold— lands in Harness, «What reached the review».
 
 **And every area carries its state**: a snapshot of where that world stands today, read in
 full on top of the area's page —its date, its milestone, the big picture, what happened since
@@ -584,6 +587,15 @@ through the API waits for an answered check that declares this plan (400 `cheque
 signing off on the web is the person's and warns instead of blocking. The guiding question:
 *is there something on screen the person has not approved yet?* → `chequeo`; *does it show,
 and is the right result already written?* → `captura`; *nothing on screen?* → `ninguna`.
+
+**And what its review left to decide gets a destination before signing off.** A plan whose
+`ficha.review` still has findings `para-decidir` answers 400 `hallazgosSinDecidir` when it is
+signed off through the API, naming each one with its id. They are listed with
+`bitacora-api hallazgos --bandeja thinking --review <slug>` (the slug is the last stretch of
+`ficha.review`), and each one gets its fate: `bitacora-api hallazgo <id>
+'{"suerte":"plan","plan":"<id>"}'` (the round or a new plan), `'{"suerte":"diferido"}'` (it
+can wait: Nice To Have) or `'{"suerte":"no-se-sostiene","porque":"…"}'` (the review got it
+wrong: Harness). Signing off on the web warns and lets the person sign.
 
 **And a plan carries REQUESTS between sessions — the short round trip between
 specialists.** The fronts of a project have roles (the one who builds, the one who looks

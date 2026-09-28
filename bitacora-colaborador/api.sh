@@ -796,10 +796,40 @@ analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
   ;;
-# Las clases de hallazgo de las reviews: cada una con sus reviews, el peldaño que debió
-# frenarla, su fila en el registro del harness y las preguntas de Jev que la reemplazan.
+# Lo que dejaron las reviews. Sin nada, las clases de FIX: cada una con sus reviews, el
+# peldaño que debió frenarla, qué pasó con sus FIX, su fila en el registro del harness y las
+# preguntas de Jev que la reemplazan; con una clase, esa entera. Con --bandeja, lo que espera
+# a un rol —thinking, nit o harness—, cada hallazgo con su id; --review lo acota a una review.
 hallazgos)
-  if [ "$#" -ge 1 ]; then leer "/api/hallazgos?clase=$(uri "$1")"; else leer "/api/hallazgos"; fi
+  bandeja="" review_de=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --bandeja) bandeja="${2:-}" && shift 2 ;;
+    --review) review_de="${2:-}" && shift 2 ;;
+    *) break ;;
+    esac
+  done
+  if [ -n "$bandeja" ] || [ -n "$review_de" ]; then
+    consulta=""
+    [ -z "$bandeja" ] || consulta="bandeja=$(uri "$bandeja")"
+    [ -z "$review_de" ] || consulta="${consulta:+$consulta&}review=$(uri "$review_de")"
+    leer "/api/hallazgos?$consulta"
+  elif [ "$#" -ge 1 ]; then
+    leer "/api/hallazgos?clase=$(uri "$1")"
+  else
+    leer "/api/hallazgos"
+  fi
+  ;;
+# Un hallazgo entero, con su historia; con el JSON de su suerte como segundo argumento, se
+# la da: el rol que lo juzga dice qué pasó con él.
+hallazgo)
+  exige 1 "bitacora-api hallazgo <id> ['{\"suerte\":\"diferido\"}']" "$@"
+  if [ "$#" -ge 2 ]; then
+    vaciar_cola
+    printf '%s' "$2" | escribir PATCH "/api/hallazgos/$(uri "$1")"
+  else
+    leer "/api/hallazgos/$(uri "$1")"
+  fi
   ;;
 # Las corridas reales de Jev, como las manda el motor de /jev al commit: una o una tanda,
 # cada una con la clave de su pregunta.
@@ -1654,8 +1684,10 @@ review)
   # «# Review — PR #n: <título>». Con --publicar queda afuera en el mismo acto y la
   # respuesta trae `publica.enlace`, la dirección que se le manda al autor. Con
   # --traduccion sube también la otra capa, sellada contra el original en el mismo acto: el
-  # idioma sale del nombre del archivo (`<doc>.en.md`). Con --hallazgos viajan los FIX del
-  # plan de acción como dato —la clase, la rule, el archivo y el peldaño de cada uno—.
+  # idioma sale del nombre del archivo (`<doc>.en.md`). Con --hallazgos viaja lo que la
+  # review encontró como dato: cada resultado del plan de acción con su tipo, su número y su
+  # suerte —el FIX además con su clase, su rule, su archivo y su peldaño—, y la puerta pide la
+  # suerte de cada FIX y cada ASK del documento.
   vaciar_cola
   if [ "$#" -ge 1 ] && [ -f "$1" ]; then
     archivo="$1"
@@ -1984,10 +2016,19 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · con qué se entra: {"usuario":"…","clave":"…"}
   bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…","publicar":true}
   bitacora-api review <doc.md> --pr <owner/repo#n> [--traduccion <doc.en.md>] [--hallazgos <hallazgos.json>]
-        con --traduccion la otra capa nace sellada en el mismo acto; con --hallazgos viajan los FIX como dato:
-        [{"clase":"<kebab, la misma en cada review>","titulo":"…","rule":"…","archivo":"…","peldano":"mecanico"}]
-        la clase que ya llegó en otra review abre su fila en harness (o suma una entrada a la que ya existe)
-  bitacora-api hallazgos [clase]            las clases de FIX a lo largo de las reviews: sus reviews, sus peldaños, su fila y sus preguntas de Jev
+        con --traduccion la otra capa nace sellada en el mismo acto; con --hallazgos viaja lo que encontró, cada uno con su suerte:
+        [{"tipo":"fix","accion":"1","clase":"<kebab, la misma en cada review>","titulo":"…","rule":"…","archivo":"…",
+          "peldano":"encargo|bien-de-entrada|mecanico|jev|review","suerte":"aplicado","commit":"<sha>"},
+         {"tipo":"ask","accion":"4","titulo":"…","suerte":"para-decidir"},
+         {"tipo":"sugerencia","titulo":"…"},  {"tipo":"ley","titulo":"…","rule":"…"}]
+        suertes: aplicado (+commit) · al-autor · para-decidir · diferido · no-se-sostiene (+porque) · plan (+plan) · descartado (+porque)
+        cada FIX y cada ASK del plan de acción trae su suerte (400 hallazgosSinSuerte); la sugerencia sin suerte nace diferida
+        la clase de FIX que ya llegó en otra review abre su fila en harness (o suma una entrada a la que ya existe)
+  bitacora-api hallazgos [clase]            las clases de FIX a lo largo de las reviews: sus reviews, sus peldaños, sus suertes, su fila y sus preguntas de Jev
+  bitacora-api hallazgos --bandeja <rol> [--review <slug>]
+        lo que espera a un rol, con su id: thinking (para decidir antes de firmar) · nit (lo que puede esperar) · harness (todo lo que el proceso aprendió)
+  bitacora-api hallazgo <id> ['{"suerte":"…"}']   uno entero con su historia; con el JSON le da su suerte:
+        {"suerte":"plan","plan":"<id>"} · {"suerte":"diferido"} · {"suerte":"no-se-sostiene","porque":"…"} · {"suerte":"descartado","porque":"…"}
   bitacora-api pregunta-jev <subarea>       {"titulo":"…","queEs":"…","clave":"<id en la rule del repo>","pregunta":"<the question>","clase":"…","cuerpo":"…"}
         su banco entra con corregir pregunta-jev <id> {"banco":{"rojo":[…],"verde":[…],"aprobado":[…],"barrera":0.5}};
         su escritorio: propuesta · en-banco · informando · frena · retirada
