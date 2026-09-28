@@ -761,8 +761,9 @@ tipo)
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
-  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos|preguntas-jev>" "$@"
-  leer "/api/items/$(uri "$1")?abiertos"
+  # Con la palabra de prioridad deja solo esas: `abiertos bugs critico` son los críticos sin cerrar.
+  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos|preguntas-jev> [prioridad]" "$@"
+  leer "/api/items/$(uri "$1")?abiertos${2:+&prioridad=$(uri "${2:-}")}"
   ;;
 de-la-subarea | del-hilo)
   exige 2 "de-la-subarea <subarea> <tipo>" "$@"
@@ -1797,7 +1798,8 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api de-la-subarea <subarea> <tipo>  (= del-hilo: lo que cuelga de una sub-área, de un tipo)
   bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando sub-áreas)
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
-  bitacora-api abiertos <tipo>              (los que quedaron sin cerrar; el análisis y la decisión no tienen)
+  bitacora-api abiertos <tipo> [prioridad]  (los que quedaron sin cerrar; el análisis y la decisión no tienen;
+                                             el bug crítico va primero, y `abiertos bugs critico` deja solo esos)
         tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
@@ -1827,7 +1829,9 @@ Escritura (el cuerpo JSON entra por stdin):
         el servidor exige ocho secciones en el cuerpo —# Qué cambia (el TL;DR para la persona: de dos a cuatro oraciones, sin código) · # Tarea · # La idea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance—, el queEs, la bajada en una línea,
         y "visual": qué se mira de lo que entrega — ninguna (nada cambia en pantalla) · captura (algo en pantalla cambia y lo correcto ya está escrito:
         el frente que mira captura el antes y el después) · chequeo (algo en pantalla cambia y que esté bien es el juicio de la persona: se abre el chequeo visual y se firma después)
-  bitacora-api bug <subarea>                   {"titulo":"…","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
+  bitacora-api bug <subarea>                   {"titulo":"…","prioridad":"critico","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
+        "prioridad": critico · mayor · menor — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
+        y el crítico abierto encabeza toda lista, cruzando áreas
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
   bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"}}
   bitacora-api simulacion <subarea>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
@@ -1915,7 +1919,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "cierraEn":"…","cuerpo":"…","flujos":["…"]}
   bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}   (una decisión)
   bitacora-api corregir <tipo> <id>         {"cuerpo":{…},"diagramas":[…]} · {"titulo":"…"} · {"queEs":"…"}   (cualquier otra pieza)
-                                            · {"prioridad":"alta"} (un plan: su orden entre los de su escritorio, en cualquier escritorio)
+                                            · {"prioridad":"alta"} (su orden entre los de su escritorio, en cualquier escritorio:
+                                              un plan alta · media · baja, un bug critico · mayor · menor)
   bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado)
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
   Cada pieza va a un ÁREA: `plan <area>`, `analisis <area>`… cae en su lugar, y el servidor lo crea si falta.

@@ -184,7 +184,7 @@ $API -p <project> plan <area> <<'JSON'
 {"titulo":"…","cierraEn":"the PR that brings it","prioridad":"alta","cuerpo":{"en":"# How it gets solved\n…"}}
 JSON
 $API -p <project> bug <area> <<'JSON'
-{"titulo":"…","cuerpo":{"en":"# What happens\n…\n\n# Where\n…\n\n# How to reproduce\n1. …\n2. …"}}
+{"titulo":"…","prioridad":"critico","cuerpo":{"en":"# What happens\n…\n\n# Where\n…\n\n# How to reproduce\n1. …\n2. …"}}
 JSON
 $API -p <project> client-report <area> <<'JSON'
 {"titulo":"…","ficha":{"For":"who receives it"},"cuerpo":{"en":"# …"}}
@@ -192,7 +192,8 @@ JSON
 
 $API -p <project> de-la-subarea <place> planes      # a place's plans, with their bodies
 $API -p <project> tipo planes                 # every plan in the project
-$API -p <project> abiertos bugs               # the bugs still open, across areas
+$API -p <project> abiertos bugs               # the bugs still open, across areas: critical ones first
+$API -p <project> abiertos bugs critico       # only the critical ones still open
 $API -p <project> item planes <id>            # one whole: its body, its place (`hilo`) and how it moved
 $API -p <project> mover planes <id> <<< '{"estado":"hecho","nota":"how it closed"}'
 $API -p <project> mover planes <id> <<< '{"hilo":"the-area-it-belongs-to"}'   # move it to its area (slug or alias)
@@ -249,6 +250,15 @@ is fresh: whoever saw it is the only one who can write them, and without them wh
 it up months later has to rediscover the defect first. And the reproduction is what gives a
 bug its own expiry: it gets run before the fix, and one that no longer shows up is closed
 saying exactly that. A person can also close it from the bug's page, with **Resolve** (to `arreglado`, with a line saying what happened) and **Ignore** (to `descartado`, one click): the move lands in the history with its note, so a session coming back to the bug reads who closed it and why.
+
+**Every bug has a `prioridad`, in the words of defects: `critico`, `mayor` or `menor`** —
+critical, major, minor, the classic Jira scheme: the order it is taken in among the bugs at
+its same desk. A bug that declares none is `mayor`, and every read serves it with that value.
+**An open critical bug HEADS every list that shows it**, ahead of the work order: on the
+area's page, in the menu, on the by-type axis —where the critical ones open the page in their
+own «Critical» batch across areas, with a «Critical» filter next to the tabs— and first in
+`abiertos bugs`. It is declared when opening the bug if you know it, and corrected like the
+plan's, in any desk: `corregir bugs <id> <<< '{"prioridad":"menor"}'`.
 
 **The Simulation is the experiment before adopting a change**, and the run produces while
 the grading decides: the session designs it and runs the arms over a sample, leaving what
@@ -477,6 +487,20 @@ without moving the plan, and its history and contract stay as they were:
 ```bash
 $API -p <project> corregir planes <id> <<< '{"prioridad":"alta"}'
 ```
+
+Each type that carries a priority says it in its own words —the plan `alta` · `media` ·
+`baja`, the bug `critico` · `mayor` · `menor`— and both are read on the same scale: the first
+word of each vocabulary weighs the same. A word from the other vocabulary gets a 400 naming
+the valid ones for that type.
+
+**On the web, a plan's desks read in THREE GROUPS**: **to do** is `pendiente`, **assigned**
+holds `encargado` and `en-curso`, and **done** holds `entregado` and `hecho` —the delivered one
+marked «awaiting your sign-off» and first within its group, since it is the only one that
+needs the owner's hand—. They are the tabs of the by-type axis (`?estado=realizado`; the
+older desk names, like `?estado=entregado`, open their group), each row's state label and the
+pill in the plan's header; dropped plans leave the tabs for a link at the foot. **The model,
+the API and the cycle keep the six desks as they are**: you write and read `encargado`,
+`en-curso`, `entregado`, and the menu's dot with its hover names the exact desk.
 
 **A plan also carries a dispatched job, end to end.** When a thinking session hands work
 to a coding session, the plan is the handoff: its body is the brief, its `reporte` is what
