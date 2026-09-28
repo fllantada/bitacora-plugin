@@ -351,11 +351,28 @@ order: `# Where we stand` (the big picture in a few sentences, without code), `#
 (a `d2` drawing of the pieces with their state), `# In flight`, `# What's next` and
 `# Waiting on others` — the two that can have nothing to say still go, and say "None".
 **While the area has open plans, `# What's next` is their order**: a `d2` drawing of
-stages —one lane per stage, one box per plan, arrows are dependencies—, a table
-`| Stage | Plan | Moves when |` with one row per open plan linked to its page, and one or two
-sentences on why that order. The server requires all three (400 `seccionSinDibujo`,
-400 `planesSinNombrar` listing each missing plan with its link, 400 `seccionLarga`), and the
-snapshot's `desde.planes` lists the open plans it does not name yet.
+stages —one lane per stage, one box per plan, arrows are dependencies—, then per stage a bold
+line with the stage and its checklist, one item per open plan linked to its page:
+`- [ ] [Plan title](link) — moves when …`, and one or two sentences on why that order. The
+server requires all three (400 `seccionSinDibujo`, 400 `planesSinNombrar` listing each
+missing plan as a checklist item ready to paste, 400 `seccionLarga`), and the snapshot's
+`desde.planes` lists the open plans it does not name yet.
+**A snapshot is read whole every time it is written**, because a person reads it end to
+end: each section fits its cap in visible characters —`# Where we stand` 500, `# The map`
+400 (its legend; the drawing does not count), `# In flight`, `# What's next` and
+`# Waiting on others` 600 each, `# What's next` with open plans 300 without its checklist
+items, the sixth section 1200— and the whole snapshot fits the sum of its sections' caps,
+text outside the sections included. A table counts as text; a drawing does not. Over a cap
+the server answers 400 `seccionLarga` or `estadoLargo`, listing every section with what it
+carries and what fits. It slims down by drawing what can be drawn, a checklist instead of
+each table, dropping what closed or repeats, and moving what explains and lasts to an
+analysis pinned in the area, linked from the snapshot in one line. **A new snapshot starts
+from the area's live sources**: a live source tagged with the area whose copy is stale
+answers 400 `fuentesSinRefrescar`, naming how to refresh it (`$API refrescar`, or its
+skill and `sincronizada`); one that cannot be refreshed today —the Figma quota, missing
+access— is declared in the body with its reason in one line,
+`"sinRefrescar":[{"fuente":"<slug>","porque":"<why>"}]`, and stays on the snapshot
+(declaring one that is up to date answers 400 `sinRefrescarDeMas`).
 **QA's snapshot carries a sixth, fixed section right after `# Where we stand`:
 `# How we test`** — what is tested, where each test lives, how it runs and what each layer
 isolates, with its `d2` drawing —, required once the project closes its `areas`
