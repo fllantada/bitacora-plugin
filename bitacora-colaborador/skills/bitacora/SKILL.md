@@ -350,7 +350,11 @@ alias `nit`: the good ideas that showed up and wait for their moment) and **Harn
 without asking where selling, testing, what waits and the tooling go. Two of them are the
 inbox of a role: what a review finds travels as a finding with its fate, and what can wait
 lands in Nice To Have —«To group», which the owner's `/nit` sorts— while what the process
-learnt —each FIX, what did not hold— lands in Harness, «What reached the review».
+learnt —each FIX, what did not hold— lands in Harness, «What reached the review». A review of
+another author's PR asks that author for what breaks —each FIX with its Blocking row (a bug, a
+broken contract, security, data integrity) and its ASKs, `al-autor`—; its style FIX is born
+`para-harness`, lands in Harness and nowhere else, and harness turns it into a lint or a Jev
+question.
 
 **And every area carries its state**: a snapshot of where that world stands today, read in
 full on top of the area's page —its date, its milestone, the big picture, what happened since
@@ -587,14 +591,25 @@ signing off on the web is the person's and warns instead of blocking. The guidin
 *is there something on screen the person has not approved yet?* → `chequeo`; *does it show,
 and is the right result already written?* → `captura`; *nothing on screen?* → `ninguna`.
 
-**And what its review left to decide gets a destination before signing off.** A plan whose
-`ficha.review` still has findings `para-decidir` answers 400 `hallazgosSinDecidir` when it is
-signed off through the API, naming each one with its id. They are listed with
-`bitacora-api hallazgos --bandeja thinking --review <slug>` (the slug is the last stretch of
-`ficha.review`), and each one gets its fate: `bitacora-api hallazgo <id>
-'{"suerte":"plan","plan":"<id>"}'` (the round or a new plan), `'{"suerte":"diferido"}'` (it
-can wait: Nice To Have) or `'{"suerte":"no-se-sostiene","porque":"…"}'` (the review got it
-wrong: Harness). Signing off on the web warns and lets the person sign.
+**And what its review left to decide gets decided before signing off.** Each ASK of the
+review arrives as a finding `para-decidir` with its context, its options and the reviewer's
+position, and the person answers it on the review's page with the gestures of a consultation
+—accept the position in one click, pick another option or write what goes instead, or ask for
+more context—. The answer stays on the finding and moves it to the session's inbox:
+`bitacora-api decidido` brings it with its review, and the session applies it by giving it
+its fate —`'{"suerte":"aplicado","commit":"<sha>"}'` when it was done on the branch,
+`'{"suerte":"plan","plan":"<id>"}'` (the round or a new plan), `'{"suerte":"descartado","porque":"…"}'`
+when the person kept what the PR already does—, or answers a request for context with
+`bitacora-api hallazgo <id> '{"contexto":"…"}'`, which sends the ASK back to the person. The
+answer belongs to the person: through the API it returns 400 `esDeLaPersona`, naming the page.
+A plan whose `ficha.review` still has findings left undecided —an ASK the person has not
+answered or that asked for context, a FIX waiting for its destination— answers 400
+`hallazgosSinDecidir` when it is signed off through the API, naming each one with its id.
+The FIX is listed with `bitacora-api hallazgos --bandeja thinking --review <slug>` (the slug
+is the last stretch of `ficha.review`) and gets its fate: the round or a plan,
+`'{"suerte":"diferido"}'` (it can wait: Nice To Have) or
+`'{"suerte":"no-se-sostiene","porque":"…"}'` (the review got it wrong: Harness). Signing off
+on the web warns and lets the person sign.
 
 **And a plan carries REQUESTS between sessions — the short round trip between
 specialists.** The fronts of a project have roles (the one who builds, the one who looks
@@ -777,7 +792,7 @@ $API -p <project> consulta <area> <<'JSON'
             "propuesta":"Use Tour.id.","porque":"The permanent reference the contract declares; the three fronts agree."}]}
 JSON
 # … the person answers on the web; the consultation moves to «contestada» by itself …
-$API -p <project> decidido               # what the person already said and the session has to take: fully decided ones, points that asked for context, and points the client decides
+$API -p <project> decidido               # what the person already said and the session has to take: fully decided ones, points that asked for context, points the client decides, and review ASKs answered on their page
 $API -p <project> contestadas            # the ones fully decided, ready to apply
 $API -p <project> respuestas <id>        # point by point: the recommendation, accepted, rejected or sent back for context, and the comment
 $API -p <project> puntos <id> <<'JSON'

@@ -799,7 +799,8 @@ analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente
 # Lo que dejaron las reviews. Sin nada, las clases de FIX: cada una con sus reviews, el
 # peldaño que debió frenarla, qué pasó con sus FIX, su fila en el registro del harness y las
 # preguntas de Jev que la reemplazan; con una clase, esa entera. Con --bandeja, lo que espera
-# a un rol —thinking, nit o harness—, cada hallazgo con su id; --review lo acota a una review.
+# a un rol —thinking, sesion, nit o harness—, cada hallazgo con su id; --review lo acota a una
+# review. `sesion` es lo que la persona ya contestó en la página de la review.
 hallazgos)
   bandeja="" review_de=""
   while [ "$#" -gt 0 ]; do
@@ -821,7 +822,9 @@ hallazgos)
   fi
   ;;
 # Un hallazgo entero, con su historia; con el JSON de su suerte como segundo argumento, se
-# la da: el rol que lo juzga dice qué pasó con él.
+# la da: el rol que lo juzga dice qué pasó con él. Con {"contexto":"…"}, la sesión le suma a
+# un ASK lo que la persona pidió para decidirlo, y el ASK vuelve a esperarla. La respuesta
+# es de la persona y se escribe en la página de la review.
 hallazgo)
   exige 1 "bitacora-api hallazgo <id> ['{\"suerte\":\"diferido\"}']" "$@"
   if [ "$#" -ge 2 ]; then
@@ -1000,22 +1003,31 @@ lista)
 consultas) leer "/api/items/consultas${1:+?estado=$(uri "${1:-}")}" ;;
 # Las que la persona ya decidió enteras: lo que la sesión aplica.
 contestadas) leer "/api/items/consultas?estado=contestada" ;;
-# Lo que la persona ya dijo y espera a la sesión: las decididas enteras, para aplicar, y las
-# abiertas donde pidió más contexto en algún punto, para reescribirlo. Es la tercera llamada
-# del paso cero de /thinking: lo que la persona contestó mientras no había sesión.
+# Lo que la persona ya dijo y espera a la sesión: las decididas enteras, para aplicar, las
+# abiertas donde pidió más contexto en algún punto, para reescribirlo, y los ASK de las
+# reviews que contestó en la página de cada una. Es la tercera llamada del paso cero de
+# /thinking y de /coding: lo que la persona contestó mientras no había sesión.
 decidido)
   {
-    leer "/api/items/consultas?abiertos" | jq '[.items[] | . + {tipo: "consulta"}]'
-    # El chequeo visual entra en la misma bandeja: lo que la persona aprobó mirando también
-    # espera que la sesión lo tome, y leerlo en otro comando sería dejarlo sin mirar.
-    leer "/api/items/chequeos?abiertos" | jq '[.items[] | . + {tipo: "chequeo"}]'
-    # Y la consulta al cliente respondida entera: lo que contestó el cliente espera que la
-    # sesión lo aplique, y la pregunta que pidió contexto, que la reescriba.
-    leer "/api/items/consultas-cliente?abiertos" | jq '[.items[] | . + {tipo: "consulta-cliente"}]'
-  } | jq -s 'add | [.[]
-    | select(.estado == "contestada" or .estado == "contestado" or .estado == "respondida" or ((.pidenContexto // []) | length) > 0 or ((.delCliente // []) | length) > 0)
-    | {id, tipo, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, delCliente, actualizado}]
-    | sort_by(if (.estado | startswith("contestad")) or .estado == "respondida" then 0 else 1 end)'
+    {
+      leer "/api/items/consultas?abiertos" | jq '[.items[] | . + {tipo: "consulta"}]'
+      # El chequeo visual entra en la misma bandeja: lo que la persona aprobó mirando también
+      # espera que la sesión lo tome, y leerlo en otro comando sería dejarlo sin mirar.
+      leer "/api/items/chequeos?abiertos" | jq '[.items[] | . + {tipo: "chequeo"}]'
+      # Y la consulta al cliente respondida entera: lo que contestó el cliente espera que la
+      # sesión lo aplique, y la pregunta que pidió contexto, que la reescriba.
+      leer "/api/items/consultas-cliente?abiertos" | jq '[.items[] | . + {tipo: "consulta-cliente"}]'
+    } | jq -s 'add | [.[]
+      | select(.estado == "contestada" or .estado == "contestado" or .estado == "respondida" or ((.pidenContexto // []) | length) > 0 or ((.delCliente // []) | length) > 0)
+      | {id, tipo, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, delCliente, actualizado}]'
+    # Y cada ASK de una review que la persona contestó en su página: la bandeja `sesion` de
+    # los hallazgos, cada uno con su review y lo que dijo. Su `estado` es su decisión
+    # —`contestado`, o `pide-contexto` cuando espera que la sesión le sume lo que faltó—, y
+    # con eso se ordena junto al resto.
+    leer "/api/hallazgos?bandeja=sesion" | jq '[.hallazgos[]
+      | {id, tipo: "hallazgo", estado: (if .respuesta.decision == "pide-contexto" then "pide-contexto" else "contestado" end),
+         review, pr, enlace, accion, titulo, contexto, opciones, recomiendo, porque, respuesta, pedidos}]'
+  } | jq -s 'add | sort_by(if (.estado | startswith("contestad")) or .estado == "respondida" then 0 else 1 end)'
   ;;
 # Lo que la persona dijo, punto por punto: aceptó o rechazó cada recomendación, pidió más
 # contexto (`decision: "pide-contexto"`, con qué le faltó en `comentario`), o dijo que lo
@@ -1871,7 +1883,8 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api visto <id>                   (lo que la persona dijo de cada paso del chequeo)
   bitacora-api pasos <id>                   < {"pasos":[{"id":"p2","despues":"<ruta>","queCuenta":"…"}]}
   bitacora-api aplicar-chequeo <id> [nota]  (la sesión tomó lo aprobado: el chequeo cierra)
-  bitacora-api decidido                     (lo que la persona ya dijo y espera a la sesión: las decididas enteras, y las abiertas con puntos que pidieron más contexto)
+  bitacora-api decidido                     (lo que la persona ya dijo y espera a la sesión: las decididas enteras, las abiertas con puntos que pidieron más contexto,
+                                             y los ASK de las reviews que contestó en su página, cada uno con su review y su respuesta: `tipo: "hallazgo"`)
   bitacora-api contestadas                  (las que la persona ya decidió enteras: lo que la sesión tiene que aplicar)
   bitacora-api respuestas <id>              (punto por punto: la recomendación, si la persona la aceptó, la rechazó o pidió más contexto, y su comentario)
   bitacora-api por-traducir [idioma]        (documentos, ítems, fichas y el estado vigente de cada área: lo que falta y lo que quedó viejo,
@@ -2041,18 +2054,24 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…","publicar":true}
   bitacora-api review <doc.md> --pr <owner/repo#n> [--traduccion <doc.en.md>] [--hallazgos <hallazgos.json>]
         con --traduccion la otra capa nace sellada en el mismo acto; con --hallazgos viaja lo que encontró, cada uno con su suerte:
-        [{"tipo":"fix","accion":"1","clase":"<kebab, la misma en cada review>","titulo":"…","rule":"…","archivo":"…",
-          "peldano":"encargo|bien-de-entrada|mecanico|jev|review","suerte":"aplicado","commit":"<sha>"},
-         {"tipo":"ask","accion":"4","titulo":"…","suerte":"para-decidir"},
+        [{"tipo":"fix","accion":"1","clase":"<kebab, la misma en cada review>","titulo":"<el título corto de su encabezado>","rule":"…","archivo":"…",
+          "peldano":"encargo|bien-de-entrada|mecanico|jev|review","grosero":false,"suerte":"aplicado","commit":"<sha>"},
+         {"tipo":"ask","accion":"4","titulo":"…","contexto":"…","opciones":[{"nombre":"…","implica":"…"},{"nombre":"…","implica":"…"}],
+          "recomiendo":0,"porque":"…","suerte":"para-decidir"},
          {"tipo":"sugerencia","titulo":"…"},  {"tipo":"ley","titulo":"…","rule":"…"}]
-        suertes: aplicado (+commit) · al-autor · para-decidir · diferido · no-se-sostiene (+porque) · plan (+plan) · descartado (+porque)
+        suertes: aplicado (+commit) · al-autor · para-harness (el FIX de estilo en la PR de otro autor) · para-decidir · diferido
+                 · no-se-sostiene (+porque) · plan (+plan) · descartado (+porque)
+        grosero: el FIX con su fila Bloqueante (bug · contrato · seguridad · integridad); sin ella es estilo
         cada FIX y cada ASK del plan de acción trae su suerte (400 hallazgosSinSuerte); la sugerencia sin suerte nace diferida
         la clase de FIX que ya llegó en otra review abre su fila en harness (o suma una entrada a la que ya existe)
   bitacora-api hallazgos [clase]            las clases de FIX a lo largo de las reviews: sus reviews, sus peldaños, sus suertes, su fila y sus preguntas de Jev
   bitacora-api hallazgos --bandeja <rol> [--review <slug>]
-        lo que espera a un rol, con su id: thinking (para decidir antes de firmar) · nit (lo que puede esperar) · harness (todo lo que el proceso aprendió)
+        lo que espera a un rol, con su id: thinking (para decidir antes de firmar: el ASK que la persona contesta en la página de la review, el FIX sin destino)
+        · sesion (lo que la persona ya contestó: se aplica con su suerte, o se le suma el contexto que pidió) · nit (lo que puede esperar) · harness (todo lo que el proceso aprendió)
   bitacora-api hallazgo <id> ['{"suerte":"…"}']   uno entero con su historia; con el JSON le da su suerte:
         {"suerte":"plan","plan":"<id>"} · {"suerte":"diferido"} · {"suerte":"no-se-sostiene","porque":"…"} · {"suerte":"descartado","porque":"…"}
+        · {"suerte":"aplicado","commit":"<sha>"} (el FIX, o el ASK decidido que se hizo en la rama)
+        · {"contexto":"…"}: el que la persona pidió para decidir un ASK; se suma y el ASK vuelve a ella (la respuesta se escribe en la página de la review)
   bitacora-api pregunta-jev <subarea>       {"titulo":"…","queEs":"…","clave":"<id en la rule del repo>","pregunta":"<the question>","clase":"…","cuerpo":"…"}
         su banco entra con corregir pregunta-jev <id> {"banco":{"rojo":[…],"verde":[…],"aprobado":[…],"barrera":0.5}};
         su escritorio: propuesta · en-banco · informando · frena · retirada
