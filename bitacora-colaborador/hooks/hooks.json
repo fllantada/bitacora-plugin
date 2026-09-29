@@ -1,5 +1,5 @@
 {
-  "description": "Keeps the stable shim ~/.local/bin/bitacora-api pointing at the installed plugin version's api.sh",
+  "description": "Keeps the stable shims ~/.local/bin/bitacora-api (api.sh) and bitacora-diagramas (diagramas.mjs, the house drawing) pointing at the installed plugin version",
   "hooks": {
     "SessionStart": [
       {

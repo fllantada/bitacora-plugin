@@ -554,9 +554,8 @@ time — «Plan · Round 1 · … · Result» — and the Result opens by defaul
 «How the AI worked» on top and the current delivery below, folding «The idea» under «How it
 turned out» — as it folds the round's request under Done and Out of scope under Pending
 out of scope. Diagrams are written in `d2` and travel compiled, in
-`diagramas`: whoever has the bitácora engine repo and
-`d2` installed — normally the project owner — compiles them with its CLI (`npm run -s
-diagramas < body.md`; `d2` is all it needs), which fails naming any block left uncompiled, and on delivery they
+`diagramas`: the plugin compiles them with the house drawing (`bitacora-diagramas <
+body.md`, from any project; `d2` installed is all it needs), which fails naming any block left uncompiled, and on delivery they
 add to the ones the item already has. **The door charges the same**: a diagram block
 without its drawing answers 400 naming it, and one written in another language answers 400
 with the rule — diagrams here are written in `d2`, which is the one the page tints with the

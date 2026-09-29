@@ -1606,7 +1606,7 @@ sincronizar-skills)
 # # El mapa · # En vuelo · # Lo que sigue · # Lo que espera de otros—, el `hito` que la
 # produjo (la firma de un plan, una decisión del cliente, una fuente que movió el terreno),
 # el `plan` cuya firma fue el hito cuando lo hubo, los `diagramas` compilados con
-# `npm run -s diagramas`, y `sinRefrescar` con cada fuente viva del área que hoy no se puede
+# `bitacora-diagramas`, y `sinRefrescar` con cada fuente viva del área que hoy no se puede
 # traer al día y su porqué en una línea. El servidor pide antes las vivas del área al día
 # (400 `fuentesSinRefrescar`, que dice cómo se trae cada una; `sinRefrescarDeMas` si se
 # declara una que no espera) y cobra el contrato —cada sección en su techo y la foto entera
@@ -1687,7 +1687,9 @@ review)
   # idioma sale del nombre del archivo (`<doc>.en.md`). Con --hallazgos viaja lo que la
   # review encontró como dato: cada resultado del plan de acción con su tipo, su número y su
   # suerte —el FIX además con su clase, su rule, su archivo y su peldaño—, y la puerta pide la
-  # suerte de cada FIX y cada ASK del documento.
+  # suerte de cada FIX y cada ASK del documento. Los dibujos viajan solos: cada bloque d2 del
+  # documento y de su traducción se compila acá con el trazo de la casa (diagramas.mjs, al
+  # lado de este archivo), porque la puerta pide cada bloque con su dibujo.
   vaciar_cola
   if [ "$#" -ge 1 ] && [ -f "$1" ]; then
     archivo="$1"
@@ -1725,12 +1727,34 @@ review)
     }
     titulo_trad=""
     [ -z "$traduccion" ] || titulo_trad="$(grep -m1 '^# ' "$traduccion" | sed -E 's/^#[[:space:]]+//; s/^(Review|Revisión)[^:]*:[[:space:]]*//')"
+    # Los dibujos de la review, compilados con el trazo de la casa: el compilador vive al lado
+    # de este archivo en el plugin instalado, así que se lo busca siguiendo el shim.
+    dibujos="$(mktemp)"
+    printf '[]' >"$dibujos"
+    if grep -q '```d2' "$archivo" ${traduccion:+"$traduccion"}; then
+      real_sh="${BASH_SOURCE[0]}"
+      while [ -L "$real_sh" ]; do
+        enlace="$(readlink "$real_sh")"
+        case "$enlace" in /*) real_sh="$enlace" ;; *) real_sh="$(dirname "$real_sh")/$enlace" ;; esac
+      done
+      compilador="$(cd "$(dirname "$real_sh")" && pwd)/diagramas.mjs"
+      [ -f "$compilador" ] || { echo "La review trae dibujos d2 y este plugin no trae su compilador (${compilador})." >&2; rm -f "$dibujos"; exit 1; }
+      node "$compilador" --idioma "${escrito:-es}" <"$archivo" >"$dibujos.orig" || { rm -f "$dibujos" "$dibujos.orig"; exit 1; }
+      printf '[]' >"$dibujos.trad"
+      if [ -n "$traduccion" ]; then
+        node "$compilador" --idioma "$idioma_trad" <"$traduccion" >"$dibujos.trad" || { rm -f "$dibujos" "$dibujos.orig" "$dibujos.trad"; exit 1; }
+      fi
+      jq -s '.[0] + .[1]' "$dibujos.orig" "$dibujos.trad" >"$dibujos"
+      rm -f "$dibujos.orig" "$dibujos.trad"
+    fi
     cuerpo="$(jq -n --rawfile c "$archivo" --arg t "$titulo" --arg p "$pr" --argjson pub "$publicar" --arg e "$escrito" \
       --arg ti "$idioma_trad" --arg tt "$titulo_trad" \
-      --rawfile tc "${traduccion:-/dev/null}" --slurpfile h "${hallazgos:-/dev/null}" \
+      --rawfile tc "${traduccion:-/dev/null}" --slurpfile h "${hallazgos:-/dev/null}" --slurpfile d "$dibujos" \
       '{titulo:$t, pr:$p, cuerpo:$c} + (if $pub then {publicar:true} else {} end) + (if $e == "" then {} else {escritoEn:$e} end)
        + (if $ti == "" then {} else {traduccion: ({idioma:$ti, cuerpo:$tc} + (if $tt == "" then {} else {titulo:$tt} end))} end)
-       + (if ($h | length) == 0 then {} else {hallazgos: $h[0]} end)')" || exit 1
+       + (if ($h | length) == 0 then {} else {hallazgos: $h[0]} end)
+       + (if ($d[0] | length) == 0 then {} else {diagramas: $d[0]} end)')" || { rm -f "$dibujos"; exit 1; }
+    rm -f "$dibujos"
     printf '%s' "$cuerpo" | escribir POST "/api/reviews"
   else
     escribir POST "/api/reviews"

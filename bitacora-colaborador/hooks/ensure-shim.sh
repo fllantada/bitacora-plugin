@@ -9,8 +9,10 @@
 #                       y el gesto de escribirles un comando de la CLI
 #   bitacora-medir    → skills/harness/medir.sh, lo que carga una sesión y los olores del
 #                       harness que un script detecta solo
-# Los tres últimos los trae solo el plugin del dueño: el colaborador comparte este hook y
-# enlaza lo que encuentra. Corre en SessionStart y es silencioso: su stdout entraría al
+#   bitacora-diagramas → diagramas.mjs, el dibujo de la casa: compila los bloques d2 de un
+#                       markdown con su trazo, desde cualquier proyecto
+# Los de /coding, /thinking y /harness los trae solo el plugin del dueño: el colaborador
+# comparte este hook y enlaza lo que encuentra. Corre en SessionStart y es silencioso: su stdout entraría al
 # contexto de la sesión.
 set -euo pipefail
 
@@ -47,7 +49,7 @@ if [ -n "$actual" ] && [ -f "$actual/api.sh" ] && [ -f "$actual/.claude-plugin/p
 fi
 
 ln -sfn "$CLAUDE_PLUGIN_ROOT/api.sh" "$HOME/.local/bin/bitacora-api"
-for par in "skills/coding/scripts/consumo.py bitacora-consumo" "skills/thinking/scripts/frentes.sh bitacora-frentes" "skills/harness/medir.sh bitacora-medir"; do
+for par in "skills/coding/scripts/consumo.py bitacora-consumo" "skills/thinking/scripts/frentes.sh bitacora-frentes" "skills/harness/medir.sh bitacora-medir" "diagramas.mjs bitacora-diagramas"; do
   SCRIPT="$CLAUDE_PLUGIN_ROOT/${par% *}"
   if [ -f "$SCRIPT" ]; then
     chmod +x "$SCRIPT" 2>/dev/null || true
