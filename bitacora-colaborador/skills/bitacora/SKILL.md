@@ -347,14 +347,15 @@ their name and their existence fixed (renaming or deleting one answers 400 `area
 keeps it as its Commercial, and both names lead there), **QA** (`qa`: what is tested and how), **Nice To Have** (`nice-to-have`,
 alias `nit`: the good ideas that showed up and wait for their moment) and **Harness**
 (`harness`: the tooling the project works with). Whoever arrives at any project knows
-without asking where selling, testing, what waits and the tooling go. Two of them are the
-inbox of a role: what a review finds travels as a finding with its fate, and what can wait
-lands in Nice To Have —«To group», which the owner's `/nit` sorts— while what the process
-learnt —each FIX, what did not hold— lands in Harness, «What reached the review». A review of
-another author's PR asks that author for what breaks —each FIX with its Blocking row (a bug, a
-broken contract, security, data integrity) and its ASKs, `al-autor`—; its style FIX is born
-`para-harness`, lands in Harness and nowhere else, and harness turns it into a lint or a Jev
-question.
+without asking where selling, testing, what waits and the tooling go. Two of them are
+accumulators: what a review finds travels as a finding with its fate, and what can wait
+lands in Nice To Have —«To group»— while what the process learnt —each FIX, what did not
+hold— lands in Harness, «What reached the review». **The review of the session that builds is
+a FIX loop; everything else piles up in harness and in nit, and gets processed when someone
+opens the owner's /harness or /nit.** A review of another author's PR asks that author for
+what breaks —each FIX with its Blocking row (a bug, a broken contract, security, data
+integrity) and its ASKs, `al-autor`—; its style FIX is born `para-harness`, lands in Harness
+and nowhere else, and harness turns it into a lint or a Jev question.
 
 **And every area carries its state**: a snapshot of where that world stands today, read in
 full on top of the area's page —its date, its milestone, the big picture, what happened since
@@ -591,25 +592,29 @@ signing off on the web is the person's and warns instead of blocking. The guidin
 *is there something on screen the person has not approved yet?* → `chequeo`; *does it show,
 and is the right result already written?* → `captura`; *nothing on screen?* → `ninguna`.
 
-**And what its review left to decide gets decided before signing off.** Each ASK of the
-review arrives as a finding `para-decidir` with its context, its options and the reviewer's
-position, and the person answers it on the review's page with the gestures of a consultation
-—accept the position in one click, pick another option or write what goes instead, or ask for
-more context—. The answer stays on the finding and moves it to the session's inbox:
-`bitacora-api decidido` brings it with its review, and the session applies it by giving it
-its fate —`'{"suerte":"aplicado","commit":"<sha>"}'` when it was done on the branch,
-`'{"suerte":"plan","plan":"<id>"}'` (the round or a new plan), `'{"suerte":"descartado","porque":"…"}'`
-when the person kept what the PR already does—, or answers a request for context with
-`bitacora-api hallazgo <id> '{"contexto":"…"}'`, which sends the ASK back to the person. The
-answer belongs to the person: through the API it returns 400 `esDeLaPersona`, naming the page.
-A plan whose `ficha.review` still has findings left undecided —an ASK the person has not
-answered or that asked for context, a FIX waiting for its destination— answers 400
-`hallazgosSinDecidir` when it is signed off through the API, naming each one with its id.
-The FIX is listed with `bitacora-api hallazgos --bandeja thinking --review <slug>` (the slug
-is the last stretch of `ficha.review`) and gets its fate: the round or a plan,
-`'{"suerte":"diferido"}'` (it can wait: Nice To Have) or
-`'{"suerte":"no-se-sostiene","porque":"…"}'` (the review got it wrong: Harness). Signing off
-on the web warns and lets the person sign.
+**And its review runs whole on the builder's side.** The review checks compliance and
+produces two things: the FIX, a breach of the law —gross, with its Blocking row, or of
+style—, and the ASK, what has more than one reasonable way out. The session that builds
+loops review → fix until a round leaves no FIX to apply: any applied FIX asks for another
+round, since one fix can bring another, and the round that reaches the cap with FIXes still
+open says so in the report and leaves its row in Harness. On finishing it gives each result
+its fate and uploads the review with its findings (`bitacora-api review <file.md> --pr … --hallazgos
+findings.json`): on its own PR the applied FIX goes `aplicado` with its `commit` (Harness), the
+ASK `diferido` (Nice To Have), the FIX outside the plan's Scope `diferido` and also into
+«Pending out of scope», and the blocker the verification refutes `no-se-sostiene` with its
+`porque` (Harness). The session that signs off reads the report, which says what was fixed and
+what went to Nice To Have; «To decide» carries what the plan itself could not decide. A
+finding's fate changes with `bitacora-api hallazgo <id> '{"suerte":"…"}'` —`plan` with the
+`plan` that took it, `diferido`, `no-se-sostiene` or `descartado` with its `porque`, and
+`aplicado` with its `commit` for a FIX—, and `bitacora-api hallazgos --bandeja nit|harness`
+lists what each accumulator holds, each with its id.
+
+```json
+[{"tipo":"fix","accion":"1","clase":"comment-that-repeats-the-code","titulo":"the comment at x.ts:41 repeats the line below",
+  "rule":".claude/rules/style.md §Comments","archivo":"src/x.ts","peldano":"mecanico","grosero":false,"suerte":"aplicado","commit":"<sha>"},
+ {"tipo":"ask","accion":"2","titulo":"is the region searched as a facet?","contexto":"the index already stores it, and no screen filters by it",
+  "suerte":"diferido"}]
+```
 
 **And a plan carries REQUESTS between sessions — the short round trip between
 specialists.** The fronts of a project have roles (the one who builds, the one who looks
@@ -651,7 +656,7 @@ $API -p <project> entregar <id> <<'JSON'
  "diagramas":[],
  "ficha":{"pr":"https://github.com/…/pull/…","rama":"…"},
  "consumo":{"ronda":1,"preciosDe":"YYYY-MM-DD","modelos":[{"modelo":"…","entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0,"precio":{"entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0}}]},
- "nota":"PR open, one ASK"}
+ "nota":"PR open, one point to decide"}
 JSON
 # a content job closes with "entregable":"<the piece's address>" in the ficha instead of "pr"
 $API -p <project> firmar <id> "PR merged"    # → hecho
@@ -783,7 +788,7 @@ list; the door measures it on the merged point and answers 400 before storing it
 ```bash
 $API -p <project> consulta <area> <<'JSON'
 {"titulo":"The seven changes to the record: what goes in",
- "queEs":"The record decisions that came out of the reviews; with the answers the next round gets written.",
+ "queEs":"The record decisions the deliveries left in «To decide»; with the answers the next round gets written.",
  "puntos":[{"titulo":"The key of each record",
             "queCambia":"Today it is the route slug plus the tour slug; a rename orphans the record.",
             "opciones":[{"titulo":"Tour.id","implica":"the permanent reference the contract declares"},
@@ -792,7 +797,7 @@ $API -p <project> consulta <area> <<'JSON'
             "propuesta":"Use Tour.id.","porque":"The permanent reference the contract declares; the three fronts agree."}]}
 JSON
 # … the person answers on the web; the consultation moves to «contestada» by itself …
-$API -p <project> decidido               # what the person already said and the session has to take: fully decided ones, points that asked for context, points the client decides, and review ASKs answered on their page
+$API -p <project> decidido               # what the person already said and the session has to take: fully decided ones, points that asked for context, points the client decides, plus the visual checks and client questions waiting on the session
 $API -p <project> contestadas            # the ones fully decided, ready to apply
 $API -p <project> respuestas <id>        # point by point: the recommendation, accepted, rejected or sent back for context, and the comment
 $API -p <project> puntos <id> <<'JSON'

@@ -383,6 +383,12 @@ pedir() {
 # contestado, y reintentarlo lo repetiría en cada escritura sin que nunca entre.
 escribir() {
   local metodo="$1" ruta="$2" cuerpo respuesta codigo salida
+  # El JSON entra canalizado. Con la terminal como stdin, `cat` esperaría un cuerpo que
+  # nadie va a tipear: sale diciéndolo.
+  if [ -t 0 ]; then
+    echo "Falta el JSON: \`$comando\` lo lee por stdin — canalizalo (… | bitacora-api $comando …) o pasalo con un heredoc." >&2
+    exit 1
+  fi
   cuerpo="$(cat)"
 
   respuesta="$(pedir "$metodo" "$TOKEN" "$ruta" "$cuerpo")"
@@ -749,6 +755,45 @@ publicar | privado)
 publicados) leer "/api/publicacion" ;;
 horas) leer "/api/trabajo" ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
+# Baja un adjunto con la llave del proyecto: la maqueta que un plan sigue, el «antes» de un
+# pedido. Toma la `ruta` que contestan `adjuntos`, `capturar` y `pedido`, o su `url`
+# (`/adjunto/…`, ya codificada); sin destino queda con su nombre en la carpeta actual, y un
+# destino que es carpeta lo recibe adentro. La llave viaja solo al servidor de la bitácora.
+bajar)
+  exige 1 "bajar <ruta> [destino]   (la ruta que contestó adjuntos, capturar o pedido; sin destino, a la carpeta actual)" "$@"
+  ruta_bajar="$1"
+  case "$ruta_bajar" in
+  http://* | https://*)
+    [ "${ruta_bajar#"$BASE"/adjunto/}" != "$ruta_bajar" ] ||
+      { echo "«${ruta_bajar}» es de otro servidor: bajar pide adjuntos de $BASE." >&2; exit 1; }
+    camino_bajar="${ruta_bajar#"$BASE"}"
+    ;;
+  /adjunto/*) camino_bajar="$ruta_bajar" ;;
+  *)
+    camino_bajar="/adjunto"
+    IFS='/' read -r -a tramos_bajar <<<"${ruta_bajar#/}"
+    for tramo in "${tramos_bajar[@]}"; do camino_bajar="$camino_bajar/$(uri "$tramo")"; done
+    ;;
+  esac
+  # El nombre del archivo es el último tramo, decodificado.
+  nombre_bajar="${camino_bajar##*/}"
+  nombre_bajar="$(printf '%b' "${nombre_bajar//%/\\x}")"
+  destino_bajar="${2:-.}"
+  [ -d "$destino_bajar" ] && destino_bajar="${destino_bajar%/}/$nombre_bajar"
+  parcial_bajar="$destino_bajar.parcial"
+  codigo="$(curl -sS --max-time 120 -H "Authorization: Bearer $TOKEN" -o "$parcial_bajar" \
+    -w '%{http_code}' "$BASE$camino_bajar" 2>/dev/null || true)"
+  codigo="${codigo:-000}"
+  case "$codigo" in
+  2*) mv "$parcial_bajar" "$destino_bajar" && echo "$destino_bajar" ;;
+  000) rm -f "$parcial_bajar"; echo "Sin respuesta del servidor ($BASE)." >&2; exit 1 ;;
+  *)
+    echo "El servidor no dio $camino_bajar ($codigo): $(cat "$parcial_bajar" 2>/dev/null)" >&2
+    rm -f "$parcial_bajar"
+    exit 1
+    ;;
+  esac
+  ;;
 # ─────────────────────────────────────────────────────────────────────────────
 # LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas · chequeos · preguntas-jev
 #
@@ -782,6 +827,11 @@ traducir-item)
   ;;
 analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente | chequeo | pregunta-jev)
   exige 1 "$comando <subarea>   < JSON" "$@"
+  # Un id donde va la sub-área es la lectura confundida con el alta: se nombra la lectura.
+  if [ -t 0 ] && [[ "$1" =~ ^[0-9a-f]{24}$ ]]; then
+    echo "«$1» tiene forma de id, y \`$comando <subarea>\` da de alta uno nuevo con su JSON por stdin: la lectura de ese $comando es \`bitacora-api item $comando $1\`." >&2
+    exit 1
+  fi
   vaciar_cola
   case "$comando" in
     analisis) ruta_tipo=analisis ;;
@@ -798,9 +848,8 @@ analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente
   ;;
 # Lo que dejaron las reviews. Sin nada, las clases de FIX: cada una con sus reviews, el
 # peldaño que debió frenarla, qué pasó con sus FIX, su fila en el registro del harness y las
-# preguntas de Jev que la reemplazan; con una clase, esa entera. Con --bandeja, lo que espera
-# a un rol —thinking, sesion, nit o harness—, cada hallazgo con su id; --review lo acota a una
-# review. `sesion` es lo que la persona ya contestó en la página de la review.
+# preguntas de Jev que la reemplazan; con una clase, esa entera. Con --bandeja, lo que junta
+# un acumulador —nit o harness—, cada hallazgo con su id; --review lo acota a una review.
 hallazgos)
   bandeja="" review_de=""
   while [ "$#" -gt 0 ]; do
@@ -822,9 +871,7 @@ hallazgos)
   fi
   ;;
 # Un hallazgo entero, con su historia; con el JSON de su suerte como segundo argumento, se
-# la da: el rol que lo juzga dice qué pasó con él. Con {"contexto":"…"}, la sesión le suma a
-# un ASK lo que la persona pidió para decidirlo, y el ASK vuelve a esperarla. La respuesta
-# es de la persona y se escribe en la página de la review.
+# la da: el rol que lo juzga dice qué pasó con él.
 hallazgo)
   exige 1 "bitacora-api hallazgo <id> ['{\"suerte\":\"diferido\"}']" "$@"
   if [ "$#" -ge 2 ]; then
@@ -899,10 +946,10 @@ soltar)
 # El servidor cobra el contrato en las dos puntas: para entrar a encargado, el cuerpo
 # con sus ocho secciones (Qué cambia · Tarea · La idea · Destino · Contexto ·
 # Patrón a seguir · Alcance · Fuera de alcance), su queEs y su visual (ninguna · captura ·
-# chequeo: qué se mira de lo que entrega); para llegar a entregado, el reporte con las suyas
-# (Hecho · Evidencia · Decisiones sobre la marcha · Fricciones · Para decidir ·
-# Pendientes fuera de alcance, las tres últimas van siempre y dicen «Ninguna» cuando no
-# hubo: una sección ausente o vacía rebota como olvido) y adónde volvió el trabajo en la
+# chequeo: qué se mira de lo que entrega); para llegar a entregado, el reporte con sus siete
+# (Hecho · Cómo quedó · Evidencia · Decisiones sobre la marcha · Fricciones · Para decidir ·
+# Pendientes fuera de alcance; Cómo quedó y las tres últimas van siempre y dicen «Ninguna»
+# cuando no hubo: una sección ausente o vacía rebota como olvido) y adónde volvió el trabajo en la
 # ficha: pr, o entregable cuando el encargo es contenido. Y para llegar a hecho por la API
 # con visual=chequeo, un chequeo contestado que declare el plan.
 # Un 400 nombra todo lo que falta de una vez, con lo que cada sección afirma.
@@ -916,7 +963,7 @@ tomar)
     escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
 entregar)
-  exige 1 "entregar <id>   < {\"reporte\":{\"es\":\"## Hecho\\n…\\n## Evidencia\\n…\\n## Decisiones sobre la marcha\\n…\\n## Fricciones\\n…\\n## Para decidir\\n…\\n## Pendientes fuera de alcance\\n…\"},\"ficha\":{\"pr\":\"…\",\"rama\":\"…\",\"review\":\"…\"},\"consumo\":{\"preciosDe\":\"AAAA-MM-DD\",\"modelos\":[…]},\"nota\":\"…\"}" "$@"
+  exige 1 "entregar <id>   < {\"reporte\":{\"es\":\"## Hecho\\n…\\n## Cómo quedó\\n…\\n## Evidencia\\n…\\n## Decisiones sobre la marcha\\n…\\n## Fricciones\\n…\\n## Para decidir\\n…\\n## Pendientes fuera de alcance\\n…\"},\"ficha\":{\"pr\":\"…\",\"rama\":\"…\",\"review\":\"…\"},\"consumo\":{\"preciosDe\":\"AAAA-MM-DD\",\"modelos\":[…]},\"nota\":\"…\"}" "$@"
   vaciar_cola
   jq -c '. + {estado:"entregado"}' | escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
@@ -1003,31 +1050,22 @@ lista)
 consultas) leer "/api/items/consultas${1:+?estado=$(uri "${1:-}")}" ;;
 # Las que la persona ya decidió enteras: lo que la sesión aplica.
 contestadas) leer "/api/items/consultas?estado=contestada" ;;
-# Lo que la persona ya dijo y espera a la sesión: las decididas enteras, para aplicar, las
-# abiertas donde pidió más contexto en algún punto, para reescribirlo, y los ASK de las
-# reviews que contestó en la página de cada una. Es la tercera llamada del paso cero de
-# /thinking y de /coding: lo que la persona contestó mientras no había sesión.
+# Lo que la persona ya dijo y espera a la sesión: las decididas enteras, para aplicar, y las
+# abiertas donde pidió más contexto en algún punto, para reescribirlo. Es la tercera llamada
+# del paso cero de /thinking: lo que la persona contestó mientras no había sesión.
 decidido)
   {
-    {
-      leer "/api/items/consultas?abiertos" | jq '[.items[] | . + {tipo: "consulta"}]'
-      # El chequeo visual entra en la misma bandeja: lo que la persona aprobó mirando también
-      # espera que la sesión lo tome, y leerlo en otro comando sería dejarlo sin mirar.
-      leer "/api/items/chequeos?abiertos" | jq '[.items[] | . + {tipo: "chequeo"}]'
-      # Y la consulta al cliente respondida entera: lo que contestó el cliente espera que la
-      # sesión lo aplique, y la pregunta que pidió contexto, que la reescriba.
-      leer "/api/items/consultas-cliente?abiertos" | jq '[.items[] | . + {tipo: "consulta-cliente"}]'
-    } | jq -s 'add | [.[]
-      | select(.estado == "contestada" or .estado == "contestado" or .estado == "respondida" or ((.pidenContexto // []) | length) > 0 or ((.delCliente // []) | length) > 0)
-      | {id, tipo, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, delCliente, actualizado}]'
-    # Y cada ASK de una review que la persona contestó en su página: la bandeja `sesion` de
-    # los hallazgos, cada uno con su review y lo que dijo. Su `estado` es su decisión
-    # —`contestado`, o `pide-contexto` cuando espera que la sesión le sume lo que faltó—, y
-    # con eso se ordena junto al resto.
-    leer "/api/hallazgos?bandeja=sesion" | jq '[.hallazgos[]
-      | {id, tipo: "hallazgo", estado: (if .respuesta.decision == "pide-contexto" then "pide-contexto" else "contestado" end),
-         review, pr, enlace, accion, titulo, contexto, opciones, recomiendo, porque, respuesta, pedidos}]'
-  } | jq -s 'add | sort_by(if (.estado | startswith("contestad")) or .estado == "respondida" then 0 else 1 end)'
+    leer "/api/items/consultas?abiertos" | jq '[.items[] | . + {tipo: "consulta"}]'
+    # El chequeo visual entra en la misma bandeja: lo que la persona aprobó mirando también
+    # espera que la sesión lo tome, y leerlo en otro comando sería dejarlo sin mirar.
+    leer "/api/items/chequeos?abiertos" | jq '[.items[] | . + {tipo: "chequeo"}]'
+    # Y la consulta al cliente respondida entera: lo que contestó el cliente espera que la
+    # sesión lo aplique, y la pregunta que pidió contexto, que la reescriba.
+    leer "/api/items/consultas-cliente?abiertos" | jq '[.items[] | . + {tipo: "consulta-cliente"}]'
+  } | jq -s 'add | [.[]
+    | select(.estado == "contestada" or .estado == "contestado" or .estado == "respondida" or ((.pidenContexto // []) | length) > 0 or ((.delCliente // []) | length) > 0)
+    | {id, tipo, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, delCliente, actualizado}]
+    | sort_by(if (.estado | startswith("contestad")) or .estado == "respondida" then 0 else 1 end)'
   ;;
 # Lo que la persona dijo, punto por punto: aceptó o rechazó cada recomendación, pidió más
 # contexto (`decision: "pide-contexto"`, con qué le faltó en `comentario`), o dijo que lo
@@ -1136,14 +1174,18 @@ aplicar-cliente)
 chequeos) leer "/api/items/chequeos${1:+?estado=$(uri "${1:-}")}" ;;
 # Sube capturas al hilo y devuelve la ruta de cada una, que es con lo que el paso la nombra.
 capturar)
-  exige 2 "capturar <subarea> <archivo...>   (devuelve {archivo: ruta} para nombrarlas en los pasos)" "$@"
+  # Un nombre que ya existe en la sub-área contesta 409: el paso o la nota que lo nombra
+  # mostraría el archivo nuevo. `--reemplazar` es la misma captura rehecha.
+  reemplazar_captura=()
+  [ "${1:-}" = "--reemplazar" ] && { reemplazar_captura=("reemplazar=1"); shift; }
+  exige 2 "capturar [--reemplazar] <subarea> <archivo...>   (devuelve {archivo: ruta} para nombrarlas en los pasos; un nombre tomado en la sub-área contesta 409)" "$@"
   hilo_captura="$1"
   shift
   # Cada archivo emite su par nombre → ruta y nada más: el `jq -s add` funde los pares en
   # un objeto, así que un dato suelto al lado quedaría como un archivo más cuya ruta es un
   # número — y eso es lo que el paso va a nombrar.
   for archivo in "$@"; do
-    subir "$archivo" "linea=$hilo_captura" |
+    subir "$archivo" "linea=$hilo_captura" ${reemplazar_captura[@]+"${reemplazar_captura[@]}"} |
       jq -c --arg a "$archivo" '{(($a | split("/") | last)): .ruta}'
   done | jq -s 'add'
   ;;
@@ -1159,7 +1201,7 @@ visto)
 # vuelve a esperar a la persona— y cómo se arregla un chequeo mal armado sin abrir otro que
 # compita por la misma decisión. El paso ya decidido, 400.
 pasos)
-  exige 1 "pasos <id>   < {\"pasos\":[{\"id\":\"p2\",\"despues\":\"<ruta>\",\"queCuenta\":\"…\"}]}" "$@"
+  exige 1 "pasos <id>   < {\"pasos\":[{\"id\":\"p2\",\"despues\":\"<ruta>\",\"queCuenta\":\"…\"},{\"titulo\":\"…\",\"queCuenta\":\"…\",\"despues\":\"<ruta>\",\"origen\":\"<ruta>\",\"gesto\":\"…\",\"propuesta\":\"…\",\"porque\":\"…\"}]}   (con id se corrige; sin id nace entero, con la forma del paso de chequeo <subarea>)" "$@"
   vaciar_cola
   escribir PATCH "/api/items/chequeos/$(uri "$1")"
   ;;
@@ -1210,6 +1252,7 @@ pedido)
   exige 1 "pedido <plan-id>   < {\"rol\":\"qa\",\"que\":\"…\",\"sobre\":\"<rama o PR>\",\"aparato\":\"…\"}   (abre uno)
   pedido <plan-id> <n>                        (lee uno, con su vuelta)
   pedido <plan-id> <n> tomado [nota] · descartado [nota]
+  pedido <plan-id> <n> nota \"<texto>\"      (anota el pedido vivo sin moverlo: un renglón más en su historia)
   pedido <plan-id> <n> listo   < {\"nota\":\"…\",\"adjuntos\":[\"<ruta>\"],\"chequeo\":\"<id>\"}" "$@"
   plan_pedido="$1"
   if [ -z "${2:-}" ]; then
@@ -1231,7 +1274,14 @@ pedido)
       jq -cn --arg e "$3" --arg n "${4:-}" '{estado:$e} + (if $n == "" then {} else {nota:$n} end)' |
         escribir PATCH "/api/items/planes/$(uri "$plan_pedido")/pedidos/$(uri "$2")"
       ;;
-    *) echo "el pedido pasa a tomado, listo o descartado: «$3» no es un escritorio del pedido." >&2; exit 1 ;;
+    # La anotación de un pedido vivo que se queda donde está: «espera el arreglo de X». El
+    # servidor la suma a su historia en su mismo escritorio.
+    nota)
+      [ -n "${4:-}" ] || { echo "uso: bitacora-api pedido <plan-id> <n> nota \"<texto>\"" >&2; exit 1; }
+      jq -cn --arg n "$4" '{nota:$n}' |
+        escribir PATCH "/api/items/planes/$(uri "$plan_pedido")/pedidos/$(uri "$2")"
+      ;;
+    *) echo "el pedido pasa a tomado, listo o descartado, o se anota con nota: «$3» no es un escritorio del pedido." >&2; exit 1 ;;
     esac
   fi
   ;;
@@ -1872,7 +1922,9 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
-  bitacora-api capturar <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una)
+  bitacora-api capturar [--reemplazar] <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una;
+                                            un nombre ya tomado en la sub-área contesta 409, y --reemplazar sube la misma captura rehecha)
+  bitacora-api bajar <ruta> [destino]       (baja un adjunto con la llave del proyecto: la ruta o la url que contestaron adjuntos, capturar o pedido)
   bitacora-api pedidos [--rol qa] [--estado …]  (los pedidos entre sesiones del proyecto, cruzando planes: la bandeja del frente que los toma; sin estado, los vivos)
   bitacora-api pedido <plan-id> <n>         (uno, con su vuelta: la nota, los adjuntos por su dirección, el chequeo)
   bitacora-api consultas-cliente [estado]   (lo que se le lleva al cliente; `por-preguntar` espera que se lo lleves, `preguntada` espera al cliente)
@@ -1881,10 +1933,10 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api preguntada <id> [nota]       (ya se la llevaste al cliente: pasa a esperarlo)
   bitacora-api aplicar-cliente <id> [nota]  (la sesión tomó lo que contestó el cliente: la consulta cierra)
   bitacora-api visto <id>                   (lo que la persona dijo de cada paso del chequeo)
-  bitacora-api pasos <id>                   < {"pasos":[{"id":"p2","despues":"<ruta>","queCuenta":"…"}]}
+  bitacora-api pasos <id>                   < {"pasos":[{"id":"p2","despues":"<ruta>","queCuenta":"…"},{"titulo":"…","queCuenta":"…","despues":"<ruta>","origen":"<ruta>","gesto":"…","propuesta":"…","porque":"…"}]}
+                                            (con id se corrige ese paso; sin id nace entero, con la forma del paso de `chequeo <subarea>`)
   bitacora-api aplicar-chequeo <id> [nota]  (la sesión tomó lo aprobado: el chequeo cierra)
-  bitacora-api decidido                     (lo que la persona ya dijo y espera a la sesión: las decididas enteras, las abiertas con puntos que pidieron más contexto,
-                                             y los ASK de las reviews que contestó en su página, cada uno con su review y su respuesta: `tipo: "hallazgo"`)
+  bitacora-api decidido                     (lo que la persona ya dijo y espera a la sesión: las decididas enteras, y las abiertas con puntos que pidieron más contexto)
   bitacora-api contestadas                  (las que la persona ya decidió enteras: lo que la sesión tiene que aplicar)
   bitacora-api respuestas <id>              (punto por punto: la recomendación, si la persona la aceptó, la rechazó o pidió más contexto, y su comentario)
   bitacora-api por-traducir [idioma]        (documentos, ítems, fichas y el estado vigente de cada área: lo que falta y lo que quedó viejo,
@@ -1963,6 +2015,7 @@ Escritura (el cuerpo JSON entra por stdin):
                                             → contesta numero y enlace; se le manda UNA línea al frente de ROL qa (columna ROL de `bitacora-frentes mapa`,
                                               libre u ocupado): «Pedido <n> del plan <plan-id> «<título>»: <enlace>» — el id, porque sus comandos nombran el plan así
   bitacora-api pedido <plan-id> <n> tomado [nota]   (el frente del rol lo tiene)
+  bitacora-api pedido <plan-id> <n> nota "<texto>"  (anota el pedido vivo sin moverlo: «espera el arreglo de X» queda en su historia)
   bitacora-api pedido <plan-id> <n> listo   {"nota":"…","adjuntos":["<ruta que devolvió capturar>"],"chequeo":"<id del chequeo abierto>"}
                                             (lo que volvió; se contesta con una línea y el enlace a quien lo pidió)
   bitacora-api pedido <plan-id> <n> descartado [nota]   (de quien lo pidió, cuando dejó de hacerle falta)
@@ -1971,9 +2024,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…","review":"…"},"consumo":{…},"nota":"…"} → entregado
                                             (el consumo son los tokens de cada motor con su precio de ese día: se suma a las tandas anteriores)
                                             (el encargo de contenido cierra con ficha.entregable —la dirección de la pieza, el commit o la campaña— en lugar de ficha.pr)
-                                            (el servidor exige ficha.pr o ficha.entregable y el reporte con sus seis secciones: ## Hecho · ## Evidencia ·
-                                             ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir · ## Pendientes fuera de alcance —
-                                             las tres últimas van siempre y dicen «Ninguna» cuando no hubo, porque ausente o vacía rebota;
+                                            (el servidor exige ficha.pr o ficha.entregable y el reporte con sus siete secciones: ## Hecho · ## Cómo quedó ·
+                                             ## Evidencia · ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir · ## Pendientes fuera de alcance —
+                                             Cómo quedó y las tres últimas van siempre y dicen «Ninguna» cuando no hubo, porque ausente o vacía rebota;
                                              la review publicada en la bitácora va en ficha.review)
   bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada
   bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con sus ocho secciones y su ## Ronda N>"},"nota":"…"} → encargado
@@ -2057,21 +2110,21 @@ Escritura (el cuerpo JSON entra por stdin):
         [{"tipo":"fix","accion":"1","clase":"<kebab, la misma en cada review>","titulo":"<el título corto de su encabezado>","rule":"…","archivo":"…",
           "peldano":"encargo|bien-de-entrada|mecanico|jev|review","grosero":false,"suerte":"aplicado","commit":"<sha>"},
          {"tipo":"ask","accion":"4","titulo":"…","contexto":"…","opciones":[{"nombre":"…","implica":"…"},{"nombre":"…","implica":"…"}],
-          "recomiendo":0,"porque":"…","suerte":"para-decidir"},
-         {"tipo":"sugerencia","titulo":"…"},  {"tipo":"ley","titulo":"…","rule":"…"}]
-        suertes: aplicado (+commit) · al-autor · para-harness (el FIX de estilo en la PR de otro autor) · para-decidir · diferido
-                 · no-se-sostiene (+porque) · plan (+plan) · descartado (+porque)
+          "recomiendo":0,"porque":"…","suerte":"diferido"}]
+        suertes: aplicado (+commit: el FIX de la PR propia, va a harness) · diferido (el ASK de la PR propia, va a nit)
+                 · al-autor (la PR de otro autor: lo grosero y el ASK) · para-harness (el FIX de estilo en la PR de otro autor)
+                 · no-se-sostiene (+porque: la verificación refutó el bloqueante) · plan (+plan) · descartado (+porque)
         grosero: el FIX con su fila Bloqueante (bug · contrato · seguridad · integridad); sin ella es estilo
-        cada FIX y cada ASK del plan de acción trae su suerte (400 hallazgosSinSuerte); la sugerencia sin suerte nace diferida
+        el ASK trae qué hacer y su contexto; sus opciones y su posición son opcionales y ayudan a quien lo lee en nit
+        cada FIX y cada ASK del plan de acción trae su suerte (400 hallazgosSinSuerte)
         la clase de FIX que ya llegó en otra review abre su fila en harness (o suma una entrada a la que ya existe)
   bitacora-api hallazgos [clase]            las clases de FIX a lo largo de las reviews: sus reviews, sus peldaños, sus suertes, su fila y sus preguntas de Jev
-  bitacora-api hallazgos --bandeja <rol> [--review <slug>]
-        lo que espera a un rol, con su id: thinking (para decidir antes de firmar: el ASK que la persona contesta en la página de la review, el FIX sin destino)
-        · sesion (lo que la persona ya contestó: se aplica con su suerte, o se le suma el contexto que pidió) · nit (lo que puede esperar) · harness (todo lo que el proceso aprendió)
+  bitacora-api hallazgos --bandeja <nit|harness> [--review <slug>]
+        lo que junta cada acumulador, con su id: nit (lo que puede esperar: cada ASK) · harness (todo lo que el proceso aprendió: cada FIX)
+        los procesa la sesión que abre /nit o /harness
   bitacora-api hallazgo <id> ['{"suerte":"…"}']   uno entero con su historia; con el JSON le da su suerte:
         {"suerte":"plan","plan":"<id>"} · {"suerte":"diferido"} · {"suerte":"no-se-sostiene","porque":"…"} · {"suerte":"descartado","porque":"…"}
-        · {"suerte":"aplicado","commit":"<sha>"} (el FIX, o el ASK decidido que se hizo en la rama)
-        · {"contexto":"…"}: el que la persona pidió para decidir un ASK; se suma y el ASK vuelve a ella (la respuesta se escribe en la página de la review)
+        · {"suerte":"aplicado","commit":"<sha>"} (el FIX que se hizo en la rama)
   bitacora-api pregunta-jev <subarea>       {"titulo":"…","queEs":"…","clave":"<id en la rule del repo>","pregunta":"<the question>","clase":"…","cuerpo":"…"}
         su banco entra con corregir pregunta-jev <id> {"banco":{"rojo":[…],"verde":[…],"aprobado":[…],"barrera":0.5}};
         su escritorio: propuesta · en-banco · informando · frena · retirada
@@ -2104,7 +2157,7 @@ Poner una pieza afuera — se lee sin entrar, y nada más que esa pieza (dueño)
                                             —las capturas, el PDF que un client-report entregó—, y privado los cierra
 
 Archivos y bajas (borrar es del dueño):
-  bitacora-api adjuntar <archivo> linea=<slug> [queEs="…"]
+  bitacora-api adjuntar <archivo> linea=<slug> [queEs="…"] [reemplazar=1]
   bitacora-api borrar /api/lineas/<slug>     (se niega si todavía cuelga algo)
   bitacora-api borrar /api/areas/<slug>      (se niega si alguna sub-área vive ahí)
   bitacora-api borrar /api/enlaces/<slug>    (saca un acceso de la columna)
