@@ -1994,7 +1994,7 @@ Escritura (el cuerpo JSON entra por stdin):
         y CARGA EN LA WEB lo que contestó el cliente, con sus palabras; pasa sola a `respondida` con la última respuesta
         PASO UNO: `fuentes <area-o-subarea>` y un subagente por fuente — lo que el cliente ya entregó contesta solo,
         y la respuesta del alta trae `antesDePreguntar` con las fuentes de ese mundo nombradas
-  bitacora-api chequeo <subarea>               {"titulo":"…","queEs":"qué cambió y qué se le pide al que aprueba","flujos":["<slug-del-recorrido>"],
+  bitacora-api chequeo <subarea>               {"titulo":"…","queEs":"qué cambió y qué se le pide al que aprueba","plan":"<id>","flujos":["<slug-del-recorrido>"],
                                              "pasos":[{"titulo":"la pantalla o el momento","queCuenta":"qué mirar, desde el usuario que usa la pantalla",
                                                        "despues":"<ruta de la captura como queda>","antes":"<ruta en la base — vacía cuando estrena>",
                                                        "origen":"<ruta de la pantalla desde la que se viene>","gesto":"qué se tocó para llegar acá",
@@ -2004,7 +2004,7 @@ Escritura (el cuerpo JSON entra por stdin):
         lo que se aprueba MIRANDO: las capturas suben antes con `capturar` y el paso las nombra por su ruta, que la puerta verifica;
         desde el segundo paso va cómo se llega —`entrada`, o `origen` con su `gesto`—, y la persona aprueba cada uno EN LA WEB
         comparando el antes con el después; aceptar con una línea escrita es un cambio pedido, que `visto` y `decidido` listan en `cambiosPedidos`;
-        "plan":"<id>" dice qué plan revisa: el plan lo lista en su tira, y firmar ese plan cierra el chequeo —el contestado pasa a `aplicado`,
+        "plan":"<id>" es obligatorio y dice qué plan revisa —el que declara `visual: chequeo`—: el plan lo lista en su tira, y firmar ese plan cierra el chequeo —el contestado pasa a `aplicado`,
         el abierto a `descartado` con «firmado sin mirar»—
   bitacora-api puntos <id>                  {"puntos":[{"id":"p2","queCambia":"…","porque":"…"},{"titulo":"…","queCambia":"…","propuesta":"…","porque":"…"}]}
         corregir por id o sumar sin id mientras está abierta; reescribir el punto que pidió contexto lo devuelve a la persona. El ya decidido, 400
