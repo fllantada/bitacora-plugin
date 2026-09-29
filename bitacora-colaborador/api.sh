@@ -1827,12 +1827,13 @@ review)
   fi
   ;;
 rato)
-  # rato  ← {"tarea":"…","tareaEn":"…","reloj":"1:30","epica":"…","epicaNombre":"…",
+  # rato  ← {"tarea":"…","tareaEn":"…","reloj":"1:30","epica":"<nombre de la épica>",
   #          "jira":{"clave":"…","url":"…"},"plan":"<id del plan>","pr":"https://…/pull/12"}
   # `tarea` y `reloj` son el piso. `tareaEn` es la fila en inglés, la que se carga;
-  # `epica` y `epicaNombre` el código y el nombre bajo el que el panel lo agrupa;
-  # `plan` y `pr` dicen de dónde salió: el banco los enlaza. Las instrucciones del
-  # tenant dicen cuáles de estos van siempre y con qué reloj.
+  # `epica` el nombre bajo el que el panel lo agrupa —un nombre nuevo es una épica nueva—,
+  # y el rato que nombra su `plan` toma la de su ficha; `plan` y `pr` dicen de dónde
+  # salió: el banco los enlaza. Las instrucciones del tenant dicen cuáles de estos van
+  # siempre y con qué reloj.
   vaciar_cola
   escribir POST "/api/trabajo"
   ;;
@@ -2143,11 +2144,12 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar] [--escrito-en <idioma>]
                                              (el documento de /review tal cual; --publicar lo pone afuera y contesta publica.enlace)
   bitacora-api rato (dueño)                 {"tarea":"…","reloj":"1:30"}   (el banco de horas)
-                                            · la fila entera: {"tareaEn":"la fila en inglés, la que se carga","epica":"<código de la épica>","epicaNombre":"<su nombre>",
+                                            · la fila entera: {"tareaEn":"la fila en inglés, la que se carga","epica":"<el nombre de su épica>",
                                               "jira":{"clave":"<clave del ticket>","url":"…"}} — las instrucciones del tenant dicen cuáles van siempre
                                             · de dónde salió: {"plan":"<id del plan>","pr":"https://…/pull/12"} — el banco lo enlaza
-                                              con su PR, su plan y su review (el plan presta a su rato la PR y la review de su ficha)
-  bitacora-api mover-rato <id> (dueño)      {"estado":"cargado"} · {"plan":"<id>","pr":"…"} (null lo saca)
+                                              con su PR, su plan y su review (el plan presta a su rato la PR, la review y la épica de su ficha)
+  bitacora-api mover-rato <id> (dueño)      {"estado":"en-holded"} · {"epica":"<otro nombre>"} · {"jira":{"clave":"…","url":"…"}}
+                                            · {"plan":"<id>","pr":"…"} (null lo saca; el plan le pone también la épica de su ficha)
   bitacora-api guardar-documento            el documento entero
   bitacora-api traducir                     {"linea":"…","slug":"…","idioma":"en","cuerpo":"…","hash":"…"}
   bitacora-api traducir                     {"tipo":"hilo","llave":"…","idioma":"en","campos":{…},"huella":"…"}
