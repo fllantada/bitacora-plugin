@@ -754,6 +754,30 @@ publicar | privado)
 # una dirección, y de un tirón el día que se quiera cerrar todo.
 publicados) leer "/api/publicacion" ;;
 horas) leer "/api/trabajo" ;;
+informes) leer "/api/informes" ;;
+informe)
+  # informe <AAAA-MM>                  → el informe de horas de ese mes, con los datos que subió su cierre
+  # informe <AAAA-MM> <archivo.json>   → lo sube entero, o reemplaza el que había, y contesta los
+  #                                      totales que la página va a mostrar: la cuenta se compara ahí
+  exige 1 "informe <AAAA-MM> [archivo.json]" "$@"
+  if [ -n "${2:-}" ]; then
+    [ -f "$2" ] || {
+      echo "No encuentro «$2»: el informe se sube desde su archivo JSON." >&2
+      exit 1
+    }
+    vaciar_cola
+    escribir PUT "/api/informes/$(uri "$1")" <"$2"
+  else
+    leer "/api/informes/$(uri "$1")"
+  fi
+  ;;
+publicar-informe | privado-informe)
+  # El informe del mes afuera —se lee sin entrar, en el idioma que declara— o de vuelta adentro.
+  exige 1 "$comando <AAAA-MM>" "$@"
+  vaciar_cola
+  [ "$comando" = publicar-informe ] && afuera=true || afuera=false
+  jq -n --arg p "$1" --argjson a "$afuera" '{informe: $p, publico: $a}' | escribir PUT "/api/publicacion"
+  ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
 # Baja un adjunto con la llave del proyecto: la maqueta que un plan sigue, el «antes» de un
 # pedido. Toma la `ruta` que contestan `adjuntos`, `capturar` y `pedido`, o su `url`
@@ -2147,7 +2171,10 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · la fila entera: {"tareaEn":"la fila en inglés, la que se carga","epica":"<el nombre de su épica>",
                                               "jira":{"clave":"<clave del ticket>","url":"…"}} — las instrucciones del tenant dicen cuáles van siempre
                                             · de dónde salió: {"plan":"<id del plan>","pr":"https://…/pull/12"} — el banco lo enlaza
-                                              con su PR, su plan y su review (el plan presta a su rato la PR, la review y la épica de su ficha)
+                                              con su PR, su plan y su review (el plan presta a su rato la PR y la review de su ficha, y le copia la épica al escribirlo)
+  bitacora-api informes (dueño)             los informes de horas del proyecto, un mes por renglón, con su enlace
+  bitacora-api informe <AAAA-MM> [archivo.json] (dueño)   sin archivo lo lee; con archivo lo sube entero y contesta sus totales
+                                            (lo arma /reportHours al cerrar el mes; la página lo calcula y lo dibuja en los dos idiomas)
   bitacora-api mover-rato <id> (dueño)      {"estado":"en-holded"} · {"epica":"<otro nombre>"} · {"jira":{"clave":"…","url":"…"}}
                                             · {"plan":"<id>","pr":"…"} (null lo saca; el plan le pone también la épica de su ficha)
   bitacora-api guardar-documento            el documento entero
@@ -2160,6 +2187,7 @@ Escritura (el cuerpo JSON entra por stdin):
 Poner una pieza afuera — se lee sin entrar, y nada más que esa pieza (dueño):
   bitacora-api publicar <subarea> <slug>       → devuelve el `enlace` para mandar
   bitacora-api publicar <seccion>           (una review: es una sección de un solo documento)
+  bitacora-api publicar-informe <AAAA-MM>   (el informe de horas del mes; privado-informe lo trae adentro)
   bitacora-api publicar <linea|seccion|flujo> <contenedor> <slug>
                                             (la forma explícita: la sección con varios documentos
                                              o con archivos propios, y el texto de un flujo)
