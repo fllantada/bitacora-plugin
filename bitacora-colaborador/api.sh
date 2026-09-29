@@ -950,8 +950,8 @@ soltar)
 # (Hecho · Cómo quedó · Evidencia · Decisiones sobre la marcha · Fricciones · Para decidir ·
 # Pendientes fuera de alcance; Cómo quedó y las tres últimas van siempre y dicen «Ninguna»
 # cuando no hubo: una sección ausente o vacía rebota como olvido) y adónde volvió el trabajo en la
-# ficha: pr, o entregable cuando el encargo es contenido. Y para llegar a hecho por la API
-# con visual=chequeo, un chequeo contestado que declare el plan.
+# ficha: pr, o entregable cuando el encargo es contenido. Firmar a hecho cierra el chequeo
+# que declara el plan: el contestado pasa a aplicado, el abierto a descartado.
 # Un 400 nombra todo lo que falta de una vez, con lo que cada sección afirma.
 # La nota va también a `ficha.destino`: las listas —en-curso, bandeja— sirven la ficha y
 # no la historia, y quién tiene un plan se pregunta desde una lista.
@@ -1057,14 +1057,16 @@ decidido)
   {
     leer "/api/items/consultas?abiertos" | jq '[.items[] | . + {tipo: "consulta"}]'
     # El chequeo visual entra en la misma bandeja: lo que la persona aprobó mirando también
-    # espera que la sesión lo tome, y leerlo en otro comando sería dejarlo sin mirar.
+    # espera que la sesión lo tome, y leerlo en otro comando sería dejarlo sin mirar. Sus
+    # `cambiosPedidos` son los pasos aceptados con una línea escrita: trabajo para la sesión.
     leer "/api/items/chequeos?abiertos" | jq '[.items[] | . + {tipo: "chequeo"}]'
     # Y la consulta al cliente respondida entera: lo que contestó el cliente espera que la
     # sesión lo aplique, y la pregunta que pidió contexto, que la reescriba.
     leer "/api/items/consultas-cliente?abiertos" | jq '[.items[] | . + {tipo: "consulta-cliente"}]'
   } | jq -s 'add | [.[]
     | select(.estado == "contestada" or .estado == "contestado" or .estado == "respondida" or ((.pidenContexto // []) | length) > 0 or ((.delCliente // []) | length) > 0)
-    | {id, tipo, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, delCliente, actualizado}]
+    | {id, tipo, estado, hilo, area, titulo, respuestas, faltan, pidenContexto, delCliente, actualizado}
+      + (if ((.cambiosPedidos // []) | length) > 0 then {cambiosPedidos} else {} end)]
     | sort_by(if (.estado | startswith("contestad")) or .estado == "respondida" then 0 else 1 end)'
   ;;
 # Lo que la persona dijo, punto por punto: aceptó o rechazó cada recomendación, pidió más
@@ -1155,7 +1157,8 @@ aplicar-cliente)
 #      Nunca se escribe una ruta a mano: la puerta del chequeo verifica que cada captura
 #      nombrada exista como archivo de ese hilo, y contesta 400 con la que falta.
 #   2. `chequeo <subarea>` lo abre con sus pasos, cada uno con la pantalla que se juzga
-#      (`despues`), cómo se llega a ella (`origen` + `gesto`, desde el segundo paso), la
+#      (`despues`), cómo se llega a ella desde el segundo paso (la dirección directa en
+#      `entrada`, o `origen` + `gesto`), la
 #      pantalla en la base cuando el paso cambia algo que ya existía (`antes` — vacía
 #      cuando estrena), qué mirar (`queCuenta`), la recomendación y su porqué. Y de qué
 #      RECORRIDO es cada pantalla: `flujos` arriba, o el `flujo` de cada paso. De qué
@@ -1165,8 +1168,9 @@ aplicar-cliente)
 #      antes con el después: lado a lado las de celular, y las de escritorio en el mismo
 #      lugar con los botones «Antes» y «Después». Con la última decisión el chequeo pasa
 #      solo a `contestado`.
-#   4. `visto <id>` trae lo que dijo de cada paso; los rechazos son la ronda siguiente del
-#      plan, sobre la misma rama. `aplicar-chequeo <id>` lo cierra.
+#   4. `visto <id>` trae lo que dijo de cada paso; los rechazos y los `cambiosPedidos` —lo
+#      aceptado con una línea escrita— son la ronda siguiente del plan, sobre la misma rama.
+#      `aplicar-chequeo <id>` lo cierra, y firmar el plan que revisa también.
 #
 # Las capturas de web se toman con Playwright y las de mobile del device o del simulador:
 # de dónde salen es de la sesión, y el tipo es indiferente a eso.
@@ -1187,14 +1191,14 @@ capturar)
   for archivo in "$@"; do
     subir "$archivo" "linea=$hilo_captura" ${reemplazar_captura[@]+"${reemplazar_captura[@]}"} |
       jq -c --arg a "$archivo" '{(($a | split("/") | last)): .ruta}'
-  done | jq -s 'add'
+  done | jq -s 'add // empty'
   ;;
 # Lo que la persona dijo de cada paso: aceptó o rechazó lo que vio, o pidió más contexto
 # (`decision: "pide-contexto"`, con qué le faltó en `comentario`). `pedidos` son los que ese
 # paso ya recibió y la sesión atendió recapturándolo.
 visto)
   exige 1 "visto <id>" "$@"
-  leer "/api/items/chequeos/$(uri "$1")" | jq '{estado, hilo, titulo, flujos, respuestas, faltan, pidenContexto, pasos: [.pasos[] | {id, titulo, flujo, estrena, gesto, queCuenta, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
+  leer "/api/items/chequeos/$(uri "$1")" | jq '{estado, hilo, titulo, flujos, respuestas, faltan, pidenContexto, cambiosPedidos: (.cambiosPedidos // []), pasos: [.pasos[] | {id, titulo, flujo, estrena, entrada, gesto, queCuenta, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
   ;;
 # Corregir o agregar pasos mientras el chequeo está abierto: por id el que se corrige, sin
 # id el que nace entero. Es cómo se atiende un pedido de contexto —el paso recapturado
@@ -1949,7 +1953,9 @@ Escritura (el cuerpo JSON entra por stdin):
         con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;
         el servidor exige ocho secciones en el cuerpo —# Qué cambia (el TL;DR para la persona: de dos a cuatro oraciones, sin código) · # Tarea · # La idea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance—, el queEs, la bajada en una línea,
         y "visual": qué se mira de lo que entrega — ninguna (nada cambia en pantalla) · captura (algo en pantalla cambia y lo correcto ya está escrito:
-        el frente que mira captura el antes y el después) · chequeo (algo en pantalla cambia y que esté bien es el juicio de la persona: se abre el chequeo visual y se firma después)
+        el frente que mira captura el antes y el después; donde el push despliega, es el valor por defecto) · chequeo (queda una decisión de diseño
+        abierta que solo se toma mirando y cuya respuesta cambia el código, antes de salir: el cuerpo la nombra en una línea, se abre el chequeo
+        visual declarando este plan y la firma lo cierra)
   bitacora-api bug <subarea>                   {"titulo":"…","prioridad":"critico","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
         "prioridad": critico · mayor · menor — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
         y el crítico abierto encabeza toda lista, cruzando áreas
@@ -1992,11 +1998,14 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "pasos":[{"titulo":"la pantalla o el momento","queCuenta":"qué mirar, desde el usuario que usa la pantalla",
                                                        "despues":"<ruta de la captura como queda>","antes":"<ruta en la base — vacía cuando estrena>",
                                                        "origen":"<ruta de la pantalla desde la que se viene>","gesto":"qué se tocó para llegar acá",
+                                                       "entrada":"<la dirección directa por la que se abre la pantalla — en lugar de origen y gesto>",
                                                        "flujo":"<slug — cuando el chequeo cruza más de un recorrido>",
                                                        "propuesta":"la recomendación","porque":"su porqué, en una frase"}]}
         lo que se aprueba MIRANDO: las capturas suben antes con `capturar` y el paso las nombra por su ruta, que la puerta verifica;
-        `origen` y `gesto` van desde el segundo paso, y la persona aprueba cada uno EN LA WEB comparando el antes con el después;
-        "plan":"<id>" dice qué plan revisa: el plan lo lista en su tira, y con visual=chequeo la firma por la API espera a que esté contestado
+        desde el segundo paso va cómo se llega —`entrada`, o `origen` con su `gesto`—, y la persona aprueba cada uno EN LA WEB
+        comparando el antes con el después; aceptar con una línea escrita es un cambio pedido, que `visto` y `decidido` listan en `cambiosPedidos`;
+        "plan":"<id>" dice qué plan revisa: el plan lo lista en su tira, y firmar ese plan cierra el chequeo —el contestado pasa a `aplicado`,
+        el abierto a `descartado` con «firmado sin mirar»—
   bitacora-api puntos <id>                  {"puntos":[{"id":"p2","queCambia":"…","porque":"…"},{"titulo":"…","queCambia":"…","propuesta":"…","porque":"…"}]}
         corregir por id o sumar sin id mientras está abierta; reescribir el punto que pidió contexto lo devuelve a la persona. El ya decidido, 400
   bitacora-api aplicar <id> [nota]          → aplicada: la sesión tomó lo decidido (la ronda, las decisiones al libro); sin decidir entera, 400

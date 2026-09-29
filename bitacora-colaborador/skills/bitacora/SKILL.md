@@ -582,15 +582,22 @@ returns it summed per engine, with cost and tokens resolved.
 **`visual` says what gets looked at in what the plan delivers, decided at design time.**
 `ninguna` when nothing on a screen changes (backend, data, infra, scripts, tests, harness, a
 refactor); `captura` when something on screen changes and the right result is already
-written (a text, a bug with its expected look, a style that exists elsewhere): whoever looks
-captures the before and the after, and they sit at the foot of the plan as evidence;
-`chequeo` when something on screen changes and whether it is right is the person's call (a
-screen, a state, a component or a run nobody approved on the device yet): a visual check is
-opened, the person answers it, and the plan is signed off after. With `chequeo`, signing off
-through the API waits for an answered check that declares this plan (400 `chequeoPendiente`);
-signing off on the web is the person's and warns instead of blocking. The guiding question:
-*is there something on screen the person has not approved yet?* → `chequeo`; *does it show,
-and is the right result already written?* → `captura`; *nothing on screen?* → `ninguna`.
+written (a fix, a text, a configuration, data, a style that exists elsewhere, whatever an
+ASK, a Figma file or a recorded decision already settled): whoever looks captures the
+before and the after, and they sit at the foot of the plan as evidence; a state that has to
+be manufactured to be seen goes to a test. `chequeo` when **a design decision stays open
+that is only made by looking and whose answer changes the code**, before the work ships;
+the plan names it in one line of its body: a visual check is opened declaring this plan,
+the person answers it, and signing off closes it. **Where the push deploys** —the project
+that commits straight to its production branch— **the default is `captura`**: what gets
+looked at is already live. The door holds the rule: a check is born declaring a plan with
+`visual: chequeo` that is not signed off yet (400 `chequeoSinPlan`, `planSinChequeo` or
+`planCerrado`). **Signing off closes the check**, through the API or on the web: an
+answered one moves to `aplicado`, and one still open to `descartado` with the note
+«firmado sin mirar» (signed off without looking); the web band warns before. The guiding
+question: *is there a design decision that is only made by looking, and does its answer
+change the code?* → `chequeo`; *does it show, and is the right result already written?* →
+`captura`; *nothing on screen?* → `ninguna`.
 
 **And its review runs whole on the builder's side.** The review checks compliance and
 produces two things: the FIX, a breach of the law —gross, with its Blocking row, or of
@@ -639,10 +646,12 @@ JSON
 #   with the plan id and the link — «Request 2 of plan <plan-id> «<title>»: <link>» — since the taker's commands name the plan by id
 $API -p <project> pedidos --rol qa                 # the role's tray: live requests across plans, each with its plan
 $API -p <project> pedido <plan-id> 2 tomado
+$API -p <project> pedido <plan-id> 2 nota "Halfway: the empty shelf is captured"   # a line on a live request, without moving it
 $API -p <project> pedido <plan-id> 2 listo <<'JSON'
 {"nota":"Both screens on the Galaxy, on feat/shelf at its last commit.","adjuntos":["<place>/shelf-empty.png","<place>/shelf-three.png"],"chequeo":"<id, when the request was the visual check>"}
 JSON
 $API -p <project> pedido <plan-id> 2                # what came back, each attachment with its address
+$API -p <project> bajar <place>/shelf-empty.png      # downloads an attachment with your key
 $API -p <project> pedido <plan-id> 2 descartado     # when it stopped being needed
 ```
 
@@ -895,6 +904,7 @@ judgeable.
 | `antes` | that same screen on the base branch. **Always there when the screen already existed**, also when the check approves what ships in a release: without it the page marks the screen «New screen». **Empty only when the step DEBUTS the screen**, which turns the question from «did it improve» into «is it right as it is» |
 | `origen` | the screen you come from, with the control you tap marked on it |
 | `gesto` | what you tapped to go from `origen` to `despues` — «tap Discount» |
+| `entrada` | **the direct address the screen opens at**, instead of `origen` and `gesto`: for the step you reach by its URL —a state prepared in the database, a page that opens on its own—, so it says how you really get there |
 | `queCuenta` | **what to look at, from the seat of the user who uses that screen**: their situation, what the screen shows them, what changed for them and the question the approver decides (how to write it, below) |
 | `propuesta` + `porque` | the session's recommendation and its reason, in one phrase |
 | `flujo` | the slug of the run that moment belongs to |
@@ -912,8 +922,11 @@ hole where the owner had to decide.
 it verifies in `flujos` and each step names its own in `flujo`; with a single run declared,
 the step inherits it. The door requires it, because a screen that does not say which run it
 belongs to makes the approver reconstruct it. **And the navigation is paid from the second
-step on**: `origen` and `gesto` are always there except in the first, which you enter with
-no previous gesture.
+step on**, in one of its two forms: `origen` with its `gesto` when you come from the previous
+screen, or `entrada` when you reach the step by its address. The first step is spared, since
+you enter it with no previous gesture. The form is the one that exists: an origin and a
+gesture made up to pass the door tell the approver about a navigation the app does not
+have.
 
 **What to look at is written from the seat of the user who uses the screen.** Whoever
 approves judges the screen by putting themselves in that place, and `queCuenta` is what seats
@@ -953,8 +966,8 @@ The same step, written from the user:
 |---|---|---|
 | `abierto` | waiting for the person's eyes — or for the session, when what is left undecided asked for more context | it is born here |
 | `contestado` | every step decided: the signal for the session | the server, with the last decision |
-| `aplicado` | the session took what was approved: rejections become the next round of the plan, on the same branch | the session, with `aplicar-chequeo` |
-| `descartado` | it stopped applying, with its reason | the session |
+| `aplicado` | the session took what was approved: rejections and requested changes become the next round of the plan, on the same branch | the session, with `aplicar-chequeo`, or the plan's sign-off on an answered one |
+| `descartado` | it stopped applying, with its reason | the session, or the plan's sign-off on one still open, with the note «firmado sin mirar» |
 
 ```bash
 # 0. The place: the plan's own.
@@ -962,6 +975,7 @@ PLACE="$($API -p <project> item planes <plan-id> | jq -r .hilo)"
 
 # 1. The captures go up and return their path: that is what the step names them by.
 $API -p <project> capturar "$PLACE" step1-origin.png step1-before.png step1-after.png
+$API -p <project> capturar --reemplazar "$PLACE" step1-after.png   # a name already taken in the place returns 409 adjuntoTomado; the same capture redone goes up with --reemplazar
 # → {"step1-origin.png":"<place>/step1-origin.png", …}
 
 # 2. The check, with its run, the plan it reviews, and its steps.
@@ -995,10 +1009,16 @@ JSON
 $API -p <project> aplicar-chequeo <id> "round 2 written in the plan · two screens rebuilt"
 ```
 
-**The check declares the plan it reviews** (`plan`, the plan's id, at creation or later
-through `mover chequeos`): that is what ties it to the PR it approves. The plan lists it in
-its access strip as «Check», its page links it from the request that opened it, and with
-`visual: chequeo` signing off through the API waits for it to be answered.
+**The check is born declaring the plan it reviews** (`plan`, the plan's id, at creation):
+that is what ties it to the PR it approves, and the door asks that plan to exist, to have
+asked for `visual: chequeo` and to be still unsigned. The plan lists it in its access strip
+as «Check», its page links it from the request that opened it, and signing off the plan
+closes it. **Before sending the link, the session verifies it**: a subagent compares each
+pair —the before and the after are the same screen at the same size, what the step asks to
+approve is in sight, no defect shows, the captures come from committed code— and whatever
+fails is recaptured through `pasos`. **A step accepted with a text is a change request**:
+it is approved and asks for something more, the check's read gathers it in `cambiosPedidos`
+(`{"paso","texto"}`), and the session does it before applying.
 
 **When you open a check and not a consultation.** The check is for what is decided with the
 eyes: a screen, a component, a run of the app. The consultation is for what is decided by
