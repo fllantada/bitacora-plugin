@@ -341,13 +341,13 @@ read with its sub-areas, and the owner folds each one into its area
 (`fusionar <sub-area> <area>`: its pieces keep the sub-area's name and brief as their
 topic) or raises it to an area of its own (`ascender <sub-area>`).
 
-**Four areas exist in every project**, even empty, called the same in all of them, with
+**Five areas exist in every project**, even empty, called the same in all of them, with
 their name and their existence fixed (renaming or deleting one answers 400 `areaObligada`):
 **Commercial** (`comercial`, alias `marketing` — a project that already had `marketing`
-keeps it as its Commercial, and both names lead there), **QA** (`qa`: what is tested and how), **Nice To Have** (`nice-to-have`,
+keeps it as its Commercial, and both names lead there), **QA** (`qa`: what is tested and how), **SEO** (`seo`, alias `posicionamiento`: how the project gets found on Google, on Bing and in the AI assistants that answer by citing), **Nice To Have** (`nice-to-have`,
 alias `nit`: the good ideas that showed up and wait for their moment) and **Harness**
 (`harness`: the tooling the project works with). Whoever arrives at any project knows
-without asking where selling, testing, what waits and the tooling go. Two of them are
+without asking where selling, testing, being found, what waits and the tooling go. Two of them are
 accumulators: what a review finds travels as a finding with its fate, and what can wait
 lands in Nice To Have —«To group»— while what the process learnt —each FIX, what did not
 hold— lands in Harness, «What reached the review». **The review of the session that builds is
@@ -395,7 +395,10 @@ access— is declared in the body with its reason in one line,
 `# How we test`** — what is tested, where each test lives, how it runs and what each layer
 isolates, with its `d2` drawing —, required once the project closes its `areas`
 adaptation; read it before testing a change. Harness carries its own sixth in the same
-spot, `# How we work`. Read it with `$API estado <slug>`; taking a new snapshot is the owner's call at the close of
+spot, `# How we work`, and SEO carries `# How we get found` —each surface where the project
+has to show up (Google, Bing and the AI assistants that answer by citing), what each reads
+from the site, what it understands of the project and how showing up is measured, with its
+`d2` drawing—, required once the project closes its `seo` adaptation. Read it with `$API estado <slug>`; taking a new snapshot is the owner's call at the close of
 an important change (`$API escribir-estado <slug>`).
 
 The API calls an area's place a `linea` — the collection and the `lineaSlug` field keep the
