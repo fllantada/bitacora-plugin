@@ -687,12 +687,17 @@ estado)
 secciones) leer "/api/secciones" ;;
 reviews) leer "/api/reviews" ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# PONER UNA PIEZA AFUERA — se lee sin entrar, y nada más que esa pieza.
+# PONER UNA PIEZA AFUERA — se lee sin cuenta, con su contraseña, y nada más que esa pieza.
 #
-# La dirección que devuelve (`enlace`) es la que se manda: cualquiera con ella lee la
-# página, sin cuenta y sin login. El resto del proyecto —el tablero, el hilo, las otras
-# piezas— sigue adentro, y el espejo público no tiene navegación, así que de una pieza
-# publicada no se llega a nada más.
+# La respuesta trae lo que se manda: `enlace`, su `contrasena` y `paraMandar`, que son los
+# dos juntos listos para pegar en un mensaje. Quien abre el enlace escribe la contraseña
+# una vez y lee la página, sin cuenta y sin login. El resto del proyecto —el tablero, el
+# hilo, las otras piezas— sigue adentro, y el espejo público no tiene navegación, así que
+# de una pieza publicada no se llega a nada más.
+#
+# `--contrasena <la que quieras>` (8 caracteres o más) pone la tuya; sin el flag la pieza
+# conserva la que ya tenía, y la que sale por primera vez recibe una de la casa. Publicar
+# de nuevo con `--contrasena` es la forma de cambiarla.
 #
 # La pieza se nombra como se la lee: `<subarea> <slug>` para lo que cuelga de un hilo, y la
 # sección sola para una review, que es una sección de un solo documento. Publicar abre
@@ -702,9 +707,19 @@ reviews) leer "/api/reviews" ;;
 # Es del dueño del proyecto: la llave de un colaborador recibe un 403.
 # ─────────────────────────────────────────────────────────────────────────────
 publicar | privado)
-  exige 1 "$comando <subarea> <slug>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>" "$@"
+  exige 1 "$comando <subarea> <slug>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>   [--contrasena <…>]" "$@"
   vaciar_cola
   [ "$comando" = publicar ] && afuera=true || afuera=false
+
+  # El flag sale de los argumentos antes de contarlos: lo que queda es el nombre de la pieza.
+  contrasena="" nombrada=()
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --contrasena) contrasena="${2:-}" && shift && shift || true ;;
+    *) nombrada+=("$1") && shift ;;
+    esac
+  done
+  set -- ${nombrada[@]+"${nombrada[@]}"}
 
   # Tres formas de nombrar la pieza, y la elige la cantidad de argumentos:
   #
@@ -718,7 +733,7 @@ publicar | privado)
   # script, y `algo | escribir` corre en un subshell — un `exit` ahí abajo deja pasar un
   # cuerpo vacío y manda el pedido igual.
   campo=hilo
-  case "$#:$1" in
+  case "$#:${1:-}" in
   3:linea | 3:hilo) contenedor="$2" pieza="$3" ;;
   3:seccion | 3:flujo) campo="$1" contenedor="$2" pieza="$3" ;;
   3:*)
@@ -734,6 +749,13 @@ publicar | privado)
     ;;
   2:*) contenedor="$1" pieza="$2" ;;
   1:*) campo=seccion contenedor="$1" pieza="" ;;
+  0:*)
+    echo "Falta nombrar la pieza. Las tres formas son:" >&2
+    echo "  · $comando <subarea> <slug>" >&2
+    echo "  · $comando <seccion>                                 (una review)" >&2
+    echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
+    exit 1
+    ;;
   # Un argumento de más cae acá, y va al final porque un `case` resuelve en orden: puesto
   # antes tapaba la forma de la sección sola. Sin esta rama, lo que se nombraba pasaba a
   # ser la palabra `linea` y el servidor contestaba sobre una sección que nadie nombró.
@@ -746,12 +768,13 @@ publicar | privado)
     ;;
   esac
 
-  jq -cn --argjson p "$afuera" --arg k "$campo" --arg c "$contenedor" --arg s "$pieza" \
-    '{publico:$p} + {($k): $c} + (if $s == "" then {} else {slug:$s} end)' |
+  jq -cn --argjson p "$afuera" --arg k "$campo" --arg c "$contenedor" --arg s "$pieza" --arg w "$contrasena" \
+    '{publico:$p} + {($k): $c} + (if $s == "" then {} else {slug:$s} end) + (if $w == "" then {} else {contrasena:$w} end)' |
     escribir PUT "/api/publicacion"
   ;;
-# Qué está afuera hoy, con el enlace de cada uno: lo que se pregunta antes de mandar
-# una dirección, y de un tirón el día que se quiera cerrar todo.
+# Qué está afuera hoy, con el enlace y la contraseña de cada uno (`paraMandar` trae los dos
+# juntos): lo que se pregunta antes de mandar una dirección, y de un tirón el día que se
+# quiera cerrar todo.
 publicados) leer "/api/publicacion" ;;
 horas) leer "/api/trabajo" ;;
 informes) leer "/api/informes" ;;
@@ -772,11 +795,15 @@ informe)
   fi
   ;;
 publicar-informe | privado-informe)
-  # El informe del mes afuera —se lee sin entrar, en el idioma que declara— o de vuelta adentro.
-  exige 1 "$comando <AAAA-MM>" "$@"
+  # El informe del mes afuera —se lee sin cuenta, con su contraseña— o de vuelta adentro. La
+  # respuesta trae `enlace`, `contrasena` y `paraMandar`; `--contrasena <…>` pone la tuya.
+  exige 1 "$comando <AAAA-MM> [--contrasena <…>]" "$@"
   vaciar_cola
   [ "$comando" = publicar-informe ] && afuera=true || afuera=false
-  jq -n --arg p "$1" --argjson a "$afuera" '{informe: $p, publico: $a}' | escribir PUT "/api/publicacion"
+  contrasena=""
+  [ "${2:-}" = --contrasena ] && contrasena="${3:-}"
+  jq -n --arg p "$1" --argjson a "$afuera" --arg w "$contrasena" \
+    '{informe: $p, publico: $a} + (if $w == "" then {} else {contrasena:$w} end)' | escribir PUT "/api/publicacion"
   ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
 # Baja un adjunto con la llave del proyecto: la maqueta que un plan sigue, el «antes» de un
@@ -1766,13 +1793,14 @@ anotar-acceso)
   ;;
 review)
   # review  ← {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
-  # review <archivo.md> --pr <owner/repo#n> [--titulo "…"] [--publicar] [--escrito-en <idioma>]
+  # review <archivo.md> --pr <owner/repo#n> [--titulo "…"] [--publicar [--contrasena <…>]] [--escrito-en <idioma>]
   #        [--traduccion <archivo.<idioma>.md>] [--hallazgos <hallazgos.json>]
   #
   # La segunda forma sube el documento que /review deja en disco tal cual: el markdown
   # viaja entero sin escaparlo a mano dentro de un JSON, y el título sale de su primer
   # «# Review — PR #n: <título>». Con --publicar queda afuera en el mismo acto y la
-  # respuesta trae `publica.enlace`, la dirección que se le manda al autor. Con
+  # respuesta trae `publica.enlace`, `publica.contrasena` y `publica.paraMandar` —el enlace
+  # y su contraseña juntos, lo que se le manda al autor—; --contrasena pone la que se quiera. Con
   # --traduccion sube también la otra capa, sellada contra el original en el mismo acto: el
   # idioma sale del nombre del archivo (`<doc>.en.md`). Con --hallazgos viaja lo que la
   # review encontró como dato: cada resultado del plan de acción con su tipo, su número y su
@@ -1784,17 +1812,18 @@ review)
   if [ "$#" -ge 1 ] && [ -f "$1" ]; then
     archivo="$1"
     shift
-    pr="" titulo="" publicar=false escrito="" traduccion="" hallazgos=""
+    pr="" titulo="" publicar=false escrito="" traduccion="" hallazgos="" contrasena=""
     while [ "$#" -gt 0 ]; do
       case "$1" in
       --pr) pr="${2:-}" && shift 2 ;;
       --titulo) titulo="${2:-}" && shift 2 ;;
       --escrito-en) escrito="${2:-}" && shift 2 ;;
       --publicar) publicar=true && shift ;;
+      --contrasena) contrasena="${2:-}" && shift 2 ;;
       --traduccion) traduccion="${2:-}" && shift 2 ;;
       --hallazgos) hallazgos="${2:-}" && shift 2 ;;
       *)
-        echo "No conozco «$1». Uso: bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar] [--escrito-en <idioma>] [--traduccion <archivo.<idioma>.md>] [--hallazgos <hallazgos.json>]" >&2
+        echo "No conozco «$1». Uso: bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar [--contrasena <…>]] [--escrito-en <idioma>] [--traduccion <archivo.<idioma>.md>] [--hallazgos <hallazgos.json>]" >&2
         exit 1
         ;;
       esac
@@ -1838,9 +1867,10 @@ review)
       rm -f "$dibujos.orig" "$dibujos.trad"
     fi
     cuerpo="$(jq -n --rawfile c "$archivo" --arg t "$titulo" --arg p "$pr" --argjson pub "$publicar" --arg e "$escrito" \
-      --arg ti "$idioma_trad" --arg tt "$titulo_trad" \
+      --arg ti "$idioma_trad" --arg tt "$titulo_trad" --arg w "$contrasena" \
       --rawfile tc "${traduccion:-/dev/null}" --slurpfile h "${hallazgos:-/dev/null}" --slurpfile d "$dibujos" \
       '{titulo:$t, pr:$p, cuerpo:$c} + (if $pub then {publicar:true} else {} end) + (if $e == "" then {} else {escritoEn:$e} end)
+       + (if $w == "" then {} else {contrasena:$w} end)
        + (if $ti == "" then {} else {traduccion: ({idioma:$ti, cuerpo:$tc} + (if $tt == "" then {} else {titulo:$tt} end))} end)
        + (if ($h | length) == 0 then {} else {hallazgos: $h[0]} end)
        + (if ($d[0] | length) == 0 then {} else {diagramas: $d[0]} end)')" || { rm -f "$dibujos"; exit 1; }
@@ -1941,7 +1971,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api buscar <texto>
   bitacora-api documento <linea|seccion|flujo> <contenedor> <slug>
   bitacora-api secciones · bitacora-api horas (dueño) · bitacora-api adjuntos [linea] · bitacora-api reviews
-  bitacora-api publicados                   (lo que está afuera hoy, con el enlace de cada uno)
+  bitacora-api publicados                   (lo que está afuera hoy, con el enlace y la contraseña de cada uno)
   bitacora-api de-la-subarea <subarea> <tipo>  (= del-hilo: lo que cuelga de una sub-área, de un tipo)
   bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando sub-áreas)
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
@@ -2165,8 +2195,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api jev-corrida                  {"clave":"…","archivo":"…","commit":"…","pr":"…","probabilidad":0.12,"resultado":"rojo"}  (o una lista)
   bitacora-api jev-corridas [clave] [rojo|verde] [--por-juzgar]
   bitacora-api jev-veredicto <corrida> archivo|pregunta [nota]   el rojo acertó, o la pregunta está mal calibrada
-  bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar] [--escrito-en <idioma>]
-                                             (el documento de /review tal cual; --publicar lo pone afuera y contesta publica.enlace)
+  bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar [--contrasena <…>]] [--escrito-en <idioma>]
+                                             (el documento de /review tal cual; --publicar lo pone afuera y contesta
+                                              publica.paraMandar: el enlace y su contraseña, lo que se manda)
   bitacora-api rato (dueño)                 {"tarea":"…","reloj":"1:30"}   (el banco de horas)
                                             · la fila entera: {"tareaEn":"la fila en inglés, la que se carga","epica":"<el nombre de su épica>",
                                               "jira":{"clave":"<clave del ticket>","url":"…"}} — las instrucciones del tenant dicen cuáles van siempre
@@ -2184,10 +2215,12 @@ Escritura (el cuerpo JSON entra por stdin):
                                             (acepta linea|seccion|flujo, los nombres que da la cola)
   bitacora-api mudar-documento <linea|seccion|flujo> <contenedor> <slug>   {"lineaSlug":"otra"}
 
-Poner una pieza afuera — se lee sin entrar, y nada más que esa pieza (dueño):
-  bitacora-api publicar <subarea> <slug>       → devuelve el `enlace` para mandar
+Poner una pieza afuera — se lee sin cuenta, con su contraseña, y nada más que esa pieza (dueño):
+  bitacora-api publicar <subarea> <slug>       → devuelve `enlace`, `contrasena` y `paraMandar` (los dos juntos, para pegar)
   bitacora-api publicar <seccion>           (una review: es una sección de un solo documento)
-  bitacora-api publicar-informe <AAAA-MM>   (el informe de horas del mes; privado-informe lo trae adentro)
+  bitacora-api publicar … --contrasena <…>  (la que quieras, 8 caracteres o más; sin el flag conserva la suya o recibe una de la casa)
+  bitacora-api publicar-informe <AAAA-MM> [--contrasena <…>]
+                                            (el informe de horas del mes; privado-informe lo trae adentro)
   bitacora-api publicar <linea|seccion|flujo> <contenedor> <slug>
                                             (la forma explícita: la sección con varios documentos
                                              o con archivos propios, y el texto de un flujo)
