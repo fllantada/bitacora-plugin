@@ -1981,7 +1981,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
-  bitacora-api capturar [--reemplazar] <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una;
+  bitacora-api capturar [--reemplazar] <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una: la nombra el paso de un chequeo, y el texto de un punto la muestra con ![pie](/adjunto/<ruta>);
                                             un nombre ya tomado en la sub-área contesta 409, y --reemplazar sube la misma captura rehecha)
   bitacora-api bajar <ruta> [destino]       (baja un adjunto con la llave del proyecto: la ruta o la url que contestaron adjuntos, capturar o pedido)
   bitacora-api pedidos [--rol qa] [--estado …]  (los pedidos entre sesiones del proyecto, cruzando planes: la bandeja del frente que los toma; sin estado, los vivos)
@@ -2036,6 +2036,7 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "puntos":[{"titulo":"…","queCambia":"qué se decide y qué cambia con cada respuesta",
                                                         "opciones":[{"titulo":"…","implica":"…"}],
                                                         "propuesta":"la recomendación: lo que la sesión haría","porque":"su porqué, en una o dos frases"}]}
+        lo que se decide MIRANDO abre el `queCambia` con su captura: `capturar` la sube y ![pie](/adjunto/<ruta>) la muestra, dos en el mismo renglón lado a lado; las rutas del código cierran el texto bajo `### En el código`, que la página pliega
         el human in the loop: nace `abierta`; la persona ACEPTA, RECHAZA, PIDE MÁS CONTEXTO o dice que LO DECIDE EL CLIENTE en cada recomendación EN LA WEB y pasa sola a `contestada`; el punto `del-cliente` se lleva a una consulta al cliente y se enlaza con `puntos <id>` < {"puntos":[{"id":"p3","consultaCliente":"<id>"}]}
   bitacora-api consulta-cliente <subarea>      {"titulo":"…","queEs":"de dónde salen las preguntas y qué se hace con lo que conteste, en una o dos frases",
                                              "fuentes":["<slug del registro que se leyó antes>"],

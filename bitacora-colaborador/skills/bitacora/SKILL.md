@@ -784,6 +784,21 @@ text, paired by the hash of its block. And `"flujos":["<slug>"]` names the runs 
 system the decision touches: the page puts them on top as a strip leading to the whole run,
 which is the context you would otherwise rewrite inside each point.
 
+**And what is decided by looking opens with its capture.** A point about something that is
+SEEN —a screen, a component, a state, an email— shows it: `capturar "$PLACE" <file…>` uploads
+each image and returns its path, and the point's text shows it with
+`![what it shows](/adjunto/<path>)`. The page frames it and prints the text between the
+brackets as its caption, so write it as a caption. **Two images on the same line sit side by
+side**, which is how today's state is compared with the proposed one.
+
+**A point is read in one pass, and written in that order.** The page draws the title, the
+text of `queCambia`, the options as a lettered list —the recommended one carrying its badge
+and its `porque`— and the buttons. `queCambia` opens with the problem in one or two
+sentences, in the person's words; what each answer changes goes in that option's `implica`;
+with `recomiendo`, the recommendation is read in its option, so its `titulo` states the whole
+proposal —`propuesta` stays for the session, which reads it through the API—; and the code references close the text under `### In the code`, which the page
+keeps folded at the foot of the point for the session that applies the decision.
+
 **When a point is not the person's to decide**, they answer it «The client decides» — the
 fourth gesture, next to accept, reject and ask for context. The point is settled on their
 side, and the session that applies the consultation takes it to a **client question**
