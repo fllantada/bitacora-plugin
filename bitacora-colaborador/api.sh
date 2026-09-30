@@ -977,7 +977,8 @@ ficha)
 # Una sub-área ordena sus piezas por el trabajo: lo que se está haciendo arriba, lo cerrado al
 # pie. Lo que ese orden no puede contestar es cuál de todas cuenta DE QUÉ SE TRATA el
 # ticket —suele ser un análisis, que no tiene escritorio y cae en el medio—. Fijarla la
-# pone primera en la página de la sub-área y en el menú. Azúcar sobre `mover`.
+# pone primera en la página de la sub-área y en el menú. Azúcar sobre `mover`. El análisis
+# nace fijado: `soltar` lo baja cuando la persona lo pide.
 fijar)
   exige 2 "fijar <tipo> <id>" "$@"
   vaciar_cola
@@ -2003,6 +2004,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
 
 Escritura (el cuerpo JSON entra por stdin):
   bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
+        nace fijado arriba de su sub-área —primero en la página y en el menú, y el alta contesta "fijado": true—; bajarlo es de la persona, con el botón de la página
   bitacora-api plan <subarea>                  {"titulo":"…","cierraEn":"…","prioridad":"alta","cuerpo":{"es":"# …"},"flujos":["…"]}
         "prioridad": alta · media · baja — en qué orden se toma entre los de su escritorio; sin declararla es media
         con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;

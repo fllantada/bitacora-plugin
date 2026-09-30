@@ -221,6 +221,13 @@ field travels in the generic patch too (`{"fijado":true}`) and comes back in the
 item reads, and the person pins from the web with the **«▲ Pin to top»** button in the
 right-hand column of the piece's own page.
 
+**A NEW ANALYSIS IS BORN PINNED.** A freshly written analysis is the one the person comes
+looking for, and its place in the work order is mid-list. Opening one puts it first on the
+area page and on its branch of the menu, marked `▲`, and the answer says so
+(`"fijado": true`); several written in the same batch stay together on top, the latest
+first. **Lowering it is the person's gesture**: they unpin it from its page once they have
+read it. The session unpins one when the person asks (`soltar analisis <id>`).
+
 **A piece is written naming its AREA.** Before writing, ask which area this is the analysis
 (or plan, or bug) of, and name it: `$API plan <area>`, `analisis <area>`, `bug <area>` —
 the server hangs the piece from the area's place, and creates the place when it is
