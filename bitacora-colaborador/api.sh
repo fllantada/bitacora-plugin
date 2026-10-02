@@ -805,6 +805,19 @@ publicar-informe | privado-informe)
   jq -n --arg p "$1" --argjson a "$afuera" --arg w "$contrasena" \
     '{informe: $p, publico: $a} + (if $w == "" then {} else {contrasena:$w} end)' | escribir PUT "/api/publicacion"
   ;;
+publicar-estado | privado-estado)
+  # El estado de un área afuera —se lee sin cuenta, con su contraseña— o de vuelta adentro. Se
+  # publica el área entera: el enlace abre la foto vigente y las anteriores por `?version=`, y
+  # sigue andando cuando el área toma una foto nueva. La respuesta trae `enlace`, `contrasena`
+  # y `paraMandar`; `--contrasena <…>` pone la tuya.
+  exige 1 "$comando <área> [--contrasena <…>]" "$@"
+  vaciar_cola
+  [ "$comando" = publicar-estado ] && afuera=true || afuera=false
+  contrasena=""
+  [ "${2:-}" = --contrasena ] && contrasena="${3:-}"
+  jq -n --arg e "$1" --argjson a "$afuera" --arg w "$contrasena" \
+    '{estado: $e, publico: $a} + (if $w == "" then {} else {contrasena:$w} end)' | escribir PUT "/api/publicacion"
+  ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
 # Baja un adjunto con la llave del proyecto: la maqueta que un plan sigue, el «antes» de un
 # pedido. Toma la `ruta` que contestan `adjuntos`, `capturar` y `pedido`, o su `url`
@@ -2224,6 +2237,8 @@ Poner una pieza afuera — se lee sin cuenta, con su contraseña, y nada más qu
   bitacora-api publicar … --contrasena <…>  (la que quieras, 8 caracteres o más; sin el flag conserva la suya o recibe una de la casa)
   bitacora-api publicar-informe <AAAA-MM> [--contrasena <…>]
                                             (el informe de horas del mes; privado-informe lo trae adentro)
+  bitacora-api publicar-estado <área> [--contrasena <…>]
+                                            (el estado del área: la foto vigente y sus anteriores; privado-estado lo trae adentro)
   bitacora-api publicar <linea|seccion|flujo> <contenedor> <slug>
                                             (la forma explícita: la sección con varios documentos
                                              o con archivos propios, y el texto de un flujo)
