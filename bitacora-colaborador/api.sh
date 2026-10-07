@@ -199,7 +199,8 @@ if [ "${1:-}" = "harness" ] && [[ " $* " == *" --cuentas "* ]]; then
   [ -z "$DESDE_HARNESS" ] || CONSULTA_HARNESS="desde=$(jq -rn --arg v "$DESDE_HARNESS" '$v|@uri')"
   [ -z "$VERSION_HARNESS" ] || CONSULTA_HARNESS="${CONSULTA_HARNESS:+$CONSULTA_HARNESS&}version=$(jq -rn --arg v "$VERSION_HARNESS" '$v|@uri')"
   [ -z "$IDIOMA" ] || CONSULTA_HARNESS="${CONSULTA_HARNESS:+$CONSULTA_HARNESS&}idioma=$IDIOMA"
-  {
+  # Va en una función: bash 3.2 no parsea un `case` dentro de `$( )`.
+  reportes_de_las_cuentas() {
     { grep -E '^[a-z0-9-]+=' "$CONFIG" | grep -vE '^(url|raiz)=' || true; } | while IFS='=' read -r tenant llave; do
       respuesta="$(curl -sS --max-time 20 -H "Authorization: Bearer $llave" -w $'\n%{http_code}' \
         "$BASE/api/harness${CONSULTA_HARNESS:+?$CONSULTA_HARNESS}" 2>/dev/null || printf '\n000')"
@@ -211,7 +212,15 @@ if [ "${1:-}" = "harness" ] && [[ " $* " == *" --cuentas "* ]]; then
       *) echo "· «${tenant}» dijo que no ($codigo): $cuerpo" >&2 ;;
       esac
     done
-  } | jq -s '.'
+  }
+  REPORTES_HARNESS="$(reportes_de_las_cuentas | jq -s '.')"
+  # Que ninguna cuenta conteste es una lectura fallida —el pedido que todas rechazan por su
+  # forma, o la máquina sin red—: la cuenta sin nada reportado igual contesta su reporte.
+  if [ "$REPORTES_HARNESS" = "[]" ]; then
+    echo "Ninguna cuenta contestó el reporte de harness: lo que dijo cada una está arriba." >&2
+    exit 1
+  fi
+  printf '%s\n' "$REPORTES_HARNESS"
   exit 0
 fi
 
@@ -2282,9 +2291,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api harness [--cuentas] [--desde <fecha>] [--version <plugin>@<x.y.z>]
         el reporte de harness: la bandeja harness, las filas abiertas del área Harness, las preguntas de Jev
         con su precisión y las clases de FIX, cada cosa con su enlace · --cuentas: un reporte por llave de la
-        máquina, cada uno con su `cuenta` (la llave que no contesta va a stderr) · --desde 2026-10-07: lo que
-        llegó o se movió después, el cursor con que el centro lee lo nuevo · --version bitacora@4.122.0: los
-        hallazgos y las filas escritos con esa versión del plugin o una posterior
+        máquina, cada uno con su `cuenta` (la llave que no contesta va a stderr, y sin ninguna que conteste sale
+        con 1) · --desde 2026-10-07: lo que llegó o se movió después, el cursor con que el centro lee lo nuevo ·
+        --version bitacora@4.122.0: los hallazgos y las filas escritos con esa versión del plugin o una posterior
   bitacora-api hallazgo <id> ['{"suerte":"…"}']   uno entero con su historia; con el JSON le da su suerte:
         {"suerte":"plan","plan":"<id>"} · {"suerte":"diferido"} · {"suerte":"no-se-sostiene","porque":"…"} · {"suerte":"descartado","porque":"…"}
         · {"suerte":"aplicado","commit":"<sha>"} (el FIX que se hizo en la rama)
