@@ -403,14 +403,33 @@ subir() {
   esac
 }
 
+# El manifiesto del plugin instalado, al lado del api.sh real: el shim es un symlink, y sin
+# manifiesto al lado se busca junto al archivo al que apunta.
+manifiesto_instalado() {
+  local manifiesto real
+  manifiesto="$(dirname "$0")/.claude-plugin/plugin.json"
+  if [ ! -f "$manifiesto" ]; then
+    real="$(readlink -f "$0" 2>/dev/null || true)"
+    [ -n "$real" ] && manifiesto="$(dirname "$real")/.claude-plugin/plugin.json"
+  fi
+  printf '%s\n' "$manifiesto"
+}
+
+# El plugin instalado, como `<nombre>@<versión>`, que `pedir` manda en cada pedido. La forma y
+# lo que el servidor hace con él, en `src/server/shared/versionDelPlugin.ts`.
+PLUGIN="$(jq -r 'select(.name and .version) | "\(.name)@\(.version)"' "$(manifiesto_instalado)" 2>/dev/null || true)"
+
 # Manda un pedido y devuelve el cuerpo y el código, separados por un salto.
 #
 # `%{http_code}` vale 000 cuando no hubo respuesta, y esa es toda la diferencia que
-# importa: sin respuesta el pedido espera, con respuesta ya está contestado.
+# importa: sin respuesta el pedido espera, con respuesta ya está contestado. El quinto
+# argumento es el plugin que escribió un pedido de la cola; sin él va el instalado.
 pedir() {
+  local plugin="${5-$PLUGIN}"
   curl -sS --max-time 20 -X "$1" \
     -H "Authorization: Bearer $2" \
     -H "Content-Type: application/json" \
+    ${plugin:+-H "X-Bitacora-Version: $plugin"} \
     -d "$4" -w $'\n%{http_code}' "$BASE$3" 2>/dev/null || printf '\n000'
 }
 
@@ -441,7 +460,7 @@ escribir() {
   000)
     mkdir -p "$CONFIG_DIR"
     printf '%s\n' "$(jq -cn --arg p "$PROYECTO" --arg m "$metodo" --arg r "$ruta" \
-      --argjson c "$cuerpo" '{proyecto:$p, metodo:$m, ruta:$r, cuerpo:$c}')" >>"$PENDIENTES"
+      --arg v "$PLUGIN" --argjson c "$cuerpo" '{proyecto:$p, metodo:$m, ruta:$r, plugin:$v, cuerpo:$c}')" >>"$PENDIENTES"
     echo "Sin respuesta: queda en la cola ($PENDIENTES). Se sube en la próxima escritura." >&2
     return 1
     ;;
@@ -463,10 +482,11 @@ vaciar_cola() {
   : >"$resto"
 
   while IFS= read -r fila; do
-    local proyecto metodo ruta cuerpo llave respuesta codigo
+    local proyecto metodo ruta plugin cuerpo llave respuesta codigo
     proyecto="$(jq -r '.proyecto // empty' <<<"$fila")"
     metodo="$(jq -r '.metodo' <<<"$fila")"
     ruta="$(jq -r '.ruta' <<<"$fila")"
+    plugin="$(jq -r '.plugin // empty' <<<"$fila")"
     cuerpo="$(jq -c '.cuerpo' <<<"$fila")"
 
     llave="$(valor_de "${proyecto:-$PROYECTO}" || true)"
@@ -475,7 +495,7 @@ vaciar_cola() {
       continue
     fi
 
-    respuesta="$(pedir "$metodo" "$llave" "$ruta" "$cuerpo")"
+    respuesta="$(pedir "$metodo" "$llave" "$ruta" "$cuerpo" "$plugin")"
     codigo="${respuesta##*$'\n'}"
 
     case "$codigo" in
@@ -512,12 +532,7 @@ case "$comando" in
 # sigue con la doctrina con la que arrancó, y sin esto no hay forma de enterarse.
 # Sale 0 aunque haya versión nueva — estar atrás no corta el trabajo, lo avisa.
 version)
-  manifiesto="$(dirname "$0")/.claude-plugin/plugin.json"
-  if [ ! -f "$manifiesto" ]; then
-    # El shim es un symlink al api.sh instalado: el manifiesto vive al lado del real.
-    real="$(readlink -f "$0" 2>/dev/null || true)"
-    [ -n "$real" ] && manifiesto="$(dirname "$real")/.claude-plugin/plugin.json"
-  fi
+  manifiesto="$(manifiesto_instalado)"
   nombre="$(jq -r '.name // "bitacora"' "$manifiesto" 2>/dev/null || echo bitacora)"
   instalada="$(jq -r '.version // empty' "$manifiesto" 2>/dev/null || true)"
   publicada="$(leer "/api/version" 2>/dev/null | jq -r --arg n "$nombre" '.[$n] // empty' || true)"
