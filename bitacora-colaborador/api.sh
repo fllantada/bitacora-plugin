@@ -174,6 +174,44 @@ if [ "${1:-}" = "bandeja" ]; then
   exit 0
 fi
 
+# --- el harness de TODAS las cuentas: un reporte por llave ------------------------------
+#
+# Va antes de resolver el proyecto por lo mismo que la bandeja: la API de harness está atada
+# al tenant de la llave, y el centro que juzga el harness lee todas las cuentas de la máquina.
+# Junta el reporte de cada llave de config.local con su `cuenta` puesta; la llave que no
+# contesta se dice por stderr, con lo que dijo el servidor, y se sigue con las demás.
+if [ "${1:-}" = "harness" ] && [[ " $* " == *" --cuentas "* ]]; then
+  BASE="${BITACORA_URL:-$(valor_de url || true)}"
+  BASE="${BASE:-https://bitacora.dev-fran.com}"
+  [ -f "$CONFIG" ] || { echo "No hay config.local con llaves ($CONFIG)." >&2; exit 1; }
+  shift
+  DESDE_HARNESS=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --cuentas) shift ;;
+    --desde) DESDE_HARNESS="${2:?Falta la fecha después de --desde}" && shift 2 ;;
+    *) echo "«$1» no es una opción de harness — uso: bitacora-api harness --cuentas [--desde <fecha>]" >&2 && exit 1 ;;
+    esac
+  done
+  CONSULTA_HARNESS=""
+  [ -z "$DESDE_HARNESS" ] || CONSULTA_HARNESS="desde=$(jq -rn --arg v "$DESDE_HARNESS" '$v|@uri')"
+  [ -z "$IDIOMA" ] || CONSULTA_HARNESS="${CONSULTA_HARNESS:+$CONSULTA_HARNESS&}idioma=$IDIOMA"
+  {
+    { grep -E '^[a-z0-9-]+=' "$CONFIG" | grep -vE '^(url|raiz)=' || true; } | while IFS='=' read -r tenant llave; do
+      respuesta="$(curl -sS --max-time 20 -H "Authorization: Bearer $llave" -w $'\n%{http_code}' \
+        "$BASE/api/harness${CONSULTA_HARNESS:+?$CONSULTA_HARNESS}" 2>/dev/null || printf '\n000')"
+      codigo="${respuesta##*$'\n'}"
+      cuerpo="${respuesta%$'\n'*}"
+      case "$codigo" in
+      2*) printf '%s' "$cuerpo" | jq -c --arg c "$tenant" '{cuenta: $c} + .' ;;
+      000) echo "· sin respuesta de «${tenant}» (sin red)" >&2 ;;
+      *) echo "· «${tenant}» dijo que no ($codigo): $cuerpo" >&2 ;;
+      esac
+    done
+  } | jq -s '.'
+  exit 0
+fi
+
 if [ -z "$PROYECTO" ]; then
   PROYECTO="$(proyecto_del_cwd || true)"
   # Una carpeta puede no llamarse como su tenant (mi-carpeta → mi-tenant):
@@ -933,6 +971,20 @@ hallazgos)
   else
     leer "/api/hallazgos"
   fi
+  ;;
+# El reporte de harness de este proyecto: los hallazgos de la bandeja harness, las filas
+# abiertas del área harness, las preguntas de Jev con su precisión y las clases de FIX, cada
+# cosa con su enlace. --desde trae lo que llegó o se movió después de esa fecha; --cuentas
+# (más arriba) recorre todas las llaves de la máquina.
+harness)
+  desde_harness=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --desde) desde_harness="${2:?Falta la fecha después de --desde}" && shift 2 ;;
+    *) echo "«$1» no es una opción de harness — uso: bitacora-api harness [--cuentas] [--desde <fecha>]" >&2 && exit 1 ;;
+    esac
+  done
+  leer "/api/harness${desde_harness:+?desde=$(uri "$desde_harness")}"
   ;;
 # Un hallazgo entero, con su historia; con el JSON de su suerte como segundo argumento, se
 # la da: el rol que lo juzga dice qué pasó con él.
@@ -2202,6 +2254,11 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api hallazgos --bandeja <nit|harness> [--review <slug>]
         lo que junta cada acumulador, con su id: nit (lo que puede esperar: cada ASK) · harness (todo lo que el proceso aprendió: cada FIX)
         los procesa la sesión que abre /nit o /harness
+  bitacora-api harness [--cuentas] [--desde <fecha>]
+        el reporte de harness: la bandeja harness, las filas abiertas del área Harness, las preguntas de Jev
+        con su precisión y las clases de FIX, cada cosa con su enlace · --cuentas: un reporte por llave de la
+        máquina, cada uno con su `cuenta` (la llave que no contesta va a stderr) · --desde 2026-10-07: lo que
+        llegó o se movió después, el cursor con que el centro lee lo nuevo
   bitacora-api hallazgo <id> ['{"suerte":"…"}']   uno entero con su historia; con el JSON le da su suerte:
         {"suerte":"plan","plan":"<id>"} · {"suerte":"diferido"} · {"suerte":"no-se-sostiene","porque":"…"} · {"suerte":"descartado","porque":"…"}
         · {"suerte":"aplicado","commit":"<sha>"} (el FIX que se hizo en la rama)
