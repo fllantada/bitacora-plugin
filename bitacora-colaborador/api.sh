@@ -911,7 +911,7 @@ analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
   ;;
 # Lo que dejaron las reviews. Sin nada, las clases de FIX: cada una con sus reviews, el
-# peldaño que debió frenarla, qué pasó con sus FIX, su fila en el registro del harness y las
+# peldaño que debió frenarla, qué pasó con sus FIX, si se repite (`seRepite`) y las
 # preguntas de Jev que la reemplazan; con una clase, esa entera. Con --bandeja, lo que junta
 # un acumulador —nit o harness—, cada hallazgo con su id; --review lo acota a una review.
 hallazgos)
@@ -2197,8 +2197,8 @@ Escritura (el cuerpo JSON entra por stdin):
         grosero: el FIX con su fila Bloqueante (bug · contrato · seguridad · integridad); sin ella es estilo
         el ASK trae qué hacer y su contexto; sus opciones y su posición son opcionales y ayudan a quien lo lee en nit
         cada FIX y cada ASK del plan de acción trae su suerte (400 hallazgosSinSuerte)
-        la clase de FIX que ya llegó en otra review abre su fila en harness (o suma una entrada a la que ya existe)
-  bitacora-api hallazgos [clase]            las clases de FIX a lo largo de las reviews: sus reviews, sus peldaños, sus suertes, su fila y sus preguntas de Jev
+        la respuesta cuenta cuántos cayeron en cada acumulador (hallazgos.porBandeja); la repetición de una clase se lee en `hallazgos`
+  bitacora-api hallazgos [clase]            las clases de FIX a lo largo de las reviews: sus reviews, sus peldaños, sus suertes, si se repite (seRepite) y sus preguntas de Jev
   bitacora-api hallazgos --bandeja <nit|harness> [--review <slug>]
         lo que junta cada acumulador, con su id: nit (lo que puede esperar: cada ASK) · harness (todo lo que el proceso aprendió: cada FIX)
         los procesa la sesión que abre /nit o /harness
