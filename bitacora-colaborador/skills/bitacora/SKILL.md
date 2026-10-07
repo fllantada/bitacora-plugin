@@ -29,7 +29,9 @@ writes queue themselves, and an expired key is renewed with `bitacora-api renova
 **And if step zero prints «⚠ Adaptación pendiente», the logbook's model changed and this
 project's material still carries the previous shape.** The notice says what changed and
 which gesture adapts it. Tell the person in one line and leave the call to them: adapting
-means reclassifying the project's own material, and that belongs to whoever owns it.
+means reclassifying the project's own material, and that belongs to whoever owns it. The
+`harness` and `roles` notices stay pending on purpose: the owner's centre, their `bitacora`
+tenant, takes the single harness snapshot.
 
 ## Setup — once per machine
 
@@ -353,13 +355,16 @@ their name and their existence fixed (renaming or deleting one answers 400 `area
 **Commercial** (`comercial`, alias `marketing` — a project that already had `marketing`
 keeps it as its Commercial, and both names lead there), **QA** (`qa`: what is tested and how), **SEO** (`seo`, alias `posicionamiento`: how the project gets found on Google, on Bing and in the AI assistants that answer by citing), **Nice To Have** (`nice-to-have`,
 alias `nit`: the good ideas that showed up and wait for their moment) and **Harness**
-(`harness`: the tooling the project works with). Whoever arrives at any project knows
+(`harness`: the tooling the project works with, one harness for every account —each
+account's Harness area keeps its reports, and the centre, the owner's `bitacora` tenant, keeps
+the analysis, the snapshot and the plans that improve it—). Whoever arrives at any project knows
 without asking where selling, testing, being found, what waits and the tooling go. Two of them are
 accumulators: what a review finds travels as a finding with its fate, and what can wait
 lands in Nice To Have —«To group»— while what the process learnt —each FIX, what did not
 hold— lands in Harness, «What reached the review». **The review of the session that builds is
 a FIX loop; everything else piles up in harness and in nit, and gets processed when someone
-opens the owner's /harness or /nit.** A review of another author's PR asks that author for
+opens the owner's /harness or /nit** —nit in the account, harness in the centre, which reads
+every account. A review of another author's PR asks that author for
 what breaks —each FIX with its Blocking row (a bug, a broken contract, security, data
 integrity) and its ASKs, `al-autor`—; its style FIX is born `para-harness`, lands in Harness
 and nowhere else, and harness turns it into a lint or a Jev question.
