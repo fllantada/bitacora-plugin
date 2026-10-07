@@ -186,15 +186,18 @@ if [ "${1:-}" = "harness" ] && [[ " $* " == *" --cuentas "* ]]; then
   [ -f "$CONFIG" ] || { echo "No hay config.local con llaves ($CONFIG)." >&2; exit 1; }
   shift
   DESDE_HARNESS=""
+  VERSION_HARNESS=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
     --cuentas) shift ;;
     --desde) DESDE_HARNESS="${2:?Falta la fecha después de --desde}" && shift 2 ;;
-    *) echo "«$1» no es una opción de harness — uso: bitacora-api harness --cuentas [--desde <fecha>]" >&2 && exit 1 ;;
+    --version) VERSION_HARNESS="${2:?Falta la versión después de --version}" && shift 2 ;;
+    *) echo "«$1» no es una opción de harness — uso: bitacora-api harness --cuentas [--desde <fecha>] [--version <plugin>@<x.y.z>]" >&2 && exit 1 ;;
     esac
   done
   CONSULTA_HARNESS=""
   [ -z "$DESDE_HARNESS" ] || CONSULTA_HARNESS="desde=$(jq -rn --arg v "$DESDE_HARNESS" '$v|@uri')"
+  [ -z "$VERSION_HARNESS" ] || CONSULTA_HARNESS="${CONSULTA_HARNESS:+$CONSULTA_HARNESS&}version=$(jq -rn --arg v "$VERSION_HARNESS" '$v|@uri')"
   [ -z "$IDIOMA" ] || CONSULTA_HARNESS="${CONSULTA_HARNESS:+$CONSULTA_HARNESS&}idioma=$IDIOMA"
   {
     { grep -E '^[a-z0-9-]+=' "$CONFIG" | grep -vE '^(url|raiz)=' || true; } | while IFS='=' read -r tenant llave; do
@@ -423,7 +426,8 @@ PLUGIN="$(jq -r 'select(.name and .version) | "\(.name)@\(.version)"' "$(manifie
 #
 # `%{http_code}` vale 000 cuando no hubo respuesta, y esa es toda la diferencia que
 # importa: sin respuesta el pedido espera, con respuesta ya está contestado. El quinto
-# argumento es el plugin que escribió un pedido de la cola; sin él va el instalado.
+# argumento es el plugin que escribió un pedido de la cola; sin él va el instalado, y vacío
+# el pedido sale sin `X-Bitacora-Version`.
 pedir() {
   local plugin="${5-$PLUGIN}"
   curl -sS --max-time 20 -X "$1" \
@@ -989,17 +993,23 @@ hallazgos)
   ;;
 # El reporte de harness de este proyecto: los hallazgos de la bandeja harness, las filas
 # abiertas del área harness, las preguntas de Jev con su precisión y las clases de FIX, cada
-# cosa con su enlace. --desde trae lo que llegó o se movió después de esa fecha; --cuentas
+# cosa con su enlace. --desde trae lo que llegó o se movió después de esa fecha; --version,
+# los hallazgos y las filas escritos con esa versión del plugin o una posterior; --cuentas
 # (más arriba) recorre todas las llaves de la máquina.
 harness)
   desde_harness=""
+  version_harness=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
     --desde) desde_harness="${2:?Falta la fecha después de --desde}" && shift 2 ;;
-    *) echo "«$1» no es una opción de harness — uso: bitacora-api harness [--cuentas] [--desde <fecha>]" >&2 && exit 1 ;;
+    --version) version_harness="${2:?Falta la versión después de --version}" && shift 2 ;;
+    *) echo "«$1» no es una opción de harness — uso: bitacora-api harness [--cuentas] [--desde <fecha>] [--version <plugin>@<x.y.z>]" >&2 && exit 1 ;;
     esac
   done
-  leer "/api/harness${desde_harness:+?desde=$(uri "$desde_harness")}"
+  consulta_harness=""
+  [ -z "$desde_harness" ] || consulta_harness="desde=$(uri "$desde_harness")"
+  [ -z "$version_harness" ] || consulta_harness="${consulta_harness:+$consulta_harness&}version=$(uri "$version_harness")"
+  leer "/api/harness${consulta_harness:+?$consulta_harness}"
   ;;
 # Un hallazgo entero, con su historia; con el JSON de su suerte como segundo argumento, se
 # la da: el rol que lo juzga dice qué pasó con él.
@@ -2269,11 +2279,12 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api hallazgos --bandeja <nit|harness> [--review <slug>]
         lo que junta cada acumulador, con su id: nit (lo que puede esperar: cada ASK) · harness (todo lo que el proceso aprendió: cada FIX)
         los procesa la sesión que abre /nit o /harness
-  bitacora-api harness [--cuentas] [--desde <fecha>]
+  bitacora-api harness [--cuentas] [--desde <fecha>] [--version <plugin>@<x.y.z>]
         el reporte de harness: la bandeja harness, las filas abiertas del área Harness, las preguntas de Jev
         con su precisión y las clases de FIX, cada cosa con su enlace · --cuentas: un reporte por llave de la
         máquina, cada uno con su `cuenta` (la llave que no contesta va a stderr) · --desde 2026-10-07: lo que
-        llegó o se movió después, el cursor con que el centro lee lo nuevo
+        llegó o se movió después, el cursor con que el centro lee lo nuevo · --version bitacora@4.122.0: los
+        hallazgos y las filas escritos con esa versión del plugin o una posterior
   bitacora-api hallazgo <id> ['{"suerte":"…"}']   uno entero con su historia; con el JSON le da su suerte:
         {"suerte":"plan","plan":"<id>"} · {"suerte":"diferido"} · {"suerte":"no-se-sostiene","porque":"…"} · {"suerte":"descartado","porque":"…"}
         · {"suerte":"aplicado","commit":"<sha>"} (el FIX que se hizo en la rama)
