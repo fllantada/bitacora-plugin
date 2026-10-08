@@ -115,7 +115,7 @@ $API -p <project> skills        # the tools at hand here: what each one is for, 
 $API -p <project> skill <name>  # one whole: how it is told, what it chains with, and its SKILL.md
 $API -p <project> nota-skill <name>   # tell it for a person: {"paraQue":"…","cuando":"…","deja":"…","ojo":"…"}
                                 #   write it right after reading that skill's text — the catalogue lists it uncounted until someone does
-$API -p <project> tablero       # the board: every area with its pieces
+$API -p <project> tablero       # the board: every area with its pieces, and the goals apart
 $API -p <project> areas         # the project's areas
 $API -p <project> area <slug>   # ONE area: its name, its place, and its `estado` —where that world stands today
 $API -p <project> subarea <place> # the area's place: its pieces, entries, decisions and documents
@@ -1153,16 +1153,26 @@ JSON
 reads the piece opens the goal it pursues. In the public mirror the link leads to the goal's
 published address, and an unpublished goal reads by its name alone.
 
-**The menu and the area page hang each piece under its goal.** The goal heads, with the glyph
-of its desk, the place's pieces that pursue it in the order of the work, and the group sits
-where its most advanced piece sits: the plan in progress stays on top. A goal from another
-area heads the group with its area's name in the margin; an achieved one keeps grouping,
-dimmed; a dropped one and one the reader cannot see —a guest without that area— leave their
-pieces loose, like whatever pursues none. **`subarea <place>` serves the resolved `objetivo`
-on every row**, so a session reads the same grouping:
+**The goal belongs to the project, and reads that way.** The menu has its own block, **«The
+goals»**, between «The areas» and «Recent»: every goal its reader opens, folded like an area,
+with its pieces from every area in the order of the work and each one's place in the margin.
+Open goals come first, from the most recent activity —its own or its pieces'— to the oldest,
+and achieved ones after them, dimmed; a dropped one leaves. The by-type axis
+(`/<project>/tipo/objetivos`) lists them in a single batch, the project's, and the project's
+timeline says «Goal» in the margin of its moves.
+
+**Inside each area, the goal heads the place's pieces that pursue it**, with the glyph of its
+desk and in the order of the work, and the group sits where its most advanced piece sits: the
+plan in progress stays on top. An achieved one keeps grouping, dimmed; a dropped one and one
+the reader cannot see —a guest who does not see it from their lines— leave their pieces
+loose, like whatever pursues none. **`subarea <place>` lists the place's pieces with the
+resolved `objetivo` on every row**, so a session reads the same grouping, and **`tablero`
+brings the goals in their own list**, `objetivos`, each with its `id`, `titulo`, `queEs`,
+`estado` and `url`:
 
 ```bash
 $API -p <project> subarea <place> | jq '[.items[][] | select(.objetivo) | {titulo, objetivo: .objetivo.titulo}]'
+$API -p <project> tablero | jq '.objetivos[] | {id, titulo, estado}'
 ```
 
 **The goal's read brings what pursues it**, derived on read: `piezas` —each with its `tipo`,
