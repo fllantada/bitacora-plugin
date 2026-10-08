@@ -120,6 +120,7 @@ $API -p <project> areas         # the project's areas
 $API -p <project> area <slug>   # ONE area: its name, its place, and its `estado` —where that world stands today
 $API -p <project> subarea <place> # the area's place: its pieces, entries, decisions and documents
 $API -p <project> estado <slug> # the area's state in full: the current snapshot with its sections, its milestone and its chain of earlier ones
+$API -p <project> libro <slug>  # the area's book: what was decided and done there, newest first · `libro objetivo <id>`, a goal's
 $API -p <project> buscar "x"    # search across everything you can see
 $API -p <project> documento linea <place> <doc>   # a document's raw markdown
 ```
@@ -338,8 +339,9 @@ blank screen.
 An **area** is a world of the project — search, the engine's infrastructure, the contract,
 the commercial side — and the place where its work lives: it is still there once today's
 work is done. Its dimensions: its **pieces** (the eleven types above), the **decision book**
-(what was decided, one point at a time), and the **chronology** (dated entries: what
-happened, when, why in that order). A topic of a few weeks is a **piece** of its area.
+(what was decided, one point at a time), the **chronology** (dated entries: what
+happened, when, why in that order), its **state** (where it stands today) and its **book**
+(what was decided and done there, newest first). A topic of a few weeks is a **piece** of its area.
 
 **The area's page is where the work is read**: its state, its pieces, its attachments, its
 decisions, its timeline and its access. The left menu is the list of areas, with each
@@ -411,6 +413,41 @@ has to show up (Google, Bing and the AI assistants that answer by citing), what 
 from the site, what it understands of the project and how showing up is measured, with its
 `d2` drawing—, required once the project closes its `seo` adaptation. Read it with `$API estado <slug>`; taking a new snapshot is the owner's call at the close of
 an important change (`$API escribir-estado <slug>`).
+
+**The state says where a world stands today; its book, what was decided and done to get
+there.** Every area and every goal has one, on its page next to the state
+—`/<project>/area/<slug>/libro` and `/<project>/objetivo/<id>/libro`—, and it builds itself
+from what settled and what was noted, month by month and newest first:
+
+| Piece | Enters when | Its line says |
+|---|---|---|
+| Decision | it was decided —`decidida`, `aplicada`, or an inherited `resuelta`— | its title and its verdict; leads to its point |
+| Plan | it was signed off (`hecho`) | its title and its summary |
+| Bug | it was fixed | its title and the note it was closed with |
+| Analysis | it was written | its title and its summary |
+| Simulation | it concluded | its title and its summary |
+| Client report | it was delivered | its title |
+| Entry | it was noted | its type, its title and its text |
+
+Each line carries the date it settled: the one of the history move that took it in there
+—for a decision, when it was decided, even if it was applied later—, and the writing date
+for an analysis and an entry. What is open reads in the state and
+the menu, what was dropped in its list, and a superseded entry leaves the book. **The area's
+book** gathers what settled among the pieces seen from its places, its decisions and the
+entries written there; **a goal's book**, what settled among the pieces that name it —from
+any area—, the decisions that name it and the entries that name it: **an entry takes `objetivo`** like any piece (§The
+Goal). Whoever reads its page reads it, and a guest sees the lines seen from their places.
+The menu's **Book** tag on the area's row, next to **Status**, leads there; so do the link in
+the area's summary and, on a goal's page, the one under «What pursues it».
+
+```bash
+$API -p <project> libro <area>           # the area's book
+$API -p <project> libro objetivo <id>    # a goal's
+```
+
+Each line comes with its `fecha`, its `clase` —`pieza` or `entrada`—, its `tipo` (the
+piece's, or the entry's), its title, what its line reads underneath —`bajada` on a piece,
+`texto` on an entry—, its `hilo`, its `area` and its `enlace`.
 
 The API calls an area's place a `linea` — the collection and the `lineaSlug` field keep the
 name they were born with — and the place usually carries the area's slug; `area <slug>`
@@ -1173,6 +1210,20 @@ brings the goals in their own list**, `objetivos`, each with its `id`, `titulo`,
 ```bash
 $API -p <project> subarea <place> | jq '[.items[][] | select(.objetivo) | {titulo, objetivo: .objetivo.titulo}]'
 $API -p <project> tablero | jq '.objetivos[] | {id, titulo, estado}'
+```
+
+**An entry names it too**: `"objetivo"` in the JSON of `$API -p <project> entrada <area>`,
+and `corregir-entrada <area> <id>` adds or removes it, with the same check. That way what was
+noted along the way —the meeting, the delivery, the incident— enters **its book**, next to
+what settled among the pieces that pursue it: `$API -p <project> libro objetivo <id>`, and on
+its page the link under «What pursues it».
+
+```bash
+$API -p <project> entrada <area> <<'JSON'
+{"tipo":"entrega","titulo":"…","cuerpo":"…","objetivo":"<goal id>"}
+JSON
+$API -p <project> corregir-entrada <area> <entry id> <<< '{"objetivo":"<goal id>"}'   # an entry already written joins it
+$API -p <project> corregir-entrada <area> <entry id> <<< '{"objetivo":null}'          # and leaves it
 ```
 
 **The goal's read brings what pursues it**, derived on read: `piezas` —each with its `tipo`,

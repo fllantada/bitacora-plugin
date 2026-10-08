@@ -752,6 +752,19 @@ estado)
     leer "/api/areas/$(uri "$1")/estado"
   fi
   ;;
+# El libro de un área o de un objetivo: lo que se fue decidiendo y haciendo, lo más reciente
+# arriba —la decisión tomada, el plan firmado, el bug arreglado, el análisis escrito, la
+# simulación concluida, el client-report entregado y la entrada anotada—. Cada renglón trae
+# su `fecha`, su `clase` (`pieza` o `entrada`), su `tipo`, su título y su `enlace`.
+libro)
+  exige 1 "libro <area>   |   libro objetivo <id>" "$@"
+  if [ "$1" = "objetivo" ] || [ "$1" = "objetivos" ]; then
+    exige 2 "libro objetivo <id>" "$@"
+    leer "/api/libro?objetivo=$(uri "$2")"
+  else
+    leer "/api/libro?area=$(uri "$1")"
+  fi
+  ;;
 secciones) leer "/api/secciones" ;;
 reviews) leer "/api/reviews" ;;
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1516,8 +1529,10 @@ corregir)
     escribir PATCH "/api/decisiones/$(uri "$1")"
   fi
   ;;
-superar)
-  exige 2 "superar <linea> <id-de-entrada>   < {\"superadaPor\":\"…\"}" "$@"
+# El parche de una entrada: marcarla superada, o corregirla —su texto, su tipo, el objetivo que
+# persigue—. Los dos nombres llegan a la misma puerta.
+superar | corregir-entrada)
+  exige 2 "superar <linea> <id-de-entrada>   < {\"superadaPor\":\"…\"}   ·   corregir-entrada <linea> <id-de-entrada>   < {\"objetivo\":\"<id>\"}" "$@"
   vaciar_cola
   escribir PATCH "/api/lineas/$(uri "$1")/entradas/$(uri "$2")"
   ;;
@@ -2081,6 +2096,8 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
                                              su panorama y lo que se firmó y cambió desde que se tomó—; `areas <slug>` es lo mismo)
   bitacora-api estado <area> [--version N]  (el estado del área entero: la foto vigente —o una anterior— con sus cinco secciones,
                                              su hito, su cadena de anteriores y `desde`: la señal de que toca renovarla)
+  bitacora-api libro <area>                 (el libro del área: lo firme de sus piezas —la decisión tomada, el plan firmado, el bug arreglado,
+                                             el análisis escrito— y sus entradas, lo más reciente arriba; `libro objetivo <id>`, el de un objetivo)
   bitacora-api buscar <texto>
   bitacora-api documento <linea|seccion|flujo> <contenedor> <slug>
   bitacora-api secciones · bitacora-api horas (dueño) · bitacora-api adjuntos [linea] · bitacora-api reviews
@@ -2216,6 +2233,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                             (entrar a encargado cobra las ocho secciones del cuerpo y el queEs; sin cuerpo, imprime la forma)
   bitacora-api sacar <tipo> <id>            (el que se abrió por error y el duplicado — dueño)
   bitacora-api entrada <slug>               {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
+        "objetivo":"<id>" la suma al libro del objetivo que persigue —uno abierto—
+  bitacora-api corregir-entrada <slug> <id-entrada>  {"objetivo":"<id>"} · {"objetivo":null} lo quita · {"titulo":"…"} (la misma puerta que superar)
   bitacora-api superar <slug> <id-entrada>  {"superadaPor":"…"}
   bitacora-api decision <slug>              se registra YA TOMADA, con su análisis entero:
                                             {"titulo":"…","veredicto":"qué se decidió",
