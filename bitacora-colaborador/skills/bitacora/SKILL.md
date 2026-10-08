@@ -1128,6 +1128,18 @@ name another one** —there is a single level—: 400 `objetivoAnidado`. `{"obje
 removes it. **You write the id and read the address**: the piece's read brings it resolved,
 `"objetivo":{"id":"…","titulo":"…","enlace":"https://…"}`.
 
+**The menu and the area page hang each piece under its goal.** The goal heads, with the glyph
+of its desk, the place's pieces that pursue it in the order of the work, and the group sits
+where its most advanced piece sits: the plan in progress stays on top. A goal from another
+area heads the group with its area's name in the margin; an achieved one keeps grouping,
+dimmed; a dropped one and one the reader cannot see —a guest without that area— leave their
+pieces loose, like whatever pursues none. **`subarea <place>` serves the resolved `objetivo`
+on every row**, so a session reads the same grouping:
+
+```bash
+$API -p <project> subarea <place> | jq '[.items[][] | select(.objetivo) | {titulo, objetivo: .objetivo.titulo}]'
+```
+
 **The goal's read brings what pursues it**, derived on read: `piezas` —each with its `tipo`,
 `titulo`, `estado`, `hilo`, `area` and `enlace`— and `avance`, which counts the work:
 
