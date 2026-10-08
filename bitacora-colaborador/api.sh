@@ -730,6 +730,8 @@ por-traducir) leer "/api/traducir?idioma=${1:-en}" ;;
 #
 # Con un slug detrás contesta por ESA área, sea `areas` o `area`: quien tipeó el plural
 # con un slug quiso una sola, y devolverle la lista entera le daba otra cosa sin avisar.
+# El área trae su `estado` resumido y sus `objetivos`: los abiertos que nombra alguna pieza
+# abierta de sus lugares, cada uno con su enlace.
 areas | area)
   if [ "$#" -ge 1 ]; then
     leer "/api/areas/$(uri "$1")"
@@ -739,10 +741,11 @@ areas | area)
   ;;
 # El estado del área: la foto de dónde está ese mundo hoy, con su historia detrás.
 #
-# Contesta la vigente entera —su cuerpo con las cinco secciones, su hito, el plan que la
-# produjo— más la cadena (`anterior`, `siguiente`, `fotos`) y `desde`: lo que se firmó y
-# qué fuente cambió después de tomarla, y los planes abiertos del área que su «Lo que
-# sigue» no nombra (`desde.planes`, con su enlace), que es la señal de que toca renovarla.
+# Contesta la vigente entera —su cuerpo con el mundo del área (# Dónde estamos, la sexta
+# cuando la lleva, # El mapa), su hito, el plan que la produjo— más la cadena (`anterior`,
+# `siguiente`, `fotos`) y `desde`: lo que se firmó y qué fuente cambió después de tomarla,
+# que es la señal de que toca renovarla. La foto que trae «Lo que sigue» suma los planes
+# abiertos del área que la sección no nombra (`desde.planes`, con su enlace).
 # Con `--version N` contesta una foto anterior. Sin ninguna foto, 404 diciendo cómo se toma.
 estado)
   exige 1 "estado <area> [--version N]" "$@"
@@ -1529,7 +1532,9 @@ diferir)
   ;;
 # Corregir una decisión registrada: su veredicto, su marco, sus textos — o mudarla de hilo.
 # Corregir: con el tipo, cualquier pieza por su puerta genérica; con el id solo, una decisión
-# por la suya, que es la única con puerta propia.
+# por la suya, que es la única con puerta propia. El objetivo lleva su «Lo que sigue» en el
+# cuerpo entero, y con planes abiertos que lo nombran la puerta lo cobra desde que el
+# proyecto cerró `caminos` o desde que el cuerpo lo trae.
 corregir)
   exige 1 "corregir <id>   < {\"veredicto\":\"…\"} (una decisión) · corregir <tipo> <id>   < {\"cuerpo\":{…}} (cualquier otra pieza)" "$@"
   vaciar_cola
@@ -1857,20 +1862,24 @@ sincronizar-skills)
   ;;
 # La foto nueva del estado de un área, y la corrección de la vigente.
 #
-# `escribir-estado` toma una foto: el cuerpo con sus cinco secciones —# Dónde estamos ·
-# # El mapa · # En vuelo · # Lo que sigue · # Lo que espera de otros—, el `hito` que la
-# produjo (la firma de un plan, una decisión del cliente, una fuente que movió el terreno),
-# el `plan` cuya firma fue el hito cuando lo hubo, los `diagramas` compilados con
-# `bitacora-diagramas`, y `sinRefrescar` con cada fuente viva del área que hoy no se puede
-# traer al día y su porqué en una línea. El servidor pide antes las vivas del área al día
-# (400 `fuentesSinRefrescar`, que dice cómo se trae cada una; `sinRefrescarDeMas` si se
-# declara una que no espera) y cobra el contrato —cada sección en su techo y la foto entera
-# en la suma (400 `seccionLarga` y `estadoLargo`, que la listan sección por sección), «Dónde
-# estamos» sin código, «El mapa» con su dibujo, y con planes abiertos en el área «Lo que
-# sigue» con su dibujo de etapas y cada plan abierto por su enlace en un ítem de checklist,
-# `- [ ] [Título](enlace) — avanza cuando …` (400 `planesSinNombrar`, que los lista listos
-# para pegar)— y sella las fuentes del área; la foto anterior queda como historia. La foto
-# se escribe entera sobre la vigente, que se lee antes con `estado <area>`.
+# `escribir-estado` toma una foto: el cuerpo con el mundo del área —# Dónde estamos · la
+# sexta cuando el área la lleva · # El mapa—, el `hito` que la produjo (la firma de un plan,
+# una decisión del cliente, una fuente que movió el terreno), el `plan` cuya firma fue el
+# hito cuando lo hubo, los `diagramas` compilados con `bitacora-diagramas`, y `sinRefrescar`
+# con cada fuente viva del área que hoy no se puede traer al día y su porqué en una línea.
+# El servidor pide antes las vivas del área al día (400 `fuentesSinRefrescar`, que dice cómo
+# se trae cada una; `sinRefrescarDeMas` si se declara una que no espera) y cobra el contrato
+# —cada sección en su techo y la foto entera en la suma (400 `seccionLarga` y `estadoLargo`,
+# que la listan sección por sección), «Dónde estamos» sin código, «El mapa» con su dibujo— y
+# sella las fuentes del área; la foto anterior queda como historia. La foto se escribe entera
+# sobre la vigente, que se lee antes con `estado <area>`. El orden de los planes va al «Lo
+# que sigue» de su objetivo (`corregir objetivos <id>`): en el proyecto que cerró la
+# adaptación `caminos`, la foto que trae «En vuelo», «Lo que sigue» o «Lo que espera de
+# otros» contesta 400 `caminoEnElArea`. Mientras `caminos` está pendiente, la foto escrita
+# con la forma de antes se toma y se corrige con ella: con planes abiertos en el área, «Lo
+# que sigue» con su dibujo de etapas y cada plan abierto por su enlace en un ítem de
+# checklist, `- [ ] [Título](enlace) — avanza cuando …` (400 `planesSinNombrar`, que los
+# lista listos para pegar).
 # `editar-estado` corrige la vigente sin abrir versión: una frase, un
 # diagrama recompilado, el hito, o la capa traducida con la huella del original.
 #   bitacora-api escribir-estado <area> < estado.json
@@ -2102,9 +2111,10 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api adaptacion                   (lo que a este proyecto le falta adaptar cuando el modelo cambió, con sus señales)
   bitacora-api adaptado <clave>             (cierra la adaptación; 400 con lo que falta si el material todavía no está)
   bitacora-api areas                        (los mundos del proyecto, con sus sub-áreas)
-  bitacora-api area <slug>                  (un área con las sub-áreas que viven ahí y su `estado` resumido —la foto vigente,
-                                             su panorama y lo que se firmó y cambió desde que se tomó—; `areas <slug>` es lo mismo)
-  bitacora-api estado <area> [--version N]  (el estado del área entero: la foto vigente —o una anterior— con sus cinco secciones,
+  bitacora-api area <slug>                  (un área con las sub-áreas que viven ahí, su `estado` resumido —la foto vigente,
+                                             su panorama y lo que se firmó y cambió desde que se tomó— y sus `objetivos`, los
+                                             abiertos que la cruzan; `areas <slug>` es lo mismo)
+  bitacora-api estado <area> [--version N]  (el estado del área entero: la foto vigente —o una anterior— con su mundo,
                                              su hito, su cadena de anteriores y `desde`: la señal de que toca renovarla)
   bitacora-api libro <area>                 (el libro del área: lo firme de sus piezas —la decisión tomada, el plan firmado, el bug arreglado,
                                              el análisis escrito— y sus entradas, lo más reciente arriba; `libro objetivo <id>`, el de un objetivo)
@@ -2159,7 +2169,12 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"}}
         lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; «Qué se busca» va sin código y entra en el techo de «Qué cambia»
         cada pieza lo nombra con "objetivo":"<id>" al abrirla o con `corregir <tipo> <id>` —{"objetivo":null} lo quita—: uno abierto, y nunca desde otro objetivo
-        `item objetivos <id>` lo lee con sus `piezas` y su `avance`; se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400
+        `item objetivos <id>` lo lee con sus `piezas`, su `avance` y su `camino` —`enVuelo`, `espera`, y `sinNombrar` cuando ordena sus planes—;
+        se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400
+        «Lo que sigue», después de «Cuándo está logrado», ordena sus planes por etapas: se escribe con `corregir objetivos <id>` y el cuerpo entero,
+        y con planes abiertos que lo nombran —desde que el proyecto cerró `caminos` o desde que el cuerpo la trae— la puerta cobra su dibujo de etapas
+        y cada plan por su enlace en su checklist, en 300 sin los ítems; si no, va libre en 600
+        (400 caminoIncompleto · seccionSinDibujo · seccionLarga · planesSinNombrar, que los lista listos para pegar)
   bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"}}
   bitacora-api simulacion <subarea>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
                                              "brazos":[{"clave":"A","nombre":"…","comoCorre":"…"},{"clave":"B","nombre":"…"}],
@@ -2252,7 +2267,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "recomiendo":0,"recomendacion":"por qué esa",
                                              "cierraEn":"…","cuerpo":"…","flujos":["…"]}
   bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}   (una decisión)
-  bitacora-api corregir <tipo> <id>         {"cuerpo":{…},"diagramas":[…]} · {"titulo":"…"} · {"queEs":"…"}   (cualquier otra pieza)
+  bitacora-api corregir <tipo> <id>         {"cuerpo":{…},"diagramas":[…]} · {"titulo":"…"} · {"queEs":"…"}   (cualquier otra pieza;
+                                              el cuerpo de un objetivo va entero, con su «Lo que sigue»)
                                             · {"prioridad":"alta"} (su orden entre los de su escritorio, en cualquier escritorio:
                                               un plan alta · media · baja, un bug critico · mayor · menor)
   bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado)
@@ -2297,19 +2313,21 @@ Escritura (el cuerpo JSON entra por stdin):
                                              su última línea nombra lo nuevo, lo que cambió, las notas que quedaron viejas
                                              y cuántas siguen sin contar; los <repo> extra son otras carpetas del mismo tenant)
                                             la corre la skill /skills, a mano; su última línea dice qué cambió y es su plan de trabajo
-  bitacora-api escribir-estado <area>       {"cuerpo":{"es":"# Dónde estamos\n…\n# El mapa\n…\n# En vuelo\n…\n# Lo que sigue\n…\n# Lo que espera de otros\n…"},
+  bitacora-api escribir-estado <area>       {"cuerpo":{"es":"# Dónde estamos\n…\n# El mapa\n…"},
                                              "hito":"…","plan":"<id>","diagramas":[…],
                                              "sinRefrescar":[{"fuente":"<slug>","porque":"<qué lo impide, en una línea>"}]}
         toma la FOTO nueva del estado del área, al cierre de un cambio importante, escrita ENTERA sobre la vigente
         (`estado <area>`) y con las fuentes vivas del área al día (`refrescar`; la que no se puede, en sinRefrescar):
-        cinco secciones de lo amplio a lo específico, cada una en su techo —Dónde estamos 500, El mapa 400 sin el dibujo,
-        En vuelo 600, Lo que sigue 600, Lo que espera de otros 600, la sexta de harness y QA 1200— y la foto entera en
-        la suma (las tablas cuentan como texto; los dibujos, no); con planes abiertos en el área, «Lo que sigue» con su
-        dibujo de etapas y por etapa su checklist, `- [ ] [Título](enlace) — avanza cuando …`, en 300 sin los ítems;
-        el hito que la produjo y el plan firmado cuando fue uno; la foto anterior queda como historia y se recorre
-        con «Anterior»
+        el mundo del área de lo amplio a lo específico, cada sección en su techo —Dónde estamos 500, la sexta de harness,
+        QA y SEO 1200 después del panorama, El mapa 400 sin el dibujo— y la foto entera en la suma (las tablas cuentan
+        como texto; los dibujos, no); el hito que la produjo y el plan firmado cuando fue uno; la foto anterior queda
+        como historia y se recorre con «Anterior». El camino vive en el objetivo: con `caminos` cerrada, una foto con
+        «En vuelo», «Lo que sigue» o «Lo que espera de otros» contesta 400 caminoEnElArea; mientras está pendiente, la
+        foto escrita con la forma de antes se toma y se corrige con ella (cada una 600; con planes abiertos en el área,
+        «Lo que sigue» con su dibujo de etapas y por etapa su checklist, `- [ ] [Título](enlace) — avanza cuando …`,
+        en 300 sin los ítems)
   bitacora-api editar-estado <area>         {"cuerpo":…} · {"hito":"…"} · {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"},"diagramas":[…]}
-        corrige la foto vigente sin abrir versión
+        corrige la foto vigente sin abrir versión, con la forma en que se escribió mientras `caminos` está pendiente
   bitacora-api escribir-instrucciones       < instrucciones.md   (el markdown entero por stdin; reemplaza; crea la sección la primera vez)
   bitacora-api escribir-dominio             < dominio.md          (el negocio del cliente, con sus palabras; reemplaza)
         las dos aceptan · --json < {"cuerpo":{"es":"…","en":"…"},"queEs":"…"}   (en dos idiomas)

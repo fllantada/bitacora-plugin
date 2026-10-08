@@ -117,7 +117,7 @@ $API -p <project> nota-skill <name>   # tell it for a person: {"paraQue":"…","
                                 #   write it right after reading that skill's text — the catalogue lists it uncounted until someone does
 $API -p <project> tablero       # the board: every area with its pieces, and the goals apart
 $API -p <project> areas         # the project's areas
-$API -p <project> area <slug>   # ONE area: its name, its place, and its `estado` —where that world stands today
+$API -p <project> area <slug>   # ONE area: its name, its place, its `estado` —where that world stands today— and its `objetivos`, the open goals that cross it
 $API -p <project> subarea <place> # the area's place: its pieces, entries, decisions and documents
 $API -p <project> estado <slug> # the area's state in full: the current snapshot with its sections, its milestone and its chain of earlier ones
 $API -p <project> libro <slug>  # the area's book: what was decided and done there, newest first · `libro objetivo <id>`, a goal's
@@ -376,24 +376,25 @@ and its sections, with «← Previous» to the earlier one— and with its histo
 `/<project>/area/<slug>/estado`. It is a series of
 snapshots and the latest one is read; each carries the milestone that produced it —a
 relevant plan signed, a client decision, a source that moved the ground— and the earlier
-ones are the history, walked one step back at a time with "Previous". The body has five
-sections, from the broadest to the most specific, and the server requires them in this
-order: `# Where we stand` (the big picture in a few sentences, without code), `# The map`
-(a `d2` drawing of the pieces with their state), `# In flight`, `# What's next` and
-`# Waiting on others` — the two that can have nothing to say still go, and say "None".
-**While the area has open plans, `# What's next` is their order**: a `d2` drawing of
-stages —one lane per stage, one box per plan, arrows are dependencies—, then per stage a bold
-line with the stage and its checklist, one item per open plan linked to its page:
-`- [ ] [Plan title](link) — moves when …`, and one or two sentences on why that order. The
-server requires all three (400 `seccionSinDibujo`, 400 `planesSinNombrar` listing each
-missing plan as a checklist item ready to paste, 400 `seccionLarga`), and the snapshot's
-`desde.planes` lists the open plans it does not name yet.
+ones are the history, walked one step back at a time with "Previous". **The body tells the
+area's world**, from the broadest to the most specific, and the server requires its sections
+in this order: `# Where we stand` (the big picture in a few sentences, without code), the
+sixth section when the area carries one (below), and `# The map` (a `d2` drawing of the
+pieces with their state, with its legend underneath). **The path of each piece of work lives
+in its goal** (§The Goal): the order of its plans in its `# What's next`, and what is in
+flight and what waits on others, derived on its page. **Snapshots written in the earlier
+shape** carry `# In flight`, `# What's next` and `# Waiting on others` after the world, and
+are read, corrected and painted with it; while the project's `caminos` adaptation is
+pending, a snapshot that brings any of those headings is charged with that shape —with open
+plans in the area, `# What's next` is their order, as in a goal, and `desde.planes` lists
+the ones it does not name yet—. Once the project closes `caminos`, a snapshot that brings
+any of the three answers 400 `caminoEnElArea`, naming each one.
 **A snapshot is read whole every time it is written**, because a person reads it end to
 end: each section fits its cap in visible characters —`# Where we stand` 500, `# The map`
-400 (its legend; the drawing does not count), `# In flight`, `# What's next` and
-`# Waiting on others` 600 each, `# What's next` with open plans 300 without its checklist
-items, the sixth section 1200— and the whole snapshot fits the sum of its sections' caps,
-text outside the sections included. A table counts as text; a drawing does not. Over a cap
+400 (its legend; the drawing does not count), the sixth section 1200, and in the earlier
+shape `# In flight`, `# What's next` and `# Waiting on others` 600 each, `# What's next`
+with open plans 300 without its checklist items— and the whole snapshot fits the sum of its
+sections' caps, text outside the sections included. A table counts as text; a drawing does not. Over a cap
 the server answers 400 `seccionLarga` or `estadoLargo`, listing every section with what it
 carries and what fits. It slims down by drawing what can be drawn, a checklist instead of
 each table, dropping what closed or repeats, and moving what explains and lasts to an
@@ -1138,6 +1139,35 @@ achieved: what the owner looks at to close it). The 400 `aperturaIncompleta` nam
 what each one states, and a «What we're after» with code or too long answers
 `seccionConCodigo` or `seccionLarga`.
 
+**Its path: «What's next» is written, the rest is derived.** **What's next** is one more
+section of its body, after «When it's achieved» and at the same heading level: the order of
+its plans by stage, which is judgement. Its shape is a `d2` drawing of stages —one lane per
+stage, one box per plan saying what it changes and carrying `link:` to its plan, arrows are
+dependencies—, then per stage a bold line with the stage and its checklist, one item per open
+plan that names the goal, `- [ ] [Plan title](link) — moves when …`, and one or two
+sentences on why that order, within 300 visible characters without the drawing or the
+checklist items. The page paints each item with its plan's live desk and each box with its
+card.
+
+**The patch charges it** (`$API -p <project> corregir objetivos <id>`, with the whole
+body) while the goal is open and has open plans that name it, once the project closes its
+`caminos` adaptation or once the body already brings the heading: missing or empty answers
+400 `caminoIncompleto` with its outline, without a drawing `seccionSinDibujo`, too long
+`seccionLarga`, and an open plan the checklist does not name by its link `planesSinNombrar`,
+with the items ready to paste. Any other goal carries the section free, within 600; its
+opening takes only the three sections, because it is born before its plans.
+
+**«In flight» and «Waiting on others» are derived when read** from the pieces that name
+the goal, so they are always current: in flight, its plans in `encargado`, `en-curso` or
+`entregado`, each with its desk, the front that holds it and the roles it waits on; waiting
+on others, first the open decisions that name it, with who decides and what they block, then
+the open consultations, client questions and visual checks still before their answer, then
+every live request of its plans with its role and what it needs, linked to `…#pedido-N`. The
+goal's page shows both under its body, each saying "None" when empty, before «What pursues
+it»; its read brings them in `camino` —`enVuelo`, `espera`, and `sinNombrar` with the open
+plans its «What's next» does not name yet, while it charges its order—. What the path closed
+is told by the goal's book, and the public mirror serves the body with «What's next».
+
 **It opens in the project**: `$API -p <project> objetivo`, with no area (`POST /api/objetivos`),
 and it takes its number and its slug in the project. An area that a session on the previous
 client still names is accepted and left unused, and the response says so in its `aviso`. The
@@ -1158,7 +1188,10 @@ $API -p <project> corregir planes <id> <<< '{"objetivo":"<goal id>"}'   # a piec
 $API -p <project> corregir planes <id> <<< '{"objetivo":null}'          # and leaves it
 $API -p <project> corregir <decision id> <<< '{"objetivo":"<goal id>"}' # a decision, through its own door
 
-$API -p <project> item objetivos <id>     # the goal with its `piezas` and its `avance`
+$API -p <project> item objetivos <id>     # the goal with its `piezas`, its `avance` and its `camino`
+$API -p <project> corregir objetivos <id> <<'JSON'   # orders its plans: the whole body goes
+{"cuerpo":{"en":"# What we're after\n…\n\n# Why\n…\n\n# When it's achieved\n…\n\n# What's next\n…"}}
+JSON
 $API -p <project> abiertos objetivos      # what is pursued today in the project
 $API -p <project> mover objetivos <id> <<< '{"estado":"logrado","nota":"what was achieved"}'
 $API -p <project> mover objetivos <id> <<< '{"estado":"descartado","nota":"why it is no longer pursued"}'
