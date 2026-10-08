@@ -980,7 +980,18 @@ traducir-item)
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
-analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente | chequeo | pregunta-jev | objetivo)
+# El objetivo es del proyecto y nace sin lugar. El área que todavía escribe la sesión del
+# modelo anterior se acepta, y el aviso dice que no se usó.
+objetivo)
+  if [ -t 0 ] && [[ "${1:-}" =~ ^[0-9a-f]{24}$ ]]; then
+    echo "«$1» tiene forma de id, y \`objetivo\` da de alta uno nuevo con su JSON por stdin: la lectura de ese objetivo es \`bitacora-api item objetivo $1\`." >&2
+    exit 1
+  fi
+  [ "$#" -eq 0 ] || echo "El objetivo es del proyecto y nace sin lugar: «$1» no se usa." >&2
+  vaciar_cola
+  escribir POST "/api/objetivos"
+  ;;
+analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente | chequeo | pregunta-jev)
   exige 1 "$comando <subarea>   < JSON" "$@"
   # Un id donde va la sub-área es la lectura confundida con el alta: se nombra la lectura.
   if [ -t 0 ] && [[ "$1" =~ ^[0-9a-f]{24}$ ]]; then
@@ -998,7 +1009,6 @@ analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente
     consulta-cliente) ruta_tipo=consultas-cliente ;;
     chequeo) ruta_tipo=chequeos ;;
     pregunta-jev) ruta_tipo=preguntas-jev ;;
-    objetivo) ruta_tipo=objetivos ;;
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
   ;;
@@ -2084,7 +2094,7 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
 El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la API lo guarda como `lineas`):
   bitacora-api abrir [destino]              (el tablero en tu navegador, sin login: enlace fresco de un solo uso;
                                              con la ruta o el enlace de una pieza, abre esa página)
-  bitacora-api tablero                      (las sub-áreas con su área y sus ítems, las áreas, lo pendiente por escritorio, la tríada contada)
+  bitacora-api tablero                      (las sub-áreas con su área y sus ítems, los objetivos del proyecto en su lista `objetivos`, las áreas, lo pendiente por escritorio, la tríada contada)
   bitacora-api bandeja                      (sin -p: las consultas que esperan tu respuesta y los planes entregados, en curso y encargados de TODOS los proyectos)
   bitacora-api encargados · en-curso · entregados   (el ciclo del encargo, por escritorio; cada plan con su sub-área y su área)
   bitacora-api subareas                     (= hilos = lineas: los tres nombres llegan al mismo lugar)
@@ -2146,8 +2156,8 @@ Escritura (el cuerpo JSON entra por stdin):
         "prioridad": critico · mayor · menor — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
         y el crítico abierto encabeza toda lista, cruzando áreas
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
-  bitacora-api objetivo <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"}}
-        lo que varias piezas persiguen juntas: nace `abierto`; «Qué se busca» va sin código y entra en el techo de «Qué cambia»
+  bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"}}
+        lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; «Qué se busca» va sin código y entra en el techo de «Qué cambia»
         cada pieza lo nombra con "objetivo":"<id>" al abrirla o con `corregir <tipo> <id>` —{"objetivo":null} lo quita—: uno abierto, y nunca desde otro objetivo
         `item objetivos <id>` lo lee con sus `piezas` y su `avance`; se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400
   bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"}}

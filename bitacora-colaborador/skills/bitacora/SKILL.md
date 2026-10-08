@@ -176,7 +176,7 @@ colour:
 | **Client Question** | what the CLIENT decides, with the person as go-between: the session prepares each question with its analysis, the person takes it to the client and loads what the client answered ON THE WEB | its `queEs` and its questions: each with the text to send, what it blocks, why it's urgent, the options with what they imply and what to recommend | por-preguntar · preguntada · respondida · aplicada · descartada |
 | **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
 | **Jev Question** | a semantic judgement that runs at commit, with its evidence: the bench over the red, the green and the approved, and its real runs with the signer's verdict on each red | its body, its `queEs`, its `clave` —the id in the repo's rule— and the `pregunta` | propuesta · en-banco · informando · frena · retirada |
-| **Goal** | what several pieces pursue TOGETHER —the back end, the web and the app of one feature—: each plan, bug or analysis names it in its `objetivo` field, and its page lists what pursues it with the progress (§The Goal) | its body with three sections: What we're after —no code, within the ceiling of «What changes»—, Why and When it's achieved | abierto · logrado · descartado — closing it takes its `nota` |
+| **Goal** | what several pieces pursue TOGETHER —the back end, the web and the app of one feature—: it belongs to the project and is born with no place; each plan, bug or analysis names it in its `objetivo` field, and its page lists what pursues it with the progress (§The Goal) | its body with three sections: What we're after —no code, within the ceiling of «What changes»—, Why and When it's achieved | abierto · logrado · descartado — closing it takes its `nota` |
 
 ```bash
 $API -p <project> analisis <area> <<'JSON'
@@ -1124,8 +1124,9 @@ $API -p <project> jev-veredicto <run> pregunta     # the question is miscalibrat
 
 Work that takes several PRs —the back end, the web and the app of one feature; an index
 built in stages; a migration in parts— is split into small plans, each in the area of its
-world. **The goal is what those plans pursue together**: a piece that says what we're after
-and when it's achieved, and that each plan, bug or analysis names as its own. Its page shows
+world. **The goal is what those plans pursue together**: a project piece, with no place, that
+says what we're after and when it's achieved, and that each plan, bug or analysis names as its
+own. Its page shows
 **«What pursues it»** under the body: the progress in one line and every piece that names
 it, from any area, with its desk.
 
@@ -1137,8 +1138,14 @@ achieved: what the owner looks at to close it). The 400 `aperturaIncompleta` nam
 what each one states, and a «What we're after» with code or too long answers
 `seccionConCodigo` or `seccionLarga`.
 
+**It opens in the project**: `$API -p <project> objetivo`, with no area (`POST /api/objetivos`),
+and it takes its number and its slug in the project. An area that a session on the previous
+client still names is accepted and left unused, and the response says so in its `aviso`. The
+pieces that pursue it live in their areas; the patch turns down the place gestures on a goal
+—`hilo`, `tambienEn`, `fijado`— with 400 `sinLugar`.
+
 ```bash
-$API -p <project> objetivo <area> <<'JSON'
+$API -p <project> objetivo <<'JSON'
 {"titulo":"…","queEs":"what the back end, the web and the app pursue together",
  "cuerpo":{"en":"# What we're after\n…\n\n# Why\n…\n\n# When it's achieved\n…"}}
 JSON
@@ -1152,7 +1159,7 @@ $API -p <project> corregir planes <id> <<< '{"objetivo":null}'          # and le
 $API -p <project> corregir <decision id> <<< '{"objetivo":"<goal id>"}' # a decision, through its own door
 
 $API -p <project> item objetivos <id>     # the goal with its `piezas` and its `avance`
-$API -p <project> abiertos objetivos      # what is pursued today, across areas
+$API -p <project> abiertos objetivos      # what is pursued today in the project
 $API -p <project> mover objetivos <id> <<< '{"estado":"logrado","nota":"what was achieved"}'
 $API -p <project> mover objetivos <id> <<< '{"estado":"descartado","nota":"why it is no longer pursued"}'
 ```
@@ -1166,11 +1173,11 @@ removes it. **You write the id and read the address**: the piece's read brings i
 `"objetivo":{"id":"…","titulo":"…","enlace":"https://…"}`.
 
 **The goal reads at its project address, `/<project>/objetivo/<id>`**, which is the one its
-`enlace` in the API, its menu row and the **Pursues** line of every piece carry. The address
-of its place, `/<project>/linea/<area>/<slug>`, leads there, so the links already going
-around keep working. Whoever sees the whole project opens it, and a guest does when the goal
-lives in one of their lines or when they see any of the pieces that pursue it: whoever works
-on a piece reads where it is heading.
+`enlace` in the API, its menu row and the **Pursues** line of every piece carry. A goal born
+in an area keeps its address from then, `/<project>/linea/<area>/<slug>`, and that address
+leads there, so the links already going around keep working. Whoever sees the whole project
+opens it, and a guest does when they see any of the pieces that pursue it: whoever works on a
+piece reads where it is heading.
 
 **A decision made along the way names it through its own door**, with the same check:
 `"objetivo"` goes in the JSON of `$API -p <project> decision <area>` next to its frame, and
@@ -1245,9 +1252,9 @@ pursuing it. `mover objetivos <id>` to `logrado` or `descartado` without a `nota
 too, with **Achieved** and **No longer pursued**, each with its line.
 
 **An area the project opened to gather the plans of one initiative becomes a goal** of the
-world it belongs to, through the `objetivos` adaptation, which the owner runs: the goal opens
-in the target area, every piece of the area names it —one that already pursues another goal
-keeps it—, each place merges into the target with its old slug as an alias, and the area is
+project, through the `objetivos` adaptation, which the owner runs: the goal opens in the
+project, every piece of the area names it —one that already pursues another goal keeps it—,
+each place merges into the area of its world with its old slug as an alias, and the area is
 retired. The old addresses keep leading to the pieces, which now read under their goal.
 
 ## Planning — the same gesture in every project
@@ -1266,7 +1273,7 @@ a `cierraEn` saying where it closes — the door demands it: without a close the
 plan — and a body carrying the reasoning the conversation produced. Write it with
 `$API plan <area>` and finish the gesture by handing the user the `enlace` the response
 returns — the item's full address — so they can keep reading it in the web app. **When the
-topic takes several PRs, open its goal first** (`$API objetivo <area>`, §The Goal) and each
+topic takes several PRs, open its goal first** (`$API objetivo`, in the project, §The Goal) and each
 plan names it when opened, with `"objetivo":"<id>"`. The
 tie-break between types is the standing one
 (see *Plans* above): understanding left asks for an analysis, executing asks for a plan,
@@ -1278,7 +1285,7 @@ this same gesture — what was thought out lives in its area and outlives the se
 
 ```bash
 $API -p <project> areas          # where it goes: the project's areas — ask BEFORE writing
-$API -p <project> objetivo <area> <<'JSON'   # when the topic takes several PRs: what they pursue together
+$API -p <project> objetivo <<'JSON'   # when the topic takes several PRs: what they pursue together, in the project
 {"titulo":"…","queEs":"…","cuerpo":{"en":"# What we're after\n…\n\n# Why\n…\n\n# When it's achieved\n…"}}
 JSON
 $API -p <project> plan <area> <<'JSON'
