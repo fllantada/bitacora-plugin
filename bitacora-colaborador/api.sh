@@ -1300,7 +1300,7 @@ respuestas)
   leer "/api/items/consultas/$(uri "$1")" | jq '{estado, hilo, titulo, respuestas, faltan, pidenContexto, delCliente, puntos: [.puntos[] | {id, titulo, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), llevadoA: (.consultaCliente // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
   ;;
 puntos)
-  exige 1 "puntos <id>   < {\"puntos\":[{\"id\":\"p2\",\"queCambia\":\"…\",\"porque\":\"…\"}]}" "$@"
+  exige 1 "puntos <id>   < {\"puntos\":[{\"id\":\"p2\",\"queCambia\":\"…\",\"propuesta\":\"…\",\"porque\":\"…\"}]}" "$@"
   aviso_viejo "\`corregir <id>\` reescribe una decisión, y \`decision <área>\` con \`tanda\` suma otra a la tanda"
   vaciar_cola
   escribir PATCH "/api/items/consultas/$(uri "$1")"
