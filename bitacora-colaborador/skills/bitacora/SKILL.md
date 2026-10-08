@@ -1112,6 +1112,7 @@ $API -p <project> plan <area> <<'JSON'
 JSON
 $API -p <project> corregir planes <id> <<< '{"objetivo":"<goal id>"}'   # a piece already open joins it
 $API -p <project> corregir planes <id> <<< '{"objetivo":null}'          # and leaves it
+$API -p <project> corregir <decision id> <<< '{"objetivo":"<goal id>"}' # a decision, through its own door
 
 $API -p <project> item objetivos <id>     # the goal with its `piezas` and its `avance`
 $API -p <project> abiertos objetivos      # what is pursued today, across areas
@@ -1119,14 +1120,31 @@ $API -p <project> mover objetivos <id> <<< '{"estado":"logrado","nota":"what was
 $API -p <project> mover objetivos <id> <<< '{"estado":"descartado","nota":"why it is no longer pursued"}'
 ```
 
-**Every piece opened through its type takes the `objetivo` field** —the decision, with its
-own door, stays out—, when opened or through
-`corregir`: the id of an **open** goal of the same project. The door checks it the way a
+**Every piece takes the `objetivo` field**, when opened or through `corregir`: the id of an
+**open** goal of the same project. The door checks it the way a
 visual check checks its plan: an id that does not exist answers 404 `objetivoInexistente`,
 one that is `logrado` or `descartado` answers 400 `objetivoCerrado`, and **a goal does not
 name another one** —there is a single level—: 400 `objetivoAnidado`. `{"objetivo":null}`
 removes it. **You write the id and read the address**: the piece's read brings it resolved,
 `"objetivo":{"id":"…","titulo":"…","enlace":"https://…"}`.
+
+**A decision made along the way names it through its own door**, with the same check:
+`"objetivo"` goes in the JSON of `$API -p <project> decision <area>` next to its frame, and
+`corregir <id>` —without the type— adds or removes it. It shows in «What pursues it» with its
+row, which leads to its point, and the progress leaves it uncounted:
+
+```bash
+$API -p <project> decision <area> <<'JSON'
+{"titulo":"…","veredicto":"…","bloquea":"…",
+ "opciones":[{"titulo":"…","implica":"…"},{"titulo":"…","implica":"…"}],
+ "recomiendo":0,"recomendacion":"…","cierraEn":"…","cuerpo":"…","objetivo":"<goal id>"}
+JSON
+```
+
+**The page of every piece opened through its type says on top what it pursues**: the
+**Pursues** line, with the link to the goal. Whoever sees the goal opens it; the public
+mirror, when the goal is not published, and a guest who does not see it from their lines
+read the name alone.
 
 **The menu and the area page hang each piece under its goal.** The goal heads, with the glyph
 of its desk, the place's pieces that pursue it in the order of the work, and the group sits
@@ -1149,7 +1167,7 @@ $API -p <project> subarea <place> | jq '[.items[][] | select(.objetivo) | {titul
 
 The progress counts plans and bugs: `cerradas` is what is done or fixed, `abiertas` the
 rest, and `enCurso` names the plans a session has in hand. What is dropped leaves the count;
-an analysis or a consultation is listed without counting. The page lists and counts what
+an analysis, a consultation or a decision is listed without counting. The page lists and counts what
 the reader can see: on the public mirror, the published pieces; a guest, the ones seen from
 the lines shared with them.
 
