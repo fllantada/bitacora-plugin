@@ -417,8 +417,11 @@ adaptation; read it before testing a change. Harness carries its own sixth in th
 spot, `# How we work`, and SEO carries `# How we get found` —each surface where the project
 has to show up (Google, Bing and the AI assistants that answer by citing), what each reads
 from the site, what it understands of the project and how showing up is measured, with its
-`d2` drawing—, required once the project closes its `seo` adaptation. Read it with `$API estado <slug>`; taking a new snapshot is the owner's call at the close of
-an important change (`$API escribir-estado <slug>`).
+`d2` drawing—, required once the project closes its `seo` adaptation. Read it with `$API estado <slug>`; a new snapshot is taken at the close of an important
+change (`$API escribir-estado <slug>`). **When that change is a signed-off plan, the session
+that signs it off takes the snapshot**: a plan that changes its world's big picture is a
+milestone, and the session takes the snapshot with that plan as its milestone and tells the
+person in one line.
 
 **The state says where a world stands today; its book, what was decided and done to get
 there.** Every area and every goal has one, on its page next to the state
@@ -1143,7 +1146,7 @@ it, from any area, with its desk.
 after** (what will exist once it's achieved, as whoever uses the system sees it: no code, and
 within the ceiling of a plan's «What changes»), **Why** (where it comes from and what problem
 it solves, with its sources) and **When it's achieved** (the observable thing that marks it
-achieved: what the owner looks at to close it). The 400 `aperturaIncompleta` names them with
+achieved: what the session looks at to close it). The 400 `aperturaIncompleta` names them with
 what each one states, and a «What we're after» with code or too long answers
 `seccionConCodigo` or `seccionLarga`.
 
@@ -1290,7 +1293,11 @@ the lines shared with them.
 
 **Closing it takes its `nota`**: calling it achieved is a judgement, and so is no longer
 pursuing it. `mover objetivos <id>` to `logrado` or `descartado` without a `nota` answers 400
-`cierreSinNota`; reopening it goes through clean. The person closes it from the goal's page
+`cierreSinNota`; reopening it goes through clean. **The session that signs off its last open
+plan calls it achieved**: it reads «When it's achieved» against what was signed off, closes
+the goal with a note on what was achieved when the condition holds and tells the person in
+one line, and when something is missing, that is the next plan. Dropping a goal is the
+person's call. The person closes it from the goal's page
 too, with **Achieved** and **No longer pursued**, each with its line.
 
 **An area the project opened to gather the plans of one initiative becomes a goal** of the
