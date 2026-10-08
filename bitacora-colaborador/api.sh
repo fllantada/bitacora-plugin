@@ -2103,7 +2103,7 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
 El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la API lo guarda como `lineas`):
   bitacora-api abrir [destino]              (el tablero en tu navegador, sin login: enlace fresco de un solo uso;
                                              con la ruta o el enlace de una pieza, abre esa página)
-  bitacora-api tablero                      (las sub-áreas con su área y sus ítems, los objetivos del proyecto en su lista `objetivos`, las áreas, lo pendiente por escritorio, la tríada contada)
+  bitacora-api tablero                      (las sub-áreas con su área y sus ítems, los objetivos del proyecto en su lista `objetivos` —cada uno con su `dependeDe` y su `destraba` cuando los tiene—, las áreas, lo pendiente por escritorio, la tríada contada)
   bitacora-api bandeja                      (sin -p: las consultas en tu mano o en la del cliente —con su `mano` y su `falta`—, los chequeos por mirar
                                              y los planes entregados, en curso y encargados de TODOS los proyectos)
   bitacora-api encargados · en-curso · entregados   (el ciclo del encargo, por escritorio; cada plan con su sub-área y su área)
@@ -2162,10 +2162,15 @@ Escritura (el cuerpo JSON entra por stdin):
         "prioridad": critico · mayor · menor · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
         el crítico abierto encabeza toda lista, cruzando áreas, y algun-dia espera su momento al pie, como el del plan
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
-  bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"}}
+  bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"},"dependeDe":["<id>"]}
         lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; «Qué se busca» va sin código y entra en el techo de «Qué cambia»
         cada pieza lo nombra con "objetivo":"<id>" al abrirla o con `corregir <tipo> <id>` —{"objetivo":null} lo quita—: uno abierto, y nunca desde otro objetivo
-        `item objetivos <id>` lo lee con sus `piezas`, su `avance` y su `camino` —`enVuelo`, `espera`, y `sinNombrar` cuando ordena sus planes—;
+        "dependeDe" son los objetivos que este espera, los que se logran antes: al abrirlo, o con `corregir objetivos <id>` {"dependeDe":["<id>","<id>"]},
+        la lista entera en su orden, y {"dependeDe":[]} la saca; cada id es OTRO objetivo del proyecto y la lista deja el orden sin ciclos
+        (400 dependeDeSiMismo · 404 dependenciaInexistente · 400 dependenciaCircular, que nombra el ciclo por sus títulos); los planes de un objetivo que espera se encargan igual
+        `item objetivos <id>` lo lee con sus `piezas`, su `avance`, su `camino` —`enVuelo`, `espera`, y `sinNombrar` cuando ordena sus planes—,
+        `dependeDe` y `destraba` —los que espera y los que lo esperan, cada uno {id,titulo,estado,enlace}—, y en `camino.espera` cada objetivo esperado
+        que todavía lo frena —abierto o descartado; el logrado lo destraba— con "clase":"objetivo" y su `avance`;
         se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400
         «Lo que sigue», después de «Cuándo está logrado», ordena sus planes por etapas: se escribe con `corregir objetivos <id>` y el cuerpo entero,
         y con planes abiertos que lo nombran —desde que el proyecto cerró `caminos` o desde que el cuerpo la trae— la puerta cobra su dibujo de etapas

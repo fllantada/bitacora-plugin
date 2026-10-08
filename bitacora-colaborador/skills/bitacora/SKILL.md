@@ -1173,10 +1173,13 @@ the goal, so they are always current: in flight, its plans in `encargado`, `en-c
 `entregado`, each with its desk, the front that holds it and the roles it waits on; waiting
 on others, first the open decisions that name it, with who decides and what they block, then
 the open consultations, client questions and visual checks still before their answer, then
-every live request of its plans with its role and what it needs, linked to `…#pedido-N`. The
-goal's page shows both under its body, each saying "None" when empty, before «What pursues
-it»; its read brings them in `camino` —`enVuelo`, `espera`, and `sinNombrar` with the open
-plans its «What's next» does not name yet, while it charges its order—. What the path closed
+every goal in its `dependeDe` that still holds it back —open or dropped—, with its progress,
+in the list's order, then every live request of its plans with its role and what it needs,
+linked to `…#pedido-N`. The goal's page shows both under its body, each saying "None" when
+empty, before «What pursues it»; its read brings them in `camino` —`enVuelo`, `espera` with
+each row's `clase` (`decision`, `pieza`, `objetivo` with its `avance`, `pedido`), and
+`sinNombrar` with the open plans its «What's next» does not name yet, while it charges its
+order—. What the path closed
 is told by the goal's book, and the public mirror serves the body with «What's next».
 
 **It opens in the project**: `$API -p <project> objetivo`, with no area (`POST /api/objetivos`),
@@ -1212,9 +1215,42 @@ $API -p <project> mover objetivos <id> <<< '{"estado":"descartado","nota":"why i
 **open** goal of the same project. The door checks it the way a
 visual check checks its plan: an id that does not exist answers 404 `objetivoInexistente`,
 one that is `logrado` or `descartado` answers 400 `objetivoCerrado`, and **a goal does not
-name another one** —there is a single level—: 400 `objetivoAnidado`. `{"objetivo":null}`
-removes it. **You write the id and read the address**: the piece's read brings it resolved,
+name another one** —there is a single level—: 400 `objetivoAnidado`, which says where the
+order between goals goes: in `dependeDe`. `{"objetivo":null}` removes it. **You write the id
+and read the address**: the piece's read brings it resolved,
 `"objetivo":{"id":"…","titulo":"…","enlace":"https://…"}`.
+
+**A goal that comes after another declares it in `dependeDe`**: the list of ids of the goals
+that have to be achieved first, in the order they are waited on. It is a relation between
+sibling goals —a piece's `objetivo` still says what it pursues—, the goal that waits declares
+it, and the other side is derived on read. It goes in when the goal opens, in the JSON of
+`$API -p <project> objetivo`, or with `corregir objetivos <id>`: the list arrives whole and
+replaces the previous one, with each id once, and `[]` removes it. The door charges three
+rules: 400 `dependeDeSiMismo` when the list holds its own id, 404 `dependenciaInexistente`
+with every id that is not a goal of the project, and 400 `dependenciaCircular` when the list
+closes a cycle, named by its titles —«A» waits on «B», which waits on «A»—.
+
+```bash
+$API -p <project> objetivo <<'JSON'
+{"titulo":"…","queEs":"…","dependeDe":["<id of the goal achieved first>"],
+ "cuerpo":{"en":"# What we're after\n…\n\n# Why\n…\n\n# When it's achieved\n…"}}
+JSON
+$API -p <project> corregir objetivos <id> <<< '{"dependeDe":["<id>","<id>"]}'   # the whole list, in its order
+$API -p <project> corregir objetivos <id> <<< '{"dependeDe":[]}'                # and removes it
+$API -p <project> item objetivos <id> | jq '{dependeDe, destraba}'
+```
+
+**The dependency orders and warns**: the plans of a goal that waits are commissioned all the
+same, and what changes is what its page and its read tell. The awaited goal **holds it back**
+while it is open or dropped —a dropped one shows as dropped and holds it back until someone
+removes the dependency or changes it—, and once achieved it unblocks it. The goal's page says
+on top **Waits on**, with every awaited goal and its progress —or its desk once closed—, and
+**Unblocks**, with the goals waiting on it: open ones first, then achieved ones, without the
+dropped. Every name leads to its page, and the page names the goals its reader opens: a
+guest reads the ones seen from their lines or from a piece they see, in «Waiting on others»
+too. The read brings them in `dependeDe`, in its order, and `destraba`, each
+`{"id","titulo","estado","enlace"}`; an id that no longer exists travels with its id alone,
+and each field travels when it has something.
 
 **The goal reads at its project address, `/<project>/objetivo/<id>`**, which is the one its
 `enlace` in the API, its menu row and the **Pursues** line of every piece carry. A goal born
@@ -1257,11 +1293,11 @@ the public mirror one that is not published, leave their pieces loose, like what
 none. **`subarea <place>` lists the place's pieces with the
 resolved `objetivo` on every row**, so a session reads the same grouping, and **`tablero`
 brings the goals in their own list**, `objetivos`, each with its `id`, `titulo`, `queEs`,
-`estado` and `url`:
+`estado` and `url`, and its `dependeDe` and `destraba` when it has them:
 
 ```bash
 $API -p <project> subarea <place> | jq '[.items[][] | select(.objetivo) | {titulo, objetivo: .objetivo.titulo}]'
-$API -p <project> tablero | jq '.objetivos[] | {id, titulo, estado}'
+$API -p <project> tablero | jq '.objetivos[] | {id, titulo, estado, dependeDe, destraba}'
 ```
 
 **An entry names it too**: `"objetivo"` in the JSON of `$API -p <project> entrada <area>`,
@@ -1296,7 +1332,8 @@ pursuing it. `mover objetivos <id>` to `logrado` or `descartado` without a `nota
 `cierreSinNota`; reopening it goes through clean. **The session that signs off its last open
 plan calls it achieved**: it reads «When it's achieved» against what was signed off, closes
 the goal with a note on what was achieved when the condition holds and tells the person in
-one line, and when something is missing, that is the next plan. Dropping a goal is the
+one line, which names every open goal it unblocked (its `destraba`), and when something is
+missing, that is the next plan. Dropping a goal is the
 person's call. The person closes it from the goal's page
 too, with **Achieved** and **No longer pursued**, each with its line.
 
