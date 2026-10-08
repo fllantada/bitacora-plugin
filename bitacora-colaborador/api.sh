@@ -577,6 +577,8 @@ version)
       | "\n⚠ Adaptación pendiente «\(.clave)» (rige desde \(.desde)):\n  \(.queCambio[$i])\n  → \(.queHacer[$i])"
         + (if (.senales.enCompartida // [] | length) > 0
            then "\n  En «compartida» siguen: \(.senales.enCompartida | join(", "))" else "" end)
+        + (if (.senales.candidatas // [] | length) > 0
+           then "\n  \(if $i == "en" then "Areas that may be a goal" else "Áreas que pueden ser un objetivo" end): \(.senales.candidatas | map(.area) | join(", "))" else "" end)
     ' 2>/dev/null || true
   fi
   ;;

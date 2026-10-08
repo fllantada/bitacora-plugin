@@ -1158,6 +1158,12 @@ pursuing it. `mover objetivos <id>` to `logrado` or `descartado` without a `nota
 `cierreSinNota`; reopening it goes through clean. The person closes it from the goal's page
 too, with **Achieved** and **No longer pursued**, each with its line.
 
+**An area the project opened to gather the plans of one initiative becomes a goal** of the
+world it belongs to, through the `objetivos` adaptation, which the owner runs: the goal opens
+in the target area, every piece of the area names it —one that already pursues another goal
+keeps it—, each place merges into the target with its old slug as an alias, and the area is
+retired. The old addresses keep leading to the pieces, which now read under their goal.
+
 ## Planning — the same gesture in every project
 
 **Every piece of planning ends as a logbook plan, in its area.** The method is one and it
