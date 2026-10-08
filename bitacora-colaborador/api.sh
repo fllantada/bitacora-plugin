@@ -964,7 +964,8 @@ tipo)
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
-  # Con la palabra de prioridad deja solo esas: `abiertos bugs critico` son los críticos sin cerrar.
+  # Con la palabra de prioridad deja solo esas: `abiertos bugs critico` son los críticos sin cerrar,
+  # y `abiertos planes algun-dia` lo que espera su momento en todas las áreas.
   exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|preguntas-jev|objetivos> [prioridad]" "$@"
   leer "/api/items/$(uri "$1")?abiertos${2:+&prioridad=$(uri "${2:-}")}"
   ;;
@@ -2126,7 +2127,8 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando sub-áreas)
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
   bitacora-api abiertos <tipo> [prioridad]  (los que quedaron sin cerrar; el análisis y la decisión no tienen;
-                                             el bug crítico va primero, y `abiertos bugs critico` deja solo esos)
+                                             el bug crítico va primero, y `abiertos bugs critico` deja solo esos;
+                                             `abiertos planes algun-dia` y `abiertos bugs algun-dia`, lo que espera su momento en todas las áreas)
         tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos | preguntas-jev | objetivos
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
@@ -2155,7 +2157,8 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
         nace fijado arriba de su sub-área —primero en la página y en el menú, y el alta contesta "fijado": true—; bajarlo es de la persona, con el botón de la página
   bitacora-api plan <subarea>                  {"titulo":"…","cierraEn":"…","prioridad":"alta","cuerpo":{"es":"# …"},"flujos":["…"]}
-        "prioridad": alta · media · baja — en qué orden se toma entre los de su escritorio; sin declararla es media
+        "prioridad": alta · media · baja · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es media;
+        algun-dia es el plan que espera su momento en el área de su tema: cuelga al pie y la cifra del área no lo cuenta
         con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;
         el servidor exige ocho secciones en el cuerpo —# Qué cambia (el TL;DR para la persona: de dos a cuatro oraciones, sin código) · # Tarea · # La idea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance—, el queEs, la bajada en una línea,
         y "visual": qué se mira de lo que entrega — ninguna (nada cambia en pantalla) · captura (algo en pantalla cambia y lo correcto ya está escrito:
@@ -2163,8 +2166,8 @@ Escritura (el cuerpo JSON entra por stdin):
         abierta que solo se toma mirando y cuya respuesta cambia el código, antes de salir: el cuerpo la nombra en una línea, se abre el chequeo
         visual declarando este plan y la firma lo cierra)
   bitacora-api bug <subarea>                   {"titulo":"…","prioridad":"critico","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
-        "prioridad": critico · mayor · menor — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
-        y el crítico abierto encabeza toda lista, cruzando áreas
+        "prioridad": critico · mayor · menor · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
+        el crítico abierto encabeza toda lista, cruzando áreas, y algun-dia espera su momento al pie, como el del plan
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
   bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"}}
         lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; «Qué se busca» va sin código y entra en el techo de «Qué cambia»
@@ -2270,11 +2273,12 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api corregir <tipo> <id>         {"cuerpo":{…},"diagramas":[…]} · {"titulo":"…"} · {"queEs":"…"}   (cualquier otra pieza;
                                               el cuerpo de un objetivo va entero, con su «Lo que sigue»)
                                             · {"prioridad":"alta"} (su orden entre los de su escritorio, en cualquier escritorio:
-                                              un plan alta · media · baja, un bug critico · mayor · menor)
+                                              un plan alta · media · baja · algun-dia, un bug critico · mayor · menor · algun-dia)
   bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado)
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
   Cada pieza va a un ÁREA: `plan <area>`, `analisis <area>`… cae en su lugar, y el servidor lo crea si falta.
-  Todo proyecto trae Comercial (`comercial`, alias `marketing`), QA (`qa`), Nice To Have (`nice-to-have`, alias `nit`) y Harness.
+  Todo proyecto trae Comercial (`comercial`, alias `marketing`), QA (`qa`), SEO (`seo`, alias `posicionamiento`) y Harness.
+  Lo que espera su momento va al área de su tema con "prioridad":"algun-dia"; Nice To Have se retiró y se lee mientras tenga algo.
   bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena nombrándola al escribir)
   bitacora-api editar-area <slug>           {"nombre":"…"} (renombra) · {"orden":2} (su lugar en el menú)
   La sub-área, en el proyecto que todavía no cerró la adaptación sin-subareas:

@@ -89,7 +89,7 @@ a real trade-off gets settled. You are the project's memory speaking.
 
 | The user says | What you do |
 |---|---|
-| `/bitacora <area>` · `/bitacora area <name>` | Read that area: `$API area <slug>` (its state and its place) and `$API subarea <place>` (its pending plans, latest entries, decisions and documents). The argument may be an alias — `marketing` reaches Commercial, `nit` Nice To Have. |
+| `/bitacora <area>` · `/bitacora area <name>` | Read that area: `$API area <slug>` (its state and its place) and `$API subarea <place>` (its pending plans, latest entries, decisions and documents). The argument may be an alias — `marketing` reaches Commercial, `posicionamiento` SEO. |
 | `/bitacora <area> <something that happened>` | Write the dated entry (see *Writing entries* below). |
 | `/bitacora <area> decision <what was decided>` | Record the point — ALREADY made — in the area's decision book, with its full frame and its verdict, or the server rejects it. |
 | `/bitacora <area> we need to <something to do>` | Open the plan: how it gets solved and where it closes. |
@@ -99,7 +99,7 @@ a real trade-off gets settled. You are the project's memory speaking.
 | `/bitacora refresh the sources` · `/bitacora are the sources up to date?` | Fetches the live ones by their origin, compares the fingerprint and stamps the mirror (`refrescar`); the one it could not reach it names, with what to ask for (see *The sources*). |
 | `/bitacora record this source <what arrived>` | Register it: its kind, where it is read from, who produced it, its date and its tags. |
 | `/bitacora I just pulled <the source>` | Record the copy and move its date (`sincronizada`). |
-| Something that matches nothing | It's probably a topic whose area you have not spotted — list the areas and ask, rather than failing. A good idea that waits for its moment goes to Nice To Have. |
+| Something that matches nothing | It's probably a topic whose area you have not spotted — list the areas and ask, rather than failing. A good idea that waits for its moment goes to the area of its topic with the priority `algun-dia` («someday»). |
 
 Nothing runs on its own: the logbook is written when invoked, never by a hook — a
 record that writes itself stops being judgment and becomes a log.
@@ -260,9 +260,10 @@ it up months later has to rediscover the defect first. And the reproduction is w
 bug its own expiry: it gets run before the fix, and one that no longer shows up is closed
 saying exactly that. A person can also close it from the bug's page, with **Resolve** (to `arreglado`, with a line saying what happened) and **Ignore** (to `descartado`, one click): the move lands in the history with its note, so a session coming back to the bug reads who closed it and why.
 
-**Every bug has a `prioridad`, in the words of defects: `critico`, `mayor` or `menor`** —
-critical, major, minor, the classic Jira scheme: the order it is taken in among the bugs at
-its same desk. A bug that declares none is `mayor`, and every read serves it with that value.
+**Every bug has a `prioridad`, in the words of defects: `critico`, `mayor`, `menor` or
+`algun-dia`** — critical, major, minor, the classic Jira scheme: the order it is taken in among
+the bugs at its same desk, and last the «someday» bug that waits for its moment in the area of
+its topic. A bug that declares none is `mayor`, and every read serves it with that value.
 **An open critical bug HEADS every list that shows it**, ahead of the work order: on the
 area's page, in the menu, on the by-type axis —where the critical ones open the page in their
 own «Critical» batch across areas, with a «Critical» filter next to the tabs— and first in
@@ -351,18 +352,21 @@ read with its sub-areas, and the owner folds each one into its area
 (`fusionar <sub-area> <area>`: its pieces keep the sub-area's name and brief as their
 topic) or raises it to an area of its own (`ascender <sub-area>`).
 
-**Five areas exist in every project**, even empty, called the same in all of them, with
+**Four areas exist in every project**, even empty, called the same in all of them, with
 their name and their existence fixed (renaming or deleting one answers 400 `areaObligada`):
 **Commercial** (`comercial`, alias `marketing` — a project that already had `marketing`
-keeps it as its Commercial, and both names lead there), **QA** (`qa`: what is tested and how), **SEO** (`seo`, alias `posicionamiento`: how the project gets found on Google, on Bing and in the AI assistants that answer by citing), **Nice To Have** (`nice-to-have`,
-alias `nit`: the good ideas that showed up and wait for their moment) and **Harness**
+keeps it as its Commercial, and both names lead there), **QA** (`qa`: what is tested and how), **SEO** (`seo`, alias `posicionamiento`: how the project gets found on Google, on Bing and in the AI assistants that answer by citing) and **Harness**
 (`harness`: the tooling the project works with, one harness for every account —each
 account's Harness area keeps its reports, and the centre, the owner's `bitacora` tenant, keeps
 the analysis, the snapshot and the plans that improve it—). Whoever arrives at any project knows
-without asking where selling, testing, being found, what waits and the tooling go. Two of them are
-accumulators: what a review finds travels as a finding with its fate, and what can wait
-lands in Nice To Have —«To group»— while what the process learnt —each FIX, what did not
-hold— lands in Harness, «What reached the review». **The review of the session that builds is
+without asking where selling, testing, being found and the tooling go. **What waits for its
+moment lives in the area of its topic with the priority `algun-dia`** («someday», the last
+word of the plan and of the bug): it hangs at the foot of its list and the area's count leaves
+it out. Nice To Have was retired: its place is read while it holds something open, and writing
+there answers where the new goes. A review leaves its results in two accumulators: what a
+review finds travels as a finding with its fate, and what can wait lands in nit —read in «To
+group» on the page of the area of the plan whose review left it— while what the process
+learnt —each FIX, what did not hold— lands in Harness, «What reached the review». **The review of the session that builds is
 a FIX loop; everything else piles up in harness and in nit, and gets processed when someone
 opens the owner's /harness or /nit** —nit in the account, harness in the centre, which reads
 every account. A review of another author's PR asks that author for
@@ -534,14 +538,15 @@ say whether it is done. States: `pendiente` and `hecho` at the two ends, `encarg
 `descartado` for what stopped applying — marking that one `hecho` would lie about work
 nobody did.
 
-**Every plan has a `prioridad`: `alta`, `media` or `baja`** — the order it is taken in among
-the plans waiting at its same desk. It is declared when opening the plan if you know it, and
+**Every plan has a `prioridad`: `alta`, `media`, `baja` or `algun-dia`** — the order it is
+taken in among the plans waiting at its same desk; `algun-dia` is the «someday» plan that waits
+for its moment in the area of its topic, out of the area's count. It is declared when opening the plan if you know it, and
 a plan that declares none is `media`: every read serves it, with that value. Within each step
 of the work order, `alta` goes first and `baja` last, and the clock decides inside each one
 —on the area's page, in the menu, in the home tray and on the by-type axis—; it orders what
 is still open, and closed plans go back to the clock. Rows show it in words («↑ high
-priority», «medium priority», «↓ low priority»), the menu carries the arrow of the high and
-the low ones, and the plan's header shows it next to its desk. It is corrected in any desk
+priority», «medium priority», «↓ low priority», «↓ someday»), the menu carries the arrow of
+the high one and of the last two, and the plan's header shows it next to its desk. It is corrected in any desk
 without moving the plan, and its history and contract stay as they were:
 
 ```bash
@@ -549,8 +554,9 @@ $API -p <project> corregir planes <id> <<< '{"prioridad":"alta"}'
 ```
 
 Each type that carries a priority says it in its own words —the plan `alta` · `media` ·
-`baja`, the bug `critico` · `mayor` · `menor`— and both are read on the same scale: the first
-word of each vocabulary weighs the same. A word from the other vocabulary gets a 400 naming
+`baja` · `algun-dia`, the bug `critico` · `mayor` · `menor` · `algun-dia`— and both are read on
+the same scale: the first word of each vocabulary weighs the same, and «someday» weighs the
+same in both. A word from the other vocabulary gets a 400 naming
 the valid ones for that type.
 
 **On the web, a plan's desks read in THREE GROUPS**: **to do** is `pendiente`, **assigned**
@@ -659,10 +665,10 @@ round, since one fix can bring another, and the round that reaches the cap with 
 open says so in the report and leaves its row in Harness. On finishing it gives each result
 its fate and uploads the review with its findings (`bitacora-api review <file.md> --pr … --hallazgos
 findings.json`): on its own PR the applied FIX goes `aplicado` with its `commit` (Harness), the
-ASK `diferido` (Nice To Have), the FIX outside the plan's Scope `diferido` and also into
+ASK `diferido` (nit), the FIX outside the plan's Scope `diferido` and also into
 «Pending out of scope», and the blocker the verification refutes `no-se-sostiene` with its
 `porque` (Harness). The session that signs off reads the report, which says what was fixed and
-what went to Nice To Have; «To decide» carries what the plan itself could not decide. A
+what went to nit; «To decide» carries what the plan itself could not decide. A
 finding's fate changes with `bitacora-api hallazgo <id> '{"suerte":"…"}'` —`plan` with the
 `plan` that took it, `diferido`, `no-se-sostiene` or `descartado` with its `porque`, and
 `aplicado` with its `commit` for a FIX—, and `bitacora-api hallazgos --bandeja nit|harness`
@@ -1299,7 +1305,7 @@ doors.
 
 **Its area is settled first.** List the areas (`$API areas`) and ask the user which one the
 plan joins — the plan is theirs, and so is the area it belongs to. What is good but not a
-priority yet goes to **Nice To Have**; when the topic is a world no area holds, open its
+priority yet goes to the area of its topic with `"prioridad":"algun-dia"`; when the topic is a world no area holds, open its
 area (`$API abrir-area`) and say so in your report.
 
 **The plan comes out of what was already discussed.** A title that states the conclusion,
