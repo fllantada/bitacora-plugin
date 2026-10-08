@@ -1,12 +1,12 @@
 ---
 name: bitacora
-description: "Work with the project logbook (bitácora) as a collaborator — read the project's context, write dated entries, record decisions already made, and keep the shared record of what happened and why. Use when the user mentions the bitácora / logbook, wants to record something that happened, log a finding or a decision, check what was decided, read the project context, or asks what the logbook says about a topic."
+description: "Work with the project logbook (bitácora) as a collaborator — read the project's context, write dated entries, record decisions —made, or open as a consultation for whoever decides them—, and keep the shared record of what happened and why. Use when the user mentions the bitácora / logbook, wants to record something that happened, log a finding or a decision, check what was decided, read the project context, or asks what the logbook says about a topic."
 ---
 
 # /bitacora — the project logbook, as a collaborator
 
 The **bitácora** is the project's shared workspace: the place where complex topics get
-analyzed, decisions get recorded one by one — already made, with their frame and their verdict — and the day-to-day record of what happened
+analyzed, decisions get recorded one by one — each with its frame, made with its verdict or open for whoever decides it — and the day-to-day record of what happened
 — and why — accumulates. It lives as a web app the owner runs; you talk to it over HTTP
 with the `bitacora-api` client, and you read it in the browser with your email login.
 
@@ -91,7 +91,7 @@ a real trade-off gets settled. You are the project's memory speaking.
 |---|---|
 | `/bitacora <area>` · `/bitacora area <name>` | Read that area: `$API area <slug>` (its state and its place) and `$API subarea <place>` (its pending plans, latest entries, decisions and documents). The argument may be an alias — `marketing` reaches Commercial, `posicionamiento` SEO. |
 | `/bitacora <area> <something that happened>` | Write the dated entry (see *Writing entries* below). |
-| `/bitacora <area> decision <what was decided>` | Record the point — ALREADY made — in the area's decision book, with its full frame and its verdict, or the server rejects it. |
+| `/bitacora <area> decision <what was decided>` | Record the point — ALREADY made — in the area's decision book, with its full frame and its verdict, or the server rejects it. What still waits on someone is a consultation (see *The Consultation*). |
 | `/bitacora <area> we need to <something to do>` | Open the plan: how it gets solved and where it closes. |
 | `/bitacora plan <topic>` | Build the plan out of what was just discussed: ask FIRST which area it joins, require where it closes, and write it into the area (see *Planning* below). |
 | `/bitacora what is left to do` | The project's execution front. |
@@ -141,8 +141,9 @@ $API -p <project> entrada <area> <<'JSON'
 {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
 JSON
 
-# A decision is recorded ALREADY MADE, and goes in whole or not at all — the server
-# rejects one without its frame or its verdict:
+# A decision goes in whole or not at all — the server rejects one without its frame. With
+# its verdict it is born made; without it, it is born open —a consultation— and names who
+# decides it (`decide`, see *The Consultation*):
 $API -p <project> decision <area> <<'JSON'
 {"titulo":"…","veredicto":"what was decided",
  "bloquea":"what was blocked while this stayed undecided",
@@ -170,10 +171,9 @@ colour:
 | **Plan** | how something gets solved — strategy AND execution; it also carries a dispatched job | its body and where it closes | pendiente · encargado · en-curso · entregado · hecho · descartado |
 | **Bug** | a defect found while doing something else | its body, with What happens · Where · How to reproduce | abierto · arreglado · descartado |
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
-| **Decision** | a trade-off ALREADY made, with its analysis | the whole frame and its verdict | resuelta, the only one: it is a record |
+| **Decision** | a trade-off with its analysis: made, or open and waiting on whoever decides it | the whole frame, and its verdict or who decides it (`decide`) | abierta · decidida · aplicada · descartada — `resuelta`, the inherited one, reads as aplicada |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
-| **Consultation** | the human in the loop: what the session asks the person, point by point; the person accepts, rejects, picks another option in one click, asks for more context, or says the client decides, ON THE WEB | its `queEs` —where the points come from and what happens with what is decided— and its points, each with what changes, the recommendation and its why | abierta · contestada · aplicada · descartada |
-| **Client Question** | what the CLIENT decides, with the person as go-between: the session prepares each question with its analysis, the person takes it to the client and loads what the client answered ON THE WEB | its `queEs` and its questions: each with the text to send, what it blocks, why it's urgent, the options with what they imply and what to recommend | por-preguntar · preguntada · respondida · aplicada · descartada |
+| **Consultation** · **Client Question** | something that holds something up: the OPEN decision, with who decides it —the person, the client or the session—; several gather in a BATCH the person answers in one go ON THE WEB, and the batch that is a client question gathers what the client decides (§The Consultation) | the batch, its title and its `queEs` —what it holds up and what happens with what is decided—; each decision, its whole frame and its `decide` | the batch's, read from its decisions: abierta · contestada · aplicada · descartada; the client's, por-preguntar · preguntada · respondida · aplicada · descartada |
 | **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
 | **Jev Question** | a semantic judgement that runs at commit, with its evidence: the bench over the red, the green and the approved, and its real runs with the signer's verdict on each red | its body, its `queEs`, its `clave` —the id in the repo's rule— and the `pregunta` | propuesta · en-banco · informando · frena · retirada |
 | **Goal** | what several pieces pursue TOGETHER —the back end, the web and the app of one feature—: it belongs to the project and is born with no place; each plan, bug or analysis names it in its `objetivo` field, and its page lists what pursues it with the progress (§The Goal) | its body with three sections: What we're after —no code, within the ceiling of «What changes»—, Why and When it's achieved | abierto · logrado · descartado — closing it takes its `nota` |
@@ -276,10 +276,11 @@ each arm produced; a person approves the design, grades the outputs blind on the
 picks the right one and concludes. See *Simulations* below — grading is a collaborator's
 job as much as anyone's.
 
-**The decision enters and gets corrected through its own door** — `decision` and
-`corregir`. It is born already made, with its frame and its verdict, so a generic door
-that skipped those would be the shortcut a passing thought takes into the book. What
-still needs deciding is a **plan** ("decide X"): pending work lives where the desks are.
+**The decision enters, gets corrected and moves through its own door** — `decision`,
+`corregir`, `decidir` and `aplicar-decision`. It is born with its whole frame, so a generic
+door that skipped it would be the shortcut a passing thought takes into the book. What
+still needs deciding is a **consultation** —an open decision, with who decides it—, and the
+work of getting to its frame is a plan.
 
 If you are offline, writes queue in `~/.config/bitacora/pendientes.jsonl` and upload
 on the next write. Field values like `tipo` and `estado` are in Spanish — they are the
@@ -482,30 +483,37 @@ names it, and a piece's read returns it as `hilo`. The commands that name a plac
   (`"fecha":"YYYY-MM-DD"`); measurements typed from memory don't go in prose — name
   the fact in words instead.
 
-## Decisions — recorded already made, and each one stands alone
+## Decisions — made or open, and each one stands alone
 
-**A decision is a trade-off that was ALREADY settled, recorded with its whole analysis.**
-It is read on its own and understood on its own, without opening any other document —
-which is why it has its own page and why the server **demands its frame and its verdict**
-when you record it:
+**A decision is a trade-off recorded with its whole analysis**: already made, or open and
+waiting on whoever decides it. The open one is **the consultation**: something that holds
+something up (§The Consultation). It is read on its own and understood on its own, without
+opening any other document — which is why it has its own page (`/<project>/punto/<id>`) and
+why the server **demands its frame** when you record it, with its verdict or with who
+decides it:
 
 | Field | What it carries |
 |---|---|
-| `veredicto` | **What was decided**, in one sentence — what the record answers without opening the point |
-| `bloquea` | What was blocked while this stayed undecided |
+| `veredicto` | **What was decided**, in one sentence — what the record answers without opening the point. With it the decision is born made |
+| `decide` | Without a verdict, who decides it: `fran` (the person), `cliente` (with its `pregunta` and `urgencia`, §The Consultation) or `sesion` (the session) |
+| `bloquea` | What is held up while this stays undecided |
 | `opciones[]` | Two at minimum, each with `titulo` and a **developed** `implica` — the server asks for real substance, because an option without its consequences is just a title |
-| `recomiendo` | The position of the option that was recommended (`0` is the first) |
+| `recomiendo` | The position of the recommended option (`0` is the first) |
 | `recomendacion` | Why that one and not the others, **with the full reasoning** |
 | `cierraEn` | Where it closes: a PR, an entry in the client record, or nothing |
 | `cuerpo` | What triggered the point and where the work is. **The longest of them all** — it is the analysis, and the server measures it |
+
+Optional: `"tanda":"<id>"` adds it to a batch, `"objetivo"` names the goal it pursues,
+`"flujos"` the runs it unblocks, and `"capturas"` the paths `capturar` returned when it is
+decided by looking.
 
 **The long fields carry a minimum length and the server says so when it rejects them.**
 Don't write them with ellipses or leave them for later: a point is what someone reads two
 months from now with none of today's context in their head.
 
-A point without its frame or its verdict gets a 400 naming what is missing. That friction
-is the mechanism: the book used to fill with points that were a passing thought with a
-number, because opening cost three sentences.
+A point without its frame gets a 400 naming what is missing, and an open one without
+`decide` too (`sinQuienDecide`). That friction is the mechanism: the book used to fill with
+points that were a passing thought with a number, because opening cost three sentences.
 
 A point enters the book only when the trade-off was real: two live options and choosing
 mattered. What a doc, a standard or the repo's law settles leaves no point — look it up
@@ -513,13 +521,31 @@ and write the answer. **And something still to DO is a plan, not a point** — t
 is what filled the book. Work them **individually**: origin, position, verdict, one at a
 time.
 
-**No desks.** The decision is born `resuelta` and stays recorded: what in the old model
-was an open decision is now a plan ("decide X"), and what was a deferred one is a plan
-with its trigger written in the body — pending work lives where the desks are. `corregir`
-fixes the verdict, the frame or the text of a recorded point. `cerrar` remains as the way
-out for INHERITED points that were left open under the old model — it closes one stating
-its verdict (`$API -p <project> cerrar <id> <<< '{"veredicto":"…"}'`) — and `diferir`
-answers with the current gesture.
+**Its cycle: open, decided, applied.**
+
+| Desk | What it is | Who moves it |
+|---|---|---|
+| `abierta` | waiting on whoever decides it; the server serves whose hand it is in (§The Consultation) | born here without a verdict |
+| `decidida` | carries its verdict and waits for the session that applies it | the answer that decides it, on the web; or the session, with `decidir` |
+| `aplicada` | the session did what was decided, and its note says so | the session, with `aplicar-decision`; one recorded with its verdict is born here |
+| `descartada` | the open one that stopped applying, with its note | the session, with `corregir` and its `estado` |
+
+`resuelta` is the desk inherited from the earlier model and reads as `aplicada`. **The book
+reads what was decided** —`decidida`, `aplicada` and `resuelta`—; the open one reads on its
+page and in its batch.
+
+```bash
+$API -p <project> decidir <id> "<verdict>"                 # open → decidida: the one the session decides, or one that reached its verdict
+$API -p <project> aplicar-decision <id> "<what was done>"  # decidida → aplicada
+$API -p <project> corregir <id> <<< '{"estado":"descartada","nota":"why it stopped applying"}'   # open → descartada
+$API -p <project> corregir <id> <<< '{"veredicto":"…"}'    # fixes what was decided, on a decided or applied one
+```
+
+`corregir` also fixes the frame or the text of a recorded point, and the frame never
+degrades: once complete, the door demands it whole whenever one of its pieces is touched.
+`cerrar` is the way out for INHERITED points left open or deferred under the earlier model —
+it closes one stating its verdict (`$API -p <project> cerrar <id> <<< '{"veredicto":"…"}'`) —
+and `diferir` answers with the current gesture.
 
 A point is written short and self-contained, so someone reading it in two months
 understands what was decided and why without any of today's context. References (PR
@@ -529,8 +555,8 @@ name — that history is the project's "how we decided" view.
 ## Plans — what is left to do
 
 The decision book answers *what was decided*; the plans answer *what is left to do* —
-**the front of an area is its pending plans**, deciding included: a choice still open
-lives as a plan ("decide X"), and when it settles, the decision is recorded already made.
+**the front of an area is its pending plans**. A choice still open is a consultation
+(§The Consultation); the work of getting to its frame is a plan.
 
 **What its door asks for is the body and the named close** — without the close nobody can
 say whether it is done. States: `pendiente` and `hecho` at the two ends, `encargado`,
@@ -716,7 +742,8 @@ $API -p <project> pedido <plan-id> 2 descartado     # when it stopped being need
 ```bash
 $API -p <project> encargados                 # what can be taken · also: en-curso · entregados
 $API bandeja                                 # without -p: every project this machine holds a key for
-                                             # client questions already asked come last, with the days they have waited
+                                             # consultations in the person's hand or the client's, each with its `mano` and `falta`;
+                                             # the client's come last, with the days they have waited
 $API -p <project> tomar <id> "worktree …"    # → en-curso; the note also lands in ficha.destino
 $API -p <project> entregar <id> <<'JSON'
 {"reporte":{"en":"## Done\n…\n\n## How it turned out\n…\n\n## Evidence\n<one line: checks green, guardian score, review verdict with its link>\n\n## Decisions along the way\n1. **<What was decided.>** <Why.>\n\n## Frictions\nNone\n\n## To decide\n…\n\n## Pending out of scope\nNone"},
@@ -808,157 +835,132 @@ $API -p <project> calificacion <id>                         # what she decided: 
 the mean per arm and criterion, items chosen per arm, the normalised total — plus each
 arm's cost and the run's dates. Nobody writes the matrix by hand.
 
-## The Consultation — the human in the loop
+## The Consultation — something that holds something up
 
-When a session reaches decisions that belong to the person — several points to read
-calmly, each changing what a PR writes, a vocabulary, a key, a path between two — it
-writes a **consultation** in the area instead of a list in the chat. Each **point**
-carries its title, **what changes** with each decision, the live **options** when there is
-more than one, and the **recommendation** with its **why** in a sentence or two; the person
-**accepts** the recommendation in one click, **rejects** it saying what goes instead, or
-**asks for more context** in one click when what is written is not enough to decide,
-**on the web**. A point sent back for context returns to the session, which rewrites it
-with what was missing (`puntos <id>`, by its id) and asks it again; the request stays on
-the point as a record. Keep it brief and clear: what is needed to decide, nothing more. The consultation IS its
-points: its `queEs` says in a sentence or two where they come from and what happens with
-what is decided, and it is all the context the person reads before the first point. The consultation is born `abierta`, moves by
-itself to `contestada` with the last answer, and the session moves it to `aplicada` once
-it took the answers — decisions to the book with the answer as verdict, a round written.
+**A consultation is an OPEN DECISION**: the whole frame of a trade-off —what it holds up,
+the options with what each implies, the recommended one with its why— and who decides it.
+The session that analyses opens one when it reaches a decision that waits on someone else,
+with `decision <area>` and no verdict (§Decisions), and **several gather in a BATCH**: the
+person answers them in one go, on one page, and the batch takes a single row on the home
+page. Each one also has its own page, `/<project>/punto/<id>`.
 
-**Every option is picked in one click.** The point names with **`recomiendo`** the POSITION
-of the option it recommends —`0` is the first—, and with that the options stop being a list
-to read: tapping the recommended one accepts it, and tapping any other rejects it leaving
-that option written as what goes instead. What the session reads when applying is the name
-of the chosen option, exactly as it wrote it, so **write each option's `titulo` as the
-instruction you will carry out** rather than as a label. The comment box stays for what no
-option says.
+| `decide` | Who decides it | How it is answered |
+|---|---|---|
+| `fran` | the person | on the web: **accepts** the recommended option in one click, **rejects** it saying what goes instead —or picks another option in one click—, or **asks for more context** when what is written is not enough |
+| `cliente` | the client, with the person as go-between | the person takes it to the client and marks it with «I asked the client», which dates its `preguntadaAt`; then loads on the web what the client answered: their words, the option they chose and where they said it |
+| `sesion` | the session | `decidir <id> "<verdict>"` |
 
-**And what can be drawn, gets drawn.** `queCambia` takes a ` ```d2 ` block like any body and
-renders it as a figure — compiled where `d2` lives and travelling in the same write as the
-text, paired by the hash of its block. And `"flujos":["<slug>"]` names the runs of the
-system the decision touches: the page puts them on top as a strip leading to the whole run,
-which is the context you would otherwise rewrite inside each point.
+**The answer that decides it moves it to `decidida`, with its verdict**: the recommended
+option when accepted, what goes instead when rejected, what the client answered. Asking for
+context leaves it open with that answer and hands it back to the session, which rewrites it
+with what was missing (`corregir <id>`); the request stays in `pedidos` as a record. **The
+answer belongs to the person and enters through the web**: over the API it returns 400.
 
-**And what is decided by looking opens with its capture.** A point about something that is
-SEEN —a screen, a component, a state, an email— shows it: `capturar "$PLACE" <file…>` uploads
-each image and returns its path, and the point's text shows it with
-`![what it shows](/adjunto/<path>)`. The page frames it and prints the text between the
-brackets as its caption, so write it as a caption. **Two images on the same line sit side by
-side**, which is how today's state is compared with the proposed one.
+**Every option is picked in one click.** With `recomiendo` —the POSITION of the recommended
+one, `0` is the first— tapping it accepts, and tapping any other rejects leaving that option
+written as what goes instead. What the session reads when applying is the name of the
+chosen option, exactly as it wrote it, so **write each option's `titulo` as the instruction
+you will carry out** rather than as a label. When you rewrite `opciones`, send `recomiendo`
+again: the list is replaced whole, and the door answers 400 when the index points outside it.
 
-**A point is read in one pass, and written in that order.** The page draws the title, the
-text of `queCambia`, the options as a lettered list —the recommended one carrying its badge
-and its `porque`— and the buttons. `queCambia` opens with the problem in one or two
-sentences, in the person's words; what each answer changes goes in that option's `implica`;
-with `recomiendo`, the recommendation is read in its option, so its `titulo` states the whole
-proposal —`propuesta` stays for the session, which reads it through the API—; and the code references close the text under `### In the code`, which the page
-keeps folded at the foot of the point for the session that applies the decision.
+**It is read in one pass, and written in that order.** The page draws the title, **«What is
+blocked»** (`bloquea`), **«Where it comes from»** (`cuerpo`) and **«What is chosen»** —the
+options as a lettered list, the recommended one carrying its badge and its `recomendacion`—
+with the buttons. The
+`cuerpo` opens with the problem in one or two sentences, then one short subheading per front
+with bullets underneath, tables for compared values, and the code references last, under
+`### In the code`. What is SEEN —a screen, a component, a state— opens the `cuerpo` with its
+capture: `capturar "$PLACE" <file…>` returns its path, the decision declares it in `capturas`
+and the `cuerpo` shows it with `![what it shows](/adjunto/<path>)`. What each answer changes
+goes in its option's `implica`, and `"flujos":["<slug>"]` names the runs it touches.
 
-**When a point is not the person's to decide**, they answer it «The client decides» — the
-fourth gesture, next to accept, reject and ask for context. The point is settled on their
-side, and the session that applies the consultation takes it to a **client question**
-(§The Client Question): it rewrites each `del-cliente` point as a question, opens the client
-question, and links each point to it with `puntos <id>` <
-`{"puntos":[{"id":"p3","consultaCliente":"<id>"}]}`. Without the link the consultation
-can't be applied (`delClienteSinLlevar`). A rejection whose comment says the client decides
-is handled the same way.
+**The batch.** `tanda <area>` opens it empty with its title and its `queEs` —what it holds
+up and what happens with what is decided, in a sentence or two: all the context the person
+reads before the first one— and answers its id. **Each consultation that joins names it with
+`"tanda":"<id>"`**, when opened or later with `corregir <id>`. A batch mixes hands: the
+person's, the client's and the session's together. Its address is that of any piece of the
+area, and a `#p2` in an older link lands on its decision's fold. **The batch's desk comes
+from its decisions, by itself**: `abierta` (`por-preguntar` in a client question) while any
+is open; `preguntada`, in a client question, when every open one is the client's and has gone
+out; `contestada` (`respondida` in the client's) when none is open and a decided one waits to
+be applied; `aplicada` when all closed with one applied; `descartada` when all were dropped.
 
-**When you rewrite `opciones`, send `recomiendo` again.** The list is replaced whole and the
-index survives from the stored point, so an old one would name a position of the previous
-list; the door measures it on the merged point and answers 400 before storing it.
+**Whose hand it is in, the server serves.** Every decision read —`tipo decisiones`,
+`abiertos decisiones`, `item decisiones <id>`— carries its `mano` and its `falta`: `persona`
+for the open one of `fran`, the client's one still to be taken to them (`falta` `preguntar`,
+with its `para`) and an inherited open one without `decide`; `cliente` for the client's one
+once taken, with the days it has waited; `sesion` for one that asked for context, one the
+session decides, and a `decidida` waiting to be applied. The hand belongs to what waits on
+someone: the open ones and the decided ones. The home page reads that same hand in its
+three rows —«Waiting on you», «In the client's hands», «In the sessions' hands»—,
+and **a batch takes one row**, in its most urgent hand (person, then client, then session).
 
 ```bash
-$API -p <project> consulta <area> <<'JSON'
-{"titulo":"The seven changes to the record: what goes in",
- "queEs":"The record decisions the deliveries left in «To decide»; with the answers the next round gets written.",
- "puntos":[{"titulo":"The key of each record",
-            "queCambia":"Today it is the route slug plus the tour slug; a rename orphans the record.",
-            "opciones":[{"titulo":"Tour.id","implica":"the permanent reference the contract declares"},
-                        {"titulo":"Keep the slugs","implica":"a rename orphans the record"}],
-            "recomiendo":0,
-            "propuesta":"Use Tour.id.","porque":"The permanent reference the contract declares; the three fronts agree."}]}
+$API -p <project> tanda <area> <<'JSON'
+{"titulo":"The record key and what goes into the index",
+ "queEs":"Holds up the round that takes the record PR out of draft; with what is decided that round gets written."}
 JSON
-# … the person answers on the web; the consultation moves to «contestada» by itself …
-$API -p <project> decidido               # what the person already said and the session has to take: fully decided ones, points that asked for context, points the client decides, plus the visual checks and client questions waiting on the session
-$API -p <project> contestadas            # the ones fully decided, ready to apply
-$API -p <project> respuestas <id>        # point by point: the recommendation, accepted, rejected or sent back for context, and the comment
-$API -p <project> puntos <id> <<'JSON'
-{"puntos":[{"id":"p2","queCambia":"…what was missing, written so it can be decided from this alone…","porque":"…"}]}
+# → answers the batch id
+$API -p <project> decision <area> <<'JSON'
+{"titulo":"The key of each record","decide":"fran","tanda":"<batch id>",
+ "bloquea":"the round that takes the PR out of draft: the record is written with its key",
+ "opciones":[
+   {"titulo":"Use Tour.id as the key","implica":"the permanent reference the contract declares; the records already there get reindexed once"},
+   {"titulo":"Keep the route slug plus the tour slug","implica":"no migration today; a marketing rename orphans the record, and the tour slug can be null"}],
+ "recomiendo":0,
+ "recomendacion":"Tour.id: it is the permanent reference the contract declares, the three fronts agree, and the migration is a reindex that runs once",
+ "cierraEn":"round 2 of the record plan",
+ "cuerpo":"Today the record key is the route slug plus the tour slug. The tour slug can be null and marketing renames it when it adjusts the copy, so a rename orphans the record and the search serves a page that no longer exists. The contract declares Tour.id as the permanent reference, and the round 1 delivery left the question in «To decide»."}
 JSON
-$API -p <project> aplicar <id> "round written · three decisions to the book"   # → aplicada
+# … the person answers on the web …
+$API -p <project> decidido                       # what waits on the session: decided ones first, with their verdict and batch; those that asked for context; those it decides
+$API -p <project> aplicar-decision <id> "round written"     # one decided → aplicada
+$API -p <project> aplicar <batch> "round written"           # the whole batch: every decided one → aplicada; with any still open, 400 `sinContestar`
 ```
 
-The answer belongs to the person: `respuesta` and the `contestada` state return 400 through
-the API, naming the web. A decided point is never rewritten — what changed is a new point;
-the point that asked for more context is the deliberate exception, because rewriting it is
-how the request is answered.
-
-## The Client Question — what the client decides, with the person as go-between
-
-**The consultation carries what the person decides; this one carries what the CLIENT
-decides.** The person asks the client —in a meeting, on Slack, by email— and to advise them
-needs to understand what to ask, what stays blocked until they answer, why it's urgent and
-what each option implies. **The session writes that analysis question by question; the
-person takes it, marks it asked, and loads on the web what the client answered, in their
-own words.** It is the one type painted with a solid fill, in red: what isn't asked in time
-blocks work that can't be unblocked from inside.
-
-**Step one is CHECKING THE SOURCES.** The client already handed material over, and what
-they wrote themselves is read before writing to them: asking anyway spends the one thing the
-project can't replace —their time, and the credit of whoever asks—. `fuentes <area>` says
-which ones there are and which one rules, and **one subagent per source** —wide,
-independent readings— answers what each says about each question. What comes back answered
-goes to the area's book as a decision with its quote; what stays open is
-what the client is asked: its `contexto` says what was read and what stayed open, and the
-client question declares those `fuentes` by their slug —the page lists them at the foot, and
-the door checks they exist (`fuenteInexistente`). The creation reminds you: the response
-carries `antesDePreguntar` with that area's sources named.
-
-Each question carries `titulo`, `contexto` —**what you need to know to understand it
-without opening another piece**: today's situation, what the sources say and where, the names
-and figures the question uses; it is the first thing the page shows—, `pregunta` —the text
-ready to send, in the client's words and language—, `bloquea` (what it blocks), `urgencia` (why it's urgent) with `para`
-(YYYY-MM-DD, when there is a date), `opciones` each with its `implica` —required here—,
-`recomiendo`, and `propuesta` with its `porque` (what to recommend to the client, and why).
-
-**The client question reads on its own, and the door enforces it.** A bare «decision 31»,
-«point 5» or «PR #237» sends the person to look up that piece before understanding this one:
-in the `queEs` and in each question's analysis every reference is a link —`[decision
-31](<enlace>)`, with the address the API answers— or it tells what that piece says (400
-`referenciaSinEnlace`). The text to send stays out of the check: it is the client's.
+**What the client decides is a consultation with `decide: cliente`**, and the door requires
+what the person sends (`preguntaIncompleta`): `pregunta` —the text ready to send, in the
+client's words and language, with a copy button on the page— and `urgencia` (why it's
+urgent), with `para` (YYYY-MM-DD) when there is a date. Its `cuerpo` is **what you need to know to
+understand it without opening another piece**: today's situation, what the sources say and
+where, the names and figures it uses; and every reference to another piece goes as a link,
+or tells what that piece says. **Step one is CHECKING THE SOURCES**: the client already handed
+material over, and what they wrote themselves is read before writing to them —asking anyway
+spends the one thing the project can't replace, their time and the credit of whoever asks—.
+`fuentes <area>,<alias>` says which ones there are and which one rules, and **one subagent per
+source** —wide, independent readings— answers what each says about each question. What comes
+back answered goes to the area's book as a decision already made, with its quote; what stays
+open is what the client is asked, and its `cuerpo` says what was read and what stayed open.
 
 ```bash
-$API -p <project> fuentes search,algolia # step one: what to check against, in the order that rules
+$API -p <project> fuentes search,algolia         # step one: what to check against, in the order that rules
 # … one subagent per source: what it says about each question, and where it says it …
-$API -p <project> consulta-cliente <area> <<'JSON'
-{"titulo":"What goes into the public catalogue",
- "queEs":"The questions come from the catalogue audit; the answers settle what the search indexes.",
- "fuentes":["attribute-register"],
- "preguntas":[{"titulo":"Do private tours go into the public catalogue?",
-               "contexto":"The catalogue carries tours flagged private. The attribute register doesn't say whether they are published, and today's site shows them only by direct link.",
-               "pregunta":"Should private tours be published on the website?",
-               "bloquea":"The index can't settle which records go in.",
-               "urgencia":"The index demo is next week.","para":"2026-09-22",
-               "opciones":[{"titulo":"They are published","implica":"they enter the index flagged as private"},
-                           {"titulo":"They are not published","implica":"they are filtered out before indexing"}],
-               "recomiendo":1,
-               "propuesta":"Don't publish them yet.","porque":"The catalogue has no public price for private tours."}]}
+$API -p <project> decision <area> <<'JSON'
+{"titulo":"Do private tours go into the public catalogue?","decide":"cliente",
+ "pregunta":"Should private tours be published on the website?",
+ "urgencia":"the index demo is next week, and the index can't settle which records go in without this answer",
+ "para":"2026-10-15",
+ "bloquea":"the index can't settle which records go in",
+ "opciones":[
+   {"titulo":"They are published","implica":"they enter the index flagged as private, and the site's search shows them next to the rest"},
+   {"titulo":"They are not published","implica":"they are filtered out before indexing, and reached only by direct link, as on today's site"}],
+ "recomiendo":1,
+ "recomendacion":"Not to publish them yet: the catalogue has no public price for private tours, and a listing without a price in search loses the sale",
+ "cierraEn":"the index plan, and an entry in the record the client ratifies",
+ "cuerpo":"The catalogue carries tours flagged private. The attribute register doesn't say whether they are published —it was read in full, and its visibility column doesn't name them—, and today's site shows them only by direct link. The new index has to settle which records go in before the demo, and the rule belongs to the client's business: what they sell in public and what through their own channel."}
 JSON
-# … the person takes it to the client and marks it asked on the web …
-$API -p <project> preguntada <id> "Slack"          # or the session, when it knows it was sent
-# … the person loads what the client answered; with the last answer it moves to «respondida» by itself …
-$API -p <project> lo-que-contesto <id>             # question by question: the client's text, the option they chose, where they said it
-$API -p <project> preguntas <id> <<'JSON'
-{"preguntas":[{"id":"p1","contexto":"…what was missing to advise, written in full…"}]}
-JSON
-$API -p <project> aplicar-cliente <id> "two answers to the book"   # → aplicada
+# … the person takes it to the client and marks it on the web …
+$API -p <project> corregir <id> <<< '{"preguntada":true}'   # or the session, when it knows it went out
+# … the person loads what the client answered; the decision moves to «decidida» by itself …
+$API -p <project> aplicar-decision <id> "to the index plan · the rule, to the client record"
 ```
 
-What the client answered belongs to the web: `respuesta` and the `respondida` state return
-400 through the API. Questions are corrected while still to ask; the one that asked for more
-context is the exception, because rewriting it is how the request is answered. Each answer
-goes to the area's book as a decision, with the client's text as the verdict and where they
-said it.
+**Earlier consultations.** Closed consultations and client questions read as always, with
+their points —the earlier record, «The client decides» marks included—. The earlier routes
+and verbs (`consulta <area>` with `puntos`, `consulta-cliente <area>` with `preguntas`,
+`consultas`, `contestadas`, `respuestas`, `puntos`, `consultas-cliente`, `lo-que-contesto`,
+`preguntas`, `preguntada`, `aplicar-cliente`) still answer, working on the batch's decisions,
+and each one prints in a line which gesture is today's.
 
 ## The Visual Check — what gets approved by LOOKING
 
