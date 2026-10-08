@@ -1137,8 +1137,9 @@ removes it. **You write the id and read the address**: the piece's read brings i
 
 The progress counts plans and bugs: `cerradas` is what is done or fixed, `abiertas` the
 rest, and `enCurso` names the plans a session has in hand. What is dropped leaves the count;
-an analysis or a consultation is listed without counting. On the public mirror the page
-lists only the published pieces.
+an analysis or a consultation is listed without counting. The page lists and counts what
+the reader can see: on the public mirror, the published pieces; a guest, the ones seen from
+the lines shared with them.
 
 **Closing it takes its `nota`**: calling it achieved is a judgement, and so is no longer
 pursuing it. `mover objetivos <id>` to `logrado` or `descartado` without a `nota` answers 400
