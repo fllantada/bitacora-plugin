@@ -925,19 +925,19 @@ bajar)
   esac
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas · chequeos · preguntas-jev
+# LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas · consultas-cliente · chequeos · preguntas-jev · objetivos
 #
 # Una sub-área es el lugar y adentro cuelgan cosas de tipo distinto. El tipo se nombra
 # en plural y en la misma palabra que se lee en la app, así lo que se escribe y lo
 # que se navega dicen igual.
 # ─────────────────────────────────────────────────────────────────────────────
 tipo)
-  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos|preguntas-jev> [estado]" "$@"
+  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|preguntas-jev|objetivos> [estado]" "$@"
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
   # Con la palabra de prioridad deja solo esas: `abiertos bugs critico` son los críticos sin cerrar.
-  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|chequeos|preguntas-jev> [prioridad]" "$@"
+  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|preguntas-jev|objetivos> [prioridad]" "$@"
   leer "/api/items/$(uri "$1")?abiertos${2:+&prioridad=$(uri "${2:-}")}"
   ;;
 de-la-subarea | del-hilo)
@@ -955,7 +955,7 @@ traducir-item)
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
-analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente | chequeo | pregunta-jev)
+analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente | chequeo | pregunta-jev | objetivo)
   exige 1 "$comando <subarea>   < JSON" "$@"
   # Un id donde va la sub-área es la lectura confundida con el alta: se nombra la lectura.
   if [ -t 0 ] && [[ "$1" =~ ^[0-9a-f]{24}$ ]]; then
@@ -973,6 +973,7 @@ analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente
     consulta-cliente) ruta_tipo=consultas-cliente ;;
     chequeo) ruta_tipo=chequeos ;;
     pregunta-jev) ruta_tipo=preguntas-jev ;;
+    objetivo) ruta_tipo=objetivos ;;
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
   ;;
@@ -2077,7 +2078,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
   bitacora-api abiertos <tipo> [prioridad]  (los que quedaron sin cerrar; el análisis y la decisión no tienen;
                                              el bug crítico va primero, y `abiertos bugs critico` deja solo esos)
-        tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos
+        tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos | preguntas-jev | objetivos
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api consultas [estado]           (lo que la sesión le preguntó a la persona; `abierta` espera respuestas)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
@@ -2116,6 +2117,10 @@ Escritura (el cuerpo JSON entra por stdin):
         "prioridad": critico · mayor · menor — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
         y el crítico abierto encabeza toda lista, cruzando áreas
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
+  bitacora-api objetivo <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"}}
+        lo que varias piezas persiguen juntas: nace `abierto`; «Qué se busca» va sin código y entra en el techo de «Qué cambia»
+        cada pieza lo nombra con "objetivo":"<id>" al abrirla o con `corregir <tipo> <id>` —{"objetivo":null} lo quita—: uno abierto, y nunca desde otro objetivo
+        `item objetivos <id>` lo lee con sus `piezas` y su `avance`; se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400
   bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"}}
   bitacora-api simulacion <subarea>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
                                              "brazos":[{"clave":"A","nombre":"…","comoCorre":"…"},{"clave":"B","nombre":"…"}],

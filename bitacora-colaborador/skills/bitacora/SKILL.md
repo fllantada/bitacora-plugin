@@ -156,7 +156,7 @@ $API -p <project> corregir analisis <id> <<< '{"cuerpo":{"en":"…"},"diagramas"
 $API -p <project> mover analisis <id> <<< '{"estado":"descartado","nota":"why it stopped holding"}'
 ```
 
-## An area holds TEN TYPES, each with its own door
+## An area holds ELEVEN TYPES, each with its own door
 
 An **area** is a world of the project — search, the engine's infrastructure, the contract —
 and the PLACE where its work lives: what hangs from it has a type. A topic of a few weeks is
@@ -175,6 +175,7 @@ colour:
 | **Client Question** | what the CLIENT decides, with the person as go-between: the session prepares each question with its analysis, the person takes it to the client and loads what the client answered ON THE WEB | its `queEs` and its questions: each with the text to send, what it blocks, why it's urgent, the options with what they imply and what to recommend | por-preguntar · preguntada · respondida · aplicada · descartada |
 | **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
 | **Jev Question** | a semantic judgement that runs at commit, with its evidence: the bench over the red, the green and the approved, and its real runs with the signer's verdict on each red | its body, its `queEs`, its `clave` —the id in the repo's rule— and the `pregunta` | propuesta · en-banco · informando · frena · retirada |
+| **Goal** | what several pieces pursue TOGETHER —the back end, the web and the app of one feature—: each plan, bug or analysis names it in its `objetivo` field, and its page lists what pursues it with the progress (§The Goal) | its body with three sections: What we're after —no code, within the ceiling of «What changes»—, Why and When it's achieved | abierto · logrado · descartado — closing it takes its `nota` |
 
 ```bash
 $API -p <project> analisis <area> <<'JSON'
@@ -336,7 +337,7 @@ blank screen.
 
 An **area** is a world of the project — search, the engine's infrastructure, the contract,
 the commercial side — and the place where its work lives: it is still there once today's
-work is done. Its dimensions: its **pieces** (the ten types above), the **decision book**
+work is done. Its dimensions: its **pieces** (the eleven types above), the **decision book**
 (what was decided, one point at a time), and the **chronology** (dated entries: what
 happened, when, why in that order). A topic of a few weeks is a **piece** of its area.
 
@@ -1082,6 +1083,68 @@ $API -p <project> jev-veredicto <run> archivo      # the file was wrong: the que
 $API -p <project> jev-veredicto <run> pregunta     # the question is miscalibrated
 ```
 
+## The Goal — what several pieces pursue together
+
+Work that takes several PRs —the back end, the web and the app of one feature; an index
+built in stages; a migration in parts— is split into small plans, each in the area of its
+world. **The goal is what those plans pursue together**: a piece that says what we're after
+and when it's achieved, and that each plan, bug or analysis names as its own. Its page shows
+**«What pursues it»** under the body: the progress in one line and every piece that names
+it, from any area, with its desk.
+
+**Its door takes three sections when it opens**, as headings of the body: **What we're
+after** (what will exist once it's achieved, as whoever uses the system sees it: no code, and
+within the ceiling of a plan's «What changes»), **Why** (where it comes from and what problem
+it solves, with its sources) and **When it's achieved** (the observable thing that marks it
+achieved: what the owner looks at to close it). The 400 `aperturaIncompleta` names them with
+what each one states, and a «What we're after» with code or too long answers
+`seccionConCodigo` or `seccionLarga`.
+
+```bash
+$API -p <project> objetivo <area> <<'JSON'
+{"titulo":"…","queEs":"what the back end, the web and the app pursue together",
+ "cuerpo":{"en":"# What we're after\n…\n\n# Why\n…\n\n# When it's achieved\n…"}}
+JSON
+# → answers the goal's id: it is what each piece names
+
+$API -p <project> plan <area> <<'JSON'
+{"titulo":"…","cierraEn":"the PR that brings it","objetivo":"<goal id>","cuerpo":{"en":"# …"}}
+JSON
+$API -p <project> corregir planes <id> <<< '{"objetivo":"<goal id>"}'   # a piece already open joins it
+$API -p <project> corregir planes <id> <<< '{"objetivo":null}'          # and leaves it
+
+$API -p <project> item objetivos <id>     # the goal with its `piezas` and its `avance`
+$API -p <project> abiertos objetivos      # what is pursued today, across areas
+$API -p <project> mover objetivos <id> <<< '{"estado":"logrado","nota":"what was achieved"}'
+$API -p <project> mover objetivos <id> <<< '{"estado":"descartado","nota":"why it is no longer pursued"}'
+```
+
+**Every piece opened through its type takes the `objetivo` field** —the decision, with its
+own door, stays out—, when opened or through
+`corregir`: the id of an **open** goal of the same project. The door checks it the way a
+visual check checks its plan: an id that does not exist answers 404 `objetivoInexistente`,
+one that is `logrado` or `descartado` answers 400 `objetivoCerrado`, and **a goal does not
+name another one** —there is a single level—: 400 `objetivoAnidado`. `{"objetivo":null}`
+removes it. **You write the id and read the address**: the piece's read brings it resolved,
+`"objetivo":{"id":"…","titulo":"…","enlace":"https://…"}`.
+
+**The goal's read brings what pursues it**, derived on read: `piezas` —each with its `tipo`,
+`titulo`, `estado`, `hilo`, `area` and `enlace`— and `avance`, which counts the work:
+
+```json
+{"avance":{"total":5,"cerradas":2,"abiertas":3,"enCurso":["<id of the plan in progress>"]}}
+```
+
+The progress counts plans and bugs: `cerradas` is what is done or fixed, `abiertas` the
+rest, and `enCurso` names the plans a session has in hand. What is dropped leaves the count;
+an analysis or a consultation is listed without counting. On the public mirror the page
+lists only the published pieces.
+
+**Closing it takes its `nota`**: calling it achieved is a judgement, and so is no longer
+pursuing it. `mover objetivos <id>` to `logrado` or `descartado` without a `nota` answers 400
+`cierreSinNota`; reopening it goes through clean. The person closes it from the goal's page
+too, with **Achieved** and **No longer pursued**, each with its line.
+
 ## Planning — the same gesture in every project
 
 **Every piece of planning ends as a logbook plan, in its area.** The method is one and it
@@ -1097,7 +1160,9 @@ area (`$API abrir-area`) and say so in your report.
 a `cierraEn` saying where it closes — the door demands it: without a close there is no
 plan — and a body carrying the reasoning the conversation produced. Write it with
 `$API plan <area>` and finish the gesture by handing the user the `enlace` the response
-returns — the item's full address — so they can keep reading it in the web app. The
+returns — the item's full address — so they can keep reading it in the web app. **When the
+topic takes several PRs, open its goal first** (`$API objetivo <area>`, §The Goal) and each
+plan names it when opened, with `"objetivo":"<id>"`. The
 tie-break between types is the standing one
 (see *Plans* above): understanding left asks for an analysis, executing asks for a plan,
 choosing between exclusive paths asks for a decision.
@@ -1108,8 +1173,12 @@ this same gesture — what was thought out lives in its area and outlives the se
 
 ```bash
 $API -p <project> areas          # where it goes: the project's areas — ask BEFORE writing
+$API -p <project> objetivo <area> <<'JSON'   # when the topic takes several PRs: what they pursue together
+{"titulo":"…","queEs":"…","cuerpo":{"en":"# What we're after\n…\n\n# Why\n…\n\n# When it's achieved\n…"}}
+JSON
 $API -p <project> plan <area> <<'JSON'
-{"titulo":"…","cierraEn":"the PR that brings it","cuerpo":{"en":"# How it gets solved\n…"}}
+{"titulo":"…","cierraEn":"the PR that brings it","objetivo":"<goal id, when it pursues one>",
+ "cuerpo":{"en":"# How it gets solved\n…"}}
 JSON
 ```
 
