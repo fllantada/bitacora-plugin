@@ -1128,6 +1128,13 @@ name another one** —there is a single level—: 400 `objetivoAnidado`. `{"obje
 removes it. **You write the id and read the address**: the piece's read brings it resolved,
 `"objetivo":{"id":"…","titulo":"…","enlace":"https://…"}`.
 
+**The goal reads at its project address, `/<project>/objetivo/<id>`**, which is the one its
+`enlace` in the API, its menu row and the **Pursues** line of every piece carry. The address
+of its place, `/<project>/linea/<area>/<slug>`, leads there, so the links already going
+around keep working. Whoever sees the whole project opens it, and a guest does when the goal
+lives in one of their lines or when they see any of the pieces that pursue it: whoever works
+on a piece reads where it is heading.
+
 **A decision made along the way names it through its own door**, with the same check:
 `"objetivo"` goes in the JSON of `$API -p <project> decision <area>` next to its frame, and
 `corregir <id>` —without the type— adds or removes it. It shows in «What pursues it» with its
@@ -1142,9 +1149,9 @@ JSON
 ```
 
 **The page of every piece opened through its type says on top what it pursues**: the
-**Pursues** line, with the link to the goal. Whoever sees the goal opens it; the public
-mirror, when the goal is not published, and a guest who does not see it from their lines
-read the name alone.
+**Pursues** line, with the link to the goal's page, which opens by the same rule: whoever
+reads the piece opens the goal it pursues. In the public mirror the link leads to the goal's
+published address, and an unpublished goal reads by its name alone.
 
 **The menu and the area page hang each piece under its goal.** The goal heads, with the glyph
 of its desk, the place's pieces that pursue it in the order of the work, and the group sits

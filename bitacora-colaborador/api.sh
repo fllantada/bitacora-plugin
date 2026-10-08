@@ -767,15 +767,16 @@ reviews) leer "/api/reviews" ;;
 # conserva la que ya tenía, y la que sale por primera vez recibe una de la casa. Publicar
 # de nuevo con `--contrasena` es la forma de cambiarla.
 #
-# La pieza se nombra como se la lee: `<subarea> <slug>` para lo que cuelga de un hilo, y la
-# sección sola para una review, que es una sección de un solo documento. Publicar abre
-# también los archivos que ese texto muestra —las capturas, el PDF que un client-report
-# entregó— y `privado` los cierra con ella.
+# La pieza se nombra como se la lee: `<subarea> <slug>` para lo que cuelga de un hilo,
+# `objetivo <id>` para un objetivo, que se lee en su página del proyecto, y la sección sola
+# para una review, que es una sección de un solo documento. Publicar abre también los
+# archivos que ese texto muestra —las capturas, el PDF que un client-report entregó— y
+# `privado` los cierra con ella.
 #
 # Es del dueño del proyecto: la llave de un colaborador recibe un 403.
 # ─────────────────────────────────────────────────────────────────────────────
 publicar | privado)
-  exige 1 "$comando <subarea> <slug>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>   [--contrasena <…>]" "$@"
+  exige 1 "$comando <subarea> <slug>   |   $comando objetivo <id>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>   [--contrasena <…>]" "$@"
   vaciar_cola
   [ "$comando" = publicar ] && afuera=true || afuera=false
 
@@ -789,11 +790,13 @@ publicar | privado)
   done
   set -- ${nombrada[@]+"${nombrada[@]}"}
 
-  # Tres formas de nombrar la pieza, y la elige la cantidad de argumentos:
+  # Cuatro formas de nombrar la pieza: la elige la cantidad de argumentos y, con DOS, la
+  # primera palabra:
   #
   #   · con TRES, la explícita: el contenedor con su nombre, igual que `documento` y
   #     `mudar-documento`. Es la que sirve cuando la sección tiene varios documentos, o
   #     archivos propios, o cuando el texto vive en un flujo.
+  #   · con DOS, `objetivo` y su id: el objetivo, por el id que su dirección lleva.
   #   · con DOS, el hilo y el slug: la dirección de lo que cuelga de un ticket.
   #   · con UNO, la sección sola: la review, que es una sección de un solo documento.
   #
@@ -811,15 +814,18 @@ publicar | privado)
   2:linea | 2:hilo | 2:seccion | 2:flujo)
     echo "A «$comando $1 $2» le falta el slug de la pieza." >&2
     echo "  · $comando <subarea> <slug>" >&2
+    echo "  · $comando objetivo <id>" >&2
     echo "  · $comando <seccion>                                 (una review)" >&2
     echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
     exit 1
     ;;
+  2:objetivo | 2:objetivos) campo=objetivo contenedor="$2" pieza="" ;;
   2:*) contenedor="$1" pieza="$2" ;;
   1:*) campo=seccion contenedor="$1" pieza="" ;;
   0:*)
-    echo "Falta nombrar la pieza. Las tres formas son:" >&2
+    echo "Falta nombrar la pieza. Las cuatro formas son:" >&2
     echo "  · $comando <subarea> <slug>" >&2
+    echo "  · $comando objetivo <id>" >&2
     echo "  · $comando <seccion>                                 (una review)" >&2
     echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
     exit 1
@@ -828,16 +834,20 @@ publicar | privado)
   # antes tapaba la forma de la sección sola. Sin esta rama, lo que se nombraba pasaba a
   # ser la palabra `linea` y el servidor contestaba sobre una sección que nadie nombró.
   *)
-    echo "Sobran argumentos. Las tres formas son:" >&2
+    echo "Sobran argumentos. Las cuatro formas son:" >&2
     echo "  · $comando <subarea> <slug>" >&2
+    echo "  · $comando objetivo <id>" >&2
     echo "  · $comando <seccion>                                 (una review)" >&2
     echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
     exit 1
     ;;
   esac
 
+  # El objetivo viaja como la API lo nombra: su tipo y su id.
   jq -cn --argjson p "$afuera" --arg k "$campo" --arg c "$contenedor" --arg s "$pieza" --arg w "$contrasena" \
-    '{publico:$p} + {($k): $c} + (if $s == "" then {} else {slug:$s} end) + (if $w == "" then {} else {contrasena:$w} end)' |
+    '{publico:$p}
+     + (if $k == "objetivo" then {tipo:"objetivo", id:$c} else {($k): $c} end)
+     + (if $s == "" then {} else {slug:$s} end) + (if $w == "" then {} else {contrasena:$w} end)' |
     escribir PUT "/api/publicacion"
   ;;
 # Qué está afuera hoy, con el enlace y la contraseña de cada uno (`paraMandar` trae los dos
@@ -2332,6 +2342,7 @@ Escritura (el cuerpo JSON entra por stdin):
 
 Poner una pieza afuera — se lee sin cuenta, con su contraseña, y nada más que esa pieza (dueño):
   bitacora-api publicar <subarea> <slug>       → devuelve `enlace`, `contrasena` y `paraMandar` (los dos juntos, para pegar)
+  bitacora-api publicar objetivo <id>       (un objetivo: abre afuera en /publico/<proyecto>/objetivo/<id>)
   bitacora-api publicar <seccion>           (una review: es una sección de un solo documento)
   bitacora-api publicar … --contrasena <…>  (la que quieras, 8 caracteres o más; sin el flag conserva la suya o recibe una de la casa)
   bitacora-api publicar-informe <AAAA-MM> [--contrasena <…>]
@@ -2341,7 +2352,7 @@ Poner una pieza afuera — se lee sin cuenta, con su contraseña, y nada más qu
   bitacora-api publicar <linea|seccion|flujo> <contenedor> <slug>
                                             (la forma explícita: la sección con varios documentos
                                              o con archivos propios, y el texto de un flujo)
-  bitacora-api privado <subarea> <slug>        (la trae de vuelta adentro, con las mismas tres formas)
+  bitacora-api privado <subarea> <slug>        (la trae de vuelta adentro, con las mismas formas)
                                             publicar abre también los archivos que ese texto muestra
                                             —las capturas, el PDF que un client-report entregó—, y privado los cierra
 
