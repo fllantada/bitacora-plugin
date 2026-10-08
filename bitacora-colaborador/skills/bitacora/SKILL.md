@@ -1207,9 +1207,10 @@ timeline says «Goal» in the margin of its moves.
 
 **Inside each area, the goal heads the place's pieces that pursue it**, with the glyph of its
 desk and in the order of the work, and the group sits where its most advanced piece sits: the
-plan in progress stays on top. An achieved one keeps grouping, dimmed; a dropped one and one
-the reader cannot see —a guest who does not see it from their lines— leave their pieces
-loose, like whatever pursues none. **`subarea <place>` lists the place's pieces with the
+plan in progress stays on top. An achieved one keeps grouping, dimmed, and a guest reads the
+group of every piece they see, because seeing a piece opens its goal; a dropped one, and in
+the public mirror one that is not published, leave their pieces loose, like whatever pursues
+none. **`subarea <place>` lists the place's pieces with the
 resolved `objetivo` on every row**, so a session reads the same grouping, and **`tablero`
 brings the goals in their own list**, `objetivos`, each with its `id`, `titulo`, `queEs`,
 `estado` and `url`:
