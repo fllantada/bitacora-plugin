@@ -386,9 +386,8 @@ flight and what waits on others, derived on its page. **Snapshots written in the
 shape** carry `# In flight`, `# What's next` and `# Waiting on others` after the world, and
 are read, corrected and painted with it; while the project's `caminos` adaptation is
 pending, a snapshot that brings any of those headings is charged with that shape —with open
-plans in the area, `# What's next` is their order, with its `d2` drawing of stages and per
-stage a bold line and its checklist, and `desde.planes` lists the ones it does not name
-yet—. Once the project closes `caminos`, a snapshot that brings
+plans in the area, `# What's next` is their order, as in a goal, and `desde.planes` lists
+the ones it does not name yet—. Once the project closes `caminos`, a snapshot that brings
 any of the three answers 400 `caminoEnElArea`, naming each one.
 **A snapshot is read whole every time it is written**, because a person reads it end to
 end: each section fits its cap in visible characters —`# Where we stand` 500, `# The map`
@@ -1154,28 +1153,35 @@ achieved: what the session looks at to close it). The 400 `aperturaIncompleta` n
 what each one states, and a «What we're after» with code or too long answers
 `seccionConCodigo` or `seccionLarga`.
 
-**Its path: «What's next» is written by stage, and the house draws it.** **What's next** is
-one more section of its body, after «When it's achieved» and at the same heading level: the
-order of its plans by stage, which is judgement. The session orders and the house ticks: per
-stage a bold line naming what that stage delivers, then its checklist, one item per piece
-that pursues the goal, `- [ ] [Plan title](link) — moves when …`, the closed ones included,
-and one or two sentences on why that order, within 300 visible characters without the
-checklist items. When the page is served, the house reads the stages and draws them as a
-vertical timeline with each piece's live desk: the done stage folded with its ✓, the current
-one open under «Now», the next ones in soft ink, and «No stage» closing the line with the
-plans and bugs that pursue the goal and no stage names. The page header says «Stage N of M ·
-X of Y done» with its segmented bar, counted over the same line, and each piece its reader
-sees turn done gets its ✓ and a small celebration once. A `d2` drawing in the section is
-free, and the line replaces it; a section that does not read as stages is painted as its
-markdown.
+**Its path: «What's next» is written, and the house paints today's state on it.** **What's
+next** is one more section of its body, after «When it's achieved» and at the same heading
+level: the order of its plans by stage, which is judgement. Its shape is a `d2` drawing of
+stages —one lane per stage, one box per plan saying what it changes and carrying `link:` to
+its plan, arrows are dependencies—, then per stage a bold line with the stage and its
+checklist, one item per plan that names the goal, `- [ ] [Plan title](link) — moves when …`,
+the closed ones included, and one or two sentences on why that order, within 300 visible
+characters without the drawing or the checklist items.
+
+**When the page is served, the house paints today's state on both**, and says it with colour:
+**done** in green with its ✓, **under way** in amber —commissioned, in progress, delivered—,
+and **pending** on the paper with its grey outline. The drawing goes on top, at the column's
+width, with each box filled by its plan's state, the current lane highlighted and the lane
+with everything done carrying its ✓. The checklist is drawn underneath as a vertical
+timeline: the done stage folded with its ✓, the current one open under «Now», the next ones in
+soft ink, and «No stage» closing the line with the plans and bugs that pursue the goal and no
+stage names. Each box and each row of a plan opens its card —its title and its «What
+changes»—, and the card's title leads to the plan. The page header says «Stage N of M · X of Y
+done» with its segmented bar in the same colours, counted over the same line, and each piece
+its reader sees turn done gets a small celebration once. A section that does not read as
+stages is painted as its markdown, with its drawing painted.
 
 **The patch charges it** (`$API -p <project> corregir objetivos <id>`, with the whole
 body) while the goal is open and has open plans that name it, once the project closes its
 `caminos` adaptation or once the body already brings the heading: missing or empty answers
-400 `caminoIncompleto` with its outline, too long `seccionLarga`, and an open plan the
-checklist does not name by its link `planesSinNombrar`, with the items ready to paste. Any
-other goal carries the section free, within 600; its opening takes only the three sections,
-because it is born before its plans.
+400 `caminoIncompleto` with its outline, without a drawing `seccionSinDibujo`, too long
+`seccionLarga`, and an open plan the checklist does not name by its link `planesSinNombrar`,
+with the items ready to paste. Any other goal carries the section free, within 600; its
+opening takes only the three sections, because it is born before its plans.
 
 **«In flight» and «Waiting on others» are derived when read** from the pieces that name
 the goal, so they are always current: in flight, its plans in `encargado`, `en-curso` or
