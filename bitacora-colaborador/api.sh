@@ -2154,10 +2154,12 @@ Escritura (el cuerpo JSON entra por stdin):
         `dependeDe` y `destraba` —los que espera y los que lo esperan, cada uno {id,titulo,estado,enlace}—, y en `camino.espera` cada objetivo esperado
         que todavía lo frena —abierto o descartado; el logrado lo destraba— con "clase":"objetivo" y su `avance`;
         se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400
-        «Lo que sigue», después de «Cuándo está logrado», ordena sus planes por etapas: se escribe con `corregir objetivos <id>` y el cuerpo entero,
-        y con planes abiertos que lo nombran —desde que el proyecto cerró `caminos` o desde que el cuerpo la trae— la puerta cobra su dibujo de etapas
-        y cada plan por su enlace en su checklist, en 300 sin los ítems; si no, va libre en 600
-        (400 caminoIncompleto · seccionSinDibujo · seccionLarga · planesSinNombrar, que los lista listos para pegar)
+        «Lo que sigue», después de «Cuándo está logrado», ordena sus planes por etapas: una negrita por etapa que nombra lo que entrega, debajo su
+        checklist «- [ ] [Título](enlace) — avanza cuando …» con cada pieza, también la que cerró, y una o dos oraciones con el porqué del orden;
+        se escribe con `corregir objetivos <id>` y el cuerpo entero, y la página lo dibuja como línea de tiempo: marca la etapa de ahora, tilda y cuenta.
+        Con planes abiertos que lo nombran —desde que el proyecto cerró `caminos` o desde que el cuerpo la trae— la puerta cobra cada plan abierto
+        por su enlace en su checklist, en 300 sin los ítems; si no, va libre en 600
+        (400 caminoIncompleto · seccionLarga · planesSinNombrar, que los lista listos para pegar)
   bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"}}
   bitacora-api simulacion <subarea>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
                                              "brazos":[{"clave":"A","nombre":"…","comoCorre":"…"},{"clave":"B","nombre":"…"}],

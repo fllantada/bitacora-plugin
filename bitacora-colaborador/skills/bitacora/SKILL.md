@@ -386,8 +386,9 @@ flight and what waits on others, derived on its page. **Snapshots written in the
 shape** carry `# In flight`, `# What's next` and `# Waiting on others` after the world, and
 are read, corrected and painted with it; while the project's `caminos` adaptation is
 pending, a snapshot that brings any of those headings is charged with that shape —with open
-plans in the area, `# What's next` is their order, as in a goal, and `desde.planes` lists
-the ones it does not name yet—. Once the project closes `caminos`, a snapshot that brings
+plans in the area, `# What's next` is their order, with its `d2` drawing of stages and per
+stage a bold line and its checklist, and `desde.planes` lists the ones it does not name
+yet—. Once the project closes `caminos`, a snapshot that brings
 any of the three answers 400 `caminoEnElArea`, naming each one.
 **A snapshot is read whole every time it is written**, because a person reads it end to
 end: each section fits its cap in visible characters —`# Where we stand` 500, `# The map`
@@ -442,7 +443,7 @@ entries written there; **a goal's book**, what settled among the pieces that nam
 any area—, the decisions that name it and the entries that name it: **an entry takes `objetivo`** like any piece (§The
 Goal). Whoever reads its page reads it, and a guest sees the lines seen from their places.
 The menu's **Book** tag on the area's row, next to **Status**, leads there; so do the link in
-the area's summary and, on a goal's page, the one under «What pursues it».
+the area's summary and, on a goal's page, the one at its foot.
 
 ```bash
 $API -p <project> libro <area>           # the area's book
@@ -1140,9 +1141,10 @@ Work that takes several PRs —the back end, the web and the app of one feature;
 built in stages; a migration in parts— is split into small plans, each in the area of its
 world. **The goal is what those plans pursue together**: a project piece, with no place, that
 says what we're after and when it's achieved, and that each plan, bug or analysis names as its
-own. Its page shows
-**«What pursues it»** under the body: the progress in one line and every piece that names
-it, from any area, with its desk.
+own. Its page shows **its progress** at the top —the stage it is in and how many of its plans
+and bugs are done, with its bar— and under the body its path: what holds it back, the
+timeline of its stages with each piece at its current desk, and **«Material»** with the rest
+that names it, from any area (§The Goal).
 
 **Its door takes three sections when it opens**, as headings of the body: **What we're
 after** (what will exist once it's achieved, as whoever uses the system sees it: no code, and
@@ -1152,23 +1154,28 @@ achieved: what the session looks at to close it). The 400 `aperturaIncompleta` n
 what each one states, and a «What we're after» with code or too long answers
 `seccionConCodigo` or `seccionLarga`.
 
-**Its path: «What's next» is written, the rest is derived.** **What's next** is one more
-section of its body, after «When it's achieved» and at the same heading level: the order of
-its plans by stage, which is judgement. Its shape is a `d2` drawing of stages —one lane per
-stage, one box per plan saying what it changes and carrying `link:` to its plan, arrows are
-dependencies—, then per stage a bold line with the stage and its checklist, one item per open
-plan that names the goal, `- [ ] [Plan title](link) — moves when …`, and one or two
-sentences on why that order, within 300 visible characters without the drawing or the
-checklist items. The page paints each item with its plan's live desk and each box with its
-card.
+**Its path: «What's next» is written by stage, and the house draws it.** **What's next** is
+one more section of its body, after «When it's achieved» and at the same heading level: the
+order of its plans by stage, which is judgement. The session orders and the house ticks: per
+stage a bold line naming what that stage delivers, then its checklist, one item per piece
+that pursues the goal, `- [ ] [Plan title](link) — moves when …`, the closed ones included,
+and one or two sentences on why that order, within 300 visible characters without the
+checklist items. When the page is served, the house reads the stages and draws them as a
+vertical timeline with each piece's live desk: the done stage folded with its ✓, the current
+one open under «Now», the next ones in soft ink, and «No stage» closing the line with the
+plans and bugs that pursue the goal and no stage names. The page header says «Stage N of M ·
+X of Y done» with its segmented bar, counted over the same line, and each piece its reader
+sees turn done gets its ✓ and a small celebration once. A `d2` drawing in the section is
+free, and the line replaces it; a section that does not read as stages is painted as its
+markdown.
 
 **The patch charges it** (`$API -p <project> corregir objetivos <id>`, with the whole
 body) while the goal is open and has open plans that name it, once the project closes its
 `caminos` adaptation or once the body already brings the heading: missing or empty answers
-400 `caminoIncompleto` with its outline, without a drawing `seccionSinDibujo`, too long
-`seccionLarga`, and an open plan the checklist does not name by its link `planesSinNombrar`,
-with the items ready to paste. Any other goal carries the section free, within 600; its
-opening takes only the three sections, because it is born before its plans.
+400 `caminoIncompleto` with its outline, too long `seccionLarga`, and an open plan the
+checklist does not name by its link `planesSinNombrar`, with the items ready to paste. Any
+other goal carries the section free, within 600; its opening takes only the three sections,
+because it is born before its plans.
 
 **«In flight» and «Waiting on others» are derived when read** from the pieces that name
 the goal, so they are always current: in flight, its plans in `encargado`, `en-curso` or
@@ -1177,12 +1184,15 @@ on others, first the open decisions that name it, with who decides and what they
 the open consultations, client questions and visual checks still before their answer, then
 every goal in its `dependeDe` that still holds it back —open or dropped—, with its progress,
 in the list's order, then every live request of its plans with its role and what it needs,
-linked to `…#pedido-N`. The goal's page shows both under its body, each saying "None" when
-empty, before «What pursues it»; its read brings them in `camino` —`enVuelo`, `espera` with
-each row's `clase` (`decision`, `pieza`, `objetivo` with its `avance`, `pedido`), and
-`sinNombrar` with the open plans its «What's next» does not name yet, while it charges its
-order—. What the path closed
-is told by the goal's book, and the public mirror serves the body with «What's next».
+linked to `…#pedido-N`. The goal's page reads top to bottom: the header with its progress
+—and the «Achieved» band with its date once closed—, «What we're after» with «When it's
+achieved» and «Why» folded, the «Waits on» strip with one row per thing waiting on others,
+the timeline —where a plan in flight carries its front—, «Unblocks», «Material» with what the
+line does not hold, and the closing, its history and its book at the foot. Its read brings
+the path in `camino` —`enVuelo`, `espera` with each row's `clase` (`decision`, `pieza`,
+`objetivo` with its `avance`, `pedido`), and `sinNombrar` with the open plans its «What's
+next» does not name yet, while it charges its order—. What the path closed is told by the
+goal's book, and the public mirror serves the header, the body, the line and «Material».
 
 **It opens in the project**: `$API -p <project> objetivo`, with no area (`POST /api/objetivos`),
 and it takes its number and its slug in the project. An area that a session on the previous
@@ -1263,8 +1273,8 @@ piece reads where it is heading.
 
 **A decision made along the way names it through its own door**, with the same check:
 `"objetivo"` goes in the JSON of `$API -p <project> decision <area>` next to its frame, and
-`corregir <id>` —without the type— adds or removes it. It shows in «What pursues it» with its
-row, which leads to its point, and the progress leaves it uncounted:
+`corregir <id>` —without the type— adds or removes it. It shows in «Material» with its row,
+which leads to its point, and the progress leaves it uncounted:
 
 ```bash
 $API -p <project> decision <area> <<'JSON'
@@ -1306,7 +1316,7 @@ $API -p <project> tablero | jq '.objetivos[] | {id, titulo, estado, dependeDe, d
 and `corregir-entrada <area> <id>` adds or removes it, with the same check. That way what was
 noted along the way —the meeting, the delivery, the incident— enters **its book**, next to
 what settled among the pieces that pursue it: `$API -p <project> libro objetivo <id>`, and on
-its page the link under «What pursues it».
+its page the link at its foot.
 
 ```bash
 $API -p <project> entrada <area> <<'JSON'
