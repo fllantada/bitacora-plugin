@@ -200,8 +200,6 @@ $API -p <project> item planes <id>            # one whole: its body, its place (
 $API -p <project> mover planes <id> <<< '{"estado":"hecho","nota":"how it closed"}'
 $API -p <project> mover planes <id> <<< '{"hilo":"the-area-it-belongs-to"}'   # move it to its area (slug or alias)
 $API -p <project> mover planes <id> <<< '{"tambienEn":["mobile"]}'   # also visible from other areas: the whole list, [] for one place
-$API -p <project> fijar analisis <id>         # pin it to the top: the piece its area opens with
-$API -p <project> soltar analisis <id>        # back to the work order
 ```
 
 **A PIECE CAN BE SEEN FROM MORE THAN ONE AREA.** It is one single element: it lives in the
@@ -212,23 +210,20 @@ see this piece? A pricing plan that changes the whole app lives in Commercial an
 seen from Mobile. Declare it in the same act you choose the area (`"tambienEn":["mobile"]`
 when opening it), with the same names a route takes —slug or alias—.
 
-**THE PIECE AN AREA OPENS WITH IS PINNED TO THE TOP.** An area orders its pieces by the
-work — what is being built on top, what closed at the foot — and that order answers what is
-being done right now. The other question, which of these pieces tells what the area is
-about, is what pinning answers: it is usually an analysis, material that gets read and
-therefore sits mid-list under every plan someone moved. Pinned, it comes first on the area
-page and on its branch of the menu, marked `▲` in the margin, because the top of a list
-also holds whatever was touched a minute ago. Between two pinned ones, the latest wins. The
-field travels in the generic patch too (`{"fijado":true}`) and comes back in the place and
-item reads, and the person pins from the web with the **«▲ Pin to top»** button in the
-right-hand column of the piece's own page.
-
-**A NEW ANALYSIS IS BORN PINNED.** A freshly written analysis is the one the person comes
-looking for, and its place in the work order is mid-list. Opening one puts it first on the
-area page and on its branch of the menu, marked `▲`, and the answer says so
-(`"fijado": true`); several written in the same batch stay together on top, the latest
-first. **Lowering it is the person's gesture**: they unpin it from its page once they have
-read it. The session unpins one when the person asks (`soltar analisis <id>`).
+**AN AREA'S LIST SHOWS WHAT IS ALIVE, NEWEST ANALYSIS ON TOP.** What stays in view is decided
+by one rule each type declares in the registry (`retira`), derived from its desk and the
+clock: **the fixed bug** and **the analysis untouched for more than `DIAS_DE_SILENCIO`
+days** —the same silence that dims an area on the board— leave the live list, the menu and
+the phone navigator, and go with what was discarded to **«Earlier»**, the folded pile at the
+foot of the area, sub-area and goal pages, with its count. Each one still opens at its
+address, search finds it, the per-type axis lists it and the API serves it as always. Nobody
+marks it: **a reopened bug comes back with its desk, and rewriting an analysis brings it to
+the top**, with its whole body:
+`$API -p <project> corregir analisis <id> <<< '{"cuerpo":{"en":"# …"}}'`. Live analyses
+**head the list**, under the open critical bug only, newest first and **with their day in
+view** in every list they appear in, the menu included; what was touched today reads
+**«today»**, highlighted, on the reader's own clock. A freshly written analysis opens its
+area by its date, and what already happened stays on record at the foot.
 
 **A piece is written naming its AREA.** Before writing, ask which area this is the analysis
 (or plan, or bug) of, and name it: `$API plan <area>`, `analisis <area>`, `bug <area>` —
@@ -403,7 +398,7 @@ sections' caps, text outside the sections included. A table counts as text; a dr
 the server answers 400 `seccionLarga` or `estadoLargo`, listing every section with what it
 carries and what fits. It slims down by drawing what can be drawn, a checklist instead of
 each table, dropping what closed or repeats, and moving what explains and lasts to an
-analysis pinned in the area, linked from the snapshot in one line. **A new snapshot starts
+analysis of the area, linked from the snapshot in one line. **A new snapshot starts
 from the area's live sources**: a live source tagged with the area whose copy is stale
 answers 400 `fuentesSinRefrescar`, naming how to refresh it (`$API refrescar`, or its
 skill and `sincronizada`); one that cannot be refreshed today —the Figma quota, missing
@@ -1193,7 +1188,7 @@ is told by the goal's book, and the public mirror serves the body with «What's 
 and it takes its number and its slug in the project. An area that a session on the previous
 client still names is accepted and left unused, and the response says so in its `aviso`. The
 pieces that pursue it live in their areas; the patch turns down the place gestures on a goal
-—`hilo`, `tambienEn`, `fijado`— with 400 `sinLugar`.
+—`hilo` and `tambienEn`— with 400 `sinLugar`.
 
 ```bash
 $API -p <project> objetivo <<'JSON'

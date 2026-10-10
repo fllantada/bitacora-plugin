@@ -1112,24 +1112,6 @@ ficha)
     escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LO QUE ABRE LA SUB-ÁREA — la pieza clavada arriba.
-#
-# Una sub-área ordena sus piezas por el trabajo: lo que se está haciendo arriba, lo cerrado al
-# pie. Lo que ese orden no puede contestar es cuál de todas cuenta DE QUÉ SE TRATA el
-# ticket —suele ser un análisis, que no tiene escritorio y cae en el medio—. Fijarla la
-# pone primera en la página de la sub-área y en el menú. Azúcar sobre `mover`. El análisis
-# nace fijado: `soltar` lo baja cuando la persona lo pide.
-fijar)
-  exige 2 "fijar <tipo> <id>" "$@"
-  vaciar_cola
-  printf '{"fijado":true}' | escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
-  ;;
-soltar)
-  exige 2 "soltar <tipo> <id>" "$@"
-  vaciar_cola
-  printf '{"fijado":false}' | escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
-  ;;
-# ─────────────────────────────────────────────────────────────────────────────
 # EL CICLO DEL ENCARGO — el plan lleva el handoff en el cuerpo y el reporte al volver.
 #
 # /thinking lo escribe con `plan <subarea>` y "estado":"encargado"; /coding lo toma y lo
@@ -2148,7 +2130,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
 
 Escritura (el cuerpo JSON entra por stdin):
   bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
-        nace fijado arriba de su sub-área —primero en la página y en el menú, y el alta contesta "fijado": true—; bajarlo es de la persona, con el botón de la página
+        encabeza su área por su fecha mientras está vivo —en su página y en el menú, del más nuevo al más viejo—; el que lleva semanas sin tocarse pasa a «Lo anterior», al pie, y reescribirlo lo trae arriba
   bitacora-api plan <subarea>                  {"titulo":"…","cierraEn":"…","prioridad":"alta","cuerpo":{"es":"# …"},"flujos":["…"]}
         "prioridad": alta · media · baja · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es media;
         algun-dia es el plan que espera su momento en el área de su tema: cuelga al pie y la cifra del área no lo cuenta
@@ -2222,8 +2204,6 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · {"hilo":"el-que-corresponde"} lo muda de hilo (acepta el alias)
                                             · {"tambienEn":["mobile"]} la muestra además desde esas sub-áreas (la lista entera; [] la deja en un solo lugar)
         la decisión se mueve por su puerta: decidir, aplicar-decision, y corregir con su `estado`
-  bitacora-api fijar <tipo> <id>            la clava arriba de su sub-área: es la pieza por la que la sub-área abre, en su página y en el menú
-  bitacora-api soltar <tipo> <id>           la devuelve al orden del trabajo (azúcar sobre mover con {"fijado":true|false})
   El pedido entre sesiones (adentro del plan; la vuelta corta entre especialistas):
   bitacora-api pedido <plan-id>             {"rol":"qa","que":"qué hace falta ver o producir","sobre":"<rama o PR>","aparato":"<cuando importa>"}
                                             → contesta numero y enlace; se le manda UNA línea al frente de ROL qa (columna ROL de `bitacora-frentes mapa`,
