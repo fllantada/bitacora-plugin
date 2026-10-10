@@ -471,13 +471,20 @@ names it, and a piece's read returns it as `hilo`. The commands that name a plac
   *Lo que se descartó* (what was discarded — the most valuable one).
 - Common types: `hallazgo` (finding), `decisión`, `bloqueo` (blocker), `entrega`
   (delivery), `reunión` (meeting), `descarte` (discarded path), `incidente`.
-- **Titles inform, stand alone, and fit in one phrase.** "Notes from Tuesday" says
-  nothing: the title states the processed conclusion, so that reading it alone on the
-  board you know what's inside. It names the topic in the words the topic is asked for —
-  one leaning on another piece ("Case B: …") sends whoever opens it looking for case A.
-  And the API measures it: **80 characters** for the title of a piece and of the day's
-  entry, with the rule inside the 400. It can be short because the substance has its own
-  fields — `queEs` and `cuerpo` on the item.
+- **Titles name the topic in everyday words, stand alone, and fit in 60 characters.** A
+  title is read in the menu, the lists, search and the timeline by someone who arrives
+  without the conversation that produced it. It names the thing and what happens to it,
+  with the name the thing has on screen, as someone who wasn't in the conversation would
+  ask for it: the house's own words go in the body, and the title uses the reader's word.
+  The conclusion and the reasoning go in `queEs` — the subtitle the lists show under the
+  title — and in `cuerpo`. The test: read alone in the menu by someone arriving today, do
+  they know what it's about and whether it's what they're after? "Notes from Tuesday"
+  fails by being empty, and a conclusion in jargon fails by being obscure; one leaning on
+  another piece ("Case B: …") sends whoever opens it looking for case A. The API measures
+  it when it's written — on creation, and on a patch that brings a title different from
+  the stored one, layer by layer: **60 characters** for the title of a piece, a decision
+  point, an action and the day's entry, answering 400 `tituloLargo` with the rule inside.
+  A stored title that comes back unchanged passes as it is.
 - **The writing test:** *can this be reconstructed from the diff, the issue tracker or
   an existing analysis?* If yes, don't write it. The logbook keeps what has no other
   owner: the discovery, the why, what blocked you, what was discarded and under what
@@ -1354,9 +1361,10 @@ plan joins — the plan is theirs, and so is the area it belongs to. What is goo
 priority yet goes to the area of its topic with `"prioridad":"algun-dia"`; when the topic is a world no area holds, open its
 area (`$API abrir-area`) and say so in your report.
 
-**The plan comes out of what was already discussed.** A title that states the conclusion,
-a `cierraEn` saying where it closes — the door demands it: without a close there is no
-plan — and a body carrying the reasoning the conversation produced. Write it with
+**The plan comes out of what was already discussed.** A title that names the topic in
+everyday words, with the conclusion in `queEs` and in the body; a `cierraEn` saying where
+it closes — the door demands it: without a close there is no plan —; and a body carrying
+the reasoning the conversation produced. Write it with
 `$API plan <area>` and finish the gesture by handing the user the `enlace` the response
 returns — the item's full address — so they can keep reading it in the web app. **When the
 topic takes several PRs, open its goal first** (`$API objetivo`, in the project, §The Goal) and each
