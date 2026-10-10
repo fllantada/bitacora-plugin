@@ -780,24 +780,32 @@ reviews) leer "/api/reviews" ;;
 # conserva la que ya tenía, y la que sale por primera vez recibe una de la casa. Publicar
 # de nuevo con `--contrasena` es la forma de cambiarla.
 #
+# `--idioma <es|en|…>`, uno de los del proyecto, fija la capa que abre el enlace: afuera la
+# pieza se lee en ese idioma solo. Sin el flag conserva el que tenía, y la que sale por
+# primera vez abre en la capa de afuera de hoy (el inglés donde el proyecto lo declara). La
+# respuesta dice en cuál quedó (`idioma`).
+#
 # La pieza se nombra como se la lee: `<subarea> <slug>` para lo que cuelga de un hilo,
 # `objetivo <id>` para un objetivo, que se lee en su página del proyecto, y la sección sola
 # para una review, que es una sección de un solo documento. Publicar abre también los
 # archivos que ese texto muestra —las capturas, el PDF que un client-report entregó— y
-# `privado` los cierra con ella.
+# `privado` los cierra con ella. El objetivo abre además cada pieza que lo persigue, con su
+# misma contraseña y en su idioma: la respuesta las lista en `piezas`, y en `sinCapa` las
+# que se leen en su original porque no tienen la capa de ese idioma.
 #
 # Es del dueño del proyecto: la llave de un colaborador recibe un 403.
 # ─────────────────────────────────────────────────────────────────────────────
 publicar | privado)
-  exige 1 "$comando <subarea> <slug>   |   $comando objetivo <id>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>   [--contrasena <…>]" "$@"
+  exige 1 "$comando <subarea> <slug>   |   $comando objetivo <id>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>   [--contrasena <…>] [--idioma <…>]" "$@"
   vaciar_cola
   [ "$comando" = publicar ] && afuera=true || afuera=false
 
-  # El flag sale de los argumentos antes de contarlos: lo que queda es el nombre de la pieza.
-  contrasena="" nombrada=()
+  # Los flags salen de los argumentos antes de contarlos: lo que queda es el nombre de la pieza.
+  contrasena="" idioma="" nombrada=()
   while [ "$#" -gt 0 ]; do
     case "$1" in
     --contrasena) contrasena="${2:-}" && shift && shift || true ;;
+    --idioma) idioma="${2:-}" && shift && shift || true ;;
     *) nombrada+=("$1") && shift ;;
     esac
   done
@@ -857,15 +865,16 @@ publicar | privado)
   esac
 
   # El objetivo viaja como la API lo nombra: su tipo y su id.
-  jq -cn --argjson p "$afuera" --arg k "$campo" --arg c "$contenedor" --arg s "$pieza" --arg w "$contrasena" \
+  jq -cn --argjson p "$afuera" --arg k "$campo" --arg c "$contenedor" --arg s "$pieza" --arg w "$contrasena" --arg i "$idioma" \
     '{publico:$p}
      + (if $k == "objetivo" then {tipo:"objetivo", id:$c} else {($k): $c} end)
-     + (if $s == "" then {} else {slug:$s} end) + (if $w == "" then {} else {contrasena:$w} end)' |
+     + (if $s == "" then {} else {slug:$s} end) + (if $w == "" then {} else {contrasena:$w} end)
+     + (if $i == "" then {} else {idioma:$i} end)' |
     escribir PUT "/api/publicacion"
   ;;
-# Qué está afuera hoy, con el enlace y la contraseña de cada uno (`paraMandar` trae los dos
-# juntos): lo que se pregunta antes de mandar una dirección, y de un tirón el día que se
-# quiera cerrar todo.
+# Qué está afuera hoy, con el enlace, la contraseña y el idioma de cada uno (`paraMandar`
+# trae el enlace y la contraseña juntos): lo que se pregunta antes de mandar una dirección, y
+# de un tirón el día que se quiera cerrar todo.
 publicados) leer "/api/publicacion" ;;
 horas) leer "/api/trabajo" ;;
 informes) leer "/api/informes" ;;
@@ -887,27 +896,45 @@ informe)
   ;;
 publicar-informe | privado-informe)
   # El informe del mes afuera —se lee sin cuenta, con su contraseña— o de vuelta adentro. La
-  # respuesta trae `enlace`, `contrasena` y `paraMandar`; `--contrasena <…>` pone la tuya.
-  exige 1 "$comando <AAAA-MM> [--contrasena <…>]" "$@"
+  # respuesta trae `enlace`, `contrasena`, `paraMandar` e `idioma`; `--contrasena <…>` pone la
+  # tuya y `--idioma <…>` el idioma en que se lee afuera, como en `publicar`.
+  exige 1 "$comando <AAAA-MM> [--contrasena <…>] [--idioma <…>]" "$@"
   vaciar_cola
   [ "$comando" = publicar-informe ] && afuera=true || afuera=false
-  contrasena=""
-  [ "${2:-}" = --contrasena ] && contrasena="${3:-}"
-  jq -n --arg p "$1" --argjson a "$afuera" --arg w "$contrasena" \
-    '{informe: $p, publico: $a} + (if $w == "" then {} else {contrasena:$w} end)' | escribir PUT "/api/publicacion"
+  periodo="$1" && shift
+  contrasena="" idioma=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --contrasena) contrasena="${2:-}" && shift && shift || true ;;
+    --idioma) idioma="${2:-}" && shift && shift || true ;;
+    *) echo "No conozco «$1». Uso: $comando <AAAA-MM> [--contrasena <…>] [--idioma <…>]" >&2 && exit 1 ;;
+    esac
+  done
+  jq -n --arg p "$periodo" --argjson a "$afuera" --arg w "$contrasena" --arg i "$idioma" \
+    '{informe: $p, publico: $a} + (if $w == "" then {} else {contrasena:$w} end)
+     + (if $i == "" then {} else {idioma:$i} end)' | escribir PUT "/api/publicacion"
   ;;
 publicar-estado | privado-estado)
   # El estado de un área afuera —se lee sin cuenta, con su contraseña— o de vuelta adentro. Se
   # publica el área entera: el enlace abre la foto vigente y las anteriores por `?version=`, y
-  # sigue andando cuando el área toma una foto nueva. La respuesta trae `enlace`, `contrasena`
-  # y `paraMandar`; `--contrasena <…>` pone la tuya.
-  exige 1 "$comando <área> [--contrasena <…>]" "$@"
+  # sigue andando cuando el área toma una foto nueva. La respuesta trae `enlace`, `contrasena`,
+  # `paraMandar` e `idioma`; `--contrasena <…>` pone la tuya y `--idioma <…>` el idioma en que
+  # se lee afuera, como en `publicar`.
+  exige 1 "$comando <área> [--contrasena <…>] [--idioma <…>]" "$@"
   vaciar_cola
   [ "$comando" = publicar-estado ] && afuera=true || afuera=false
-  contrasena=""
-  [ "${2:-}" = --contrasena ] && contrasena="${3:-}"
-  jq -n --arg e "$1" --argjson a "$afuera" --arg w "$contrasena" \
-    '{estado: $e, publico: $a} + (if $w == "" then {} else {contrasena:$w} end)' | escribir PUT "/api/publicacion"
+  area="$1" && shift
+  contrasena="" idioma=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --contrasena) contrasena="${2:-}" && shift && shift || true ;;
+    --idioma) idioma="${2:-}" && shift && shift || true ;;
+    *) echo "No conozco «$1». Uso: $comando <área> [--contrasena <…>] [--idioma <…>]" >&2 && exit 1 ;;
+    esac
+  done
+  jq -n --arg e "$area" --argjson a "$afuera" --arg w "$contrasena" --arg i "$idioma" \
+    '{estado: $e, publico: $a} + (if $w == "" then {} else {contrasena:$w} end)
+     + (if $i == "" then {} else {idioma:$i} end)' | escribir PUT "/api/publicacion"
   ;;
 adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
 # Baja un adjunto con la llave del proyecto: la maqueta que un plan sigue, el «antes» de un
@@ -2104,7 +2131,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api buscar <texto>
   bitacora-api documento <linea|seccion|flujo> <contenedor> <slug>
   bitacora-api secciones · bitacora-api horas (dueño) · bitacora-api adjuntos [linea] · bitacora-api reviews
-  bitacora-api publicados                   (lo que está afuera hoy, con el enlace y la contraseña de cada uno)
+  bitacora-api publicados                   (lo que está afuera hoy, con el enlace, la contraseña y el idioma de cada uno)
   bitacora-api de-la-subarea <subarea> <tipo>  (= del-hilo: lo que cuelga de una sub-área, de un tipo)
   bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando sub-áreas)
   bitacora-api item <tipo> <id>             (uno entero: su cuerpo y cómo se movió)
@@ -2367,9 +2394,14 @@ Poner una pieza afuera — se lee sin cuenta, con su contraseña, y nada más qu
   bitacora-api publicar objetivo <id>       (un objetivo: abre afuera en /publico/<proyecto>/objetivo/<id>)
   bitacora-api publicar <seccion>           (una review: es una sección de un solo documento)
   bitacora-api publicar … --contrasena <…>  (la que quieras, 8 caracteres o más; sin el flag conserva la suya o recibe una de la casa)
-  bitacora-api publicar-informe <AAAA-MM> [--contrasena <…>]
+  bitacora-api publicar … --idioma <es|en>  (uno de los del proyecto: el enlace abre esa capa sola; sin el flag conserva
+                                             el suyo o sale en la capa de afuera de hoy)
+  bitacora-api publicar objetivo <id> --idioma en
+                                            (el objetivo abre también cada pieza que lo persigue, con su contraseña:
+                                             `piezas` las lista y `sinCapa` dice cuáles se leen en su original)
+  bitacora-api publicar-informe <AAAA-MM> [--contrasena <…>] [--idioma <…>]
                                             (el informe de horas del mes; privado-informe lo trae adentro)
-  bitacora-api publicar-estado <área> [--contrasena <…>]
+  bitacora-api publicar-estado <área> [--contrasena <…>] [--idioma <…>]
                                             (el estado del área: la foto vigente y sus anteriores; privado-estado lo trae adentro)
   bitacora-api publicar <linea|seccion|flujo> <contenedor> <slug>
                                             (la forma explícita: la sección con varios documentos

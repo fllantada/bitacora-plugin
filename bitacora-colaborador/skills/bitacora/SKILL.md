@@ -1198,7 +1198,8 @@ line does not hold, and the closing, its history and its book at the foot. Its r
 the path in `camino` —`enVuelo`, `espera` with each row's `clase` (`decision`, `pieza`,
 `objetivo` with its `avance`, `pedido`), and `sinNombrar` with the open plans its «What's
 next» does not name yet, while it charges its order—. What the path closed is told by the
-goal's book, and the public mirror serves the header, the body, the line and «Material».
+goal's book, and the public mirror serves the header, the body, the line and «Material», in
+the single language of its publication.
 
 **It opens in the project**: `$API -p <project> objetivo`, with no area (`POST /api/objetivos`),
 and it takes its number and its slug in the project. An area that a session on the previous
@@ -1342,8 +1343,9 @@ $API -p <project> corregir-entrada <area> <entry id> <<< '{"objetivo":null}'    
 The progress counts plans and bugs: `cerradas` is what is done or fixed, `abiertas` the
 rest, and `enCurso` names the plans a session has in hand. What is dropped leaves the count;
 an analysis, a consultation or a decision is listed without counting. The page lists and counts what
-the reader can see: on the public mirror, the published pieces; a guest, the ones seen from
-the lines shared with them.
+the reader can see: on the public mirror, the published goal opens every piece that pursues it,
+under the goal's password and in the language the owner chose when publishing it —a decision
+stays inside—; a guest, the ones seen from the lines shared with them.
 
 **Closing it takes its `nota`**: calling it achieved is a judgement, and so is no longer
 pursuing it. `mover objetivos <id>` to `logrado` or `descartado` without a `nota` answers 400
