@@ -1211,10 +1211,12 @@ on others, first the open decisions that name it, with who decides and what they
 the open consultations, client questions and visual checks still before their answer, then
 every goal in its `dependeDe` that still holds it back —open or dropped—, with its progress,
 in the list's order, then every live request of its plans with its role and what it needs,
-linked to `…#pedido-N`. The goal's page reads top to bottom: the header with its progress
-—and the «Achieved» band with its date once closed—, «What we're after» with «When it's
-achieved» and «Why» folded, the «Waits on» strip with one row per thing waiting on others,
-the timeline —where a plan in flight carries its front—, «Unblocks», «Material» with what the
+linked to `…#pedido-N`. The goal's page reads from the visual to the hardest to read: the
+header with its progress —and the «Achieved» band with its date once closed—, the «Waits on»
+strip with one row per thing waiting on others, «What's next» with its drawing and the
+timeline —where a plan in flight carries its front—, then the body in a fixed order whatever
+order it was written in —«What we're after», «When it's achieved» and «Why», each under its
+own heading, and any section the author added after them—, «Unblocks», «Material» with what the
 line does not hold, and the closing, its history and its book at the foot. Its read brings
 the path in `camino` —`enVuelo`, `espera` with each row's `clase` (`decision`, `pieza`,
 `objetivo` with its `avance`, `pedido`), and `sinNombrar` with the open plans its «What's
