@@ -176,7 +176,7 @@ colour:
 | **Consultation** · **Client Question** | something that holds something up: the OPEN decision, with who decides it —the person, the client or the session—; several gather in a BATCH the person answers in one go ON THE WEB, and the batch that is a client question gathers what the client decides (§The Consultation) | the batch, its title and its `queEs` —what it holds up and what happens with what is decided—; each decision, its whole frame and its `decide` | the batch's, read from its decisions: abierta · contestada · aplicada · descartada; the client's, por-preguntar · preguntada · respondida · aplicada · descartada |
 | **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
 | **Jev Question** | a semantic judgement that runs at commit, with its evidence: the bench over the red, the green and the approved, and its real runs with the signer's verdict on each red | its body, its `queEs`, its `clave` —the id in the repo's rule— and the `pregunta` | propuesta · en-banco · informando · frena · retirada |
-| **Goal** | what several pieces pursue TOGETHER —the back end, the web and the app of one feature—: it belongs to the project and is born with no place; each plan, bug or analysis names it in its `objetivo` field, and its page lists what pursues it with the progress (§The Goal) | its body with three sections: What we're after —no code, within the ceiling of «What changes»—, Why and When it's achieved | abierto · logrado · descartado — closing it takes its `nota` |
+| **Goal** | what several pieces pursue TOGETHER —the back end, the web and the app of one feature—: it belongs to the project and is born with no place; each plan, bug or analysis names it in its `objetivo` field, and its page lists what pursues it with the progress (§The Goal) | its body with three sections, no code and within the ceiling of «What changes»: What we're after, Why and When it's achieved | abierto · logrado · descartado — closing it takes its `nota` |
 
 ```bash
 $API -p <project> analisis <area> <<'JSON'
@@ -1146,13 +1146,28 @@ and bugs are done, with its bar— and under the body its path: what holds it ba
 timeline of its stages with each piece at its current desk, and **«Material»** with the rest
 that names it, from any area (§The Goal).
 
-**Its door takes three sections when it opens**, as headings of the body: **What we're
-after** (what will exist once it's achieved, as whoever uses the system sees it: no code, and
-within the ceiling of a plan's «What changes»), **Why** (where it comes from and what problem
-it solves, with its sources) and **When it's achieved** (the observable thing that marks it
-achieved: what the session looks at to close it). The 400 `aperturaIncompleta` names them with
-what each one states, and a «What we're after» with code or too long answers
-`seccionConCodigo` or `seccionLarga`.
+**A goal is written for whoever reads it, and that can be the client once it is shared**:
+each part in the words of whoever asks for it, while what ordered the work —the tickets, the
+branches, each plan's sources— goes in its plan's Context. **Its door takes three sections
+when it opens**, as headings of the body, all three with no code and within the ceiling of a
+plan's «What changes»:
+
+- **What we're after**: what will exist once it's achieved, as whoever uses the system sees
+  it, in two to four sentences.
+- **Why**: what whoever asks for it needs, in their words —a short quote when there is one—,
+  in two or three sentences, and the link to the piece that develops it, an analysis or a
+  decision.
+- **When it's achieved**: one or two sentences with what is seen working at the end, in the
+  client's words; it says how we know —a screen, a journey, a figure—, without repeating «What
+  we're after» or listing ticket states. It is what the session signing off its last plan
+  reads against what was signed.
+
+The 400 `aperturaIncompleta` names them with what each one states, and the one that brings
+code or goes over its ceiling answers `seccionConCodigo` or `seccionLarga`, naming it. **The
+patch that rewrites one charges it too** —`corregir objetivos <id>` with the whole body—, and
+the one that comes back as it was goes through: what is already written reads as it is until
+someone rewrites it, and the patch that only reorders «What's next» at sign-off goes through
+clean.
 
 **Its path: «What's next» is written, and the house paints today's state on it.** **What's
 next** is one more section of its body, after «When it's achieved» and at the same heading
@@ -1161,7 +1176,12 @@ stages —one lane per stage, one box per plan saying what it changes and carryi
 its plan, arrows are dependencies—, then per stage a bold line with the stage and its
 checklist, one item per plan that names the goal, `- [ ] [Plan title](link) — moves when …`,
 the closed ones included, and one or two sentences on why that order, within 300 visible
-characters without the drawing or the checklist items.
+characters without the drawing or the checklist items. **Each stage's name says what it
+brings to whoever uses the system**, in their words, after its number —`**Stage 1 · Today's
+catalogue**`—, because the house already says which one is done and which one is now; why
+that order goes in its row's note or in the text before the first stage. **Each row's note
+speaks to whoever reads the page**, the client too once the goal is shared: what that plan
+waits on, in everyday words. Branches, rebases, PRs and ticket keys stay in the plan.
 
 **When the page is served, the house paints today's state on both**, and says it with colour:
 **done** in green with its ✓, **under way** in amber —commissioned, in progress, delivered—,

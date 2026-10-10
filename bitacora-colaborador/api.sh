@@ -2172,7 +2172,9 @@ Escritura (el cuerpo JSON entra por stdin):
         el crítico abierto encabeza toda lista, cruzando áreas, y algun-dia espera su momento al pie, como el del plan
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
   bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"},"dependeDe":["<id>"]}
-        lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; «Qué se busca» va sin código y entra en el techo de «Qué cambia»
+        lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; sus tres secciones van sin código y en el techo de «Qué cambia»,
+        con las palabras de quien lo pide: «Por qué», lo que necesita con el enlace a la pieza que lo desarrolla; «Cuándo está logrado», lo que se ve
+        funcionando al final (400 seccionConCodigo · seccionLarga, al abrirlo y en el parche que reescribe una; la que vuelve igual pasa)
         cada pieza lo nombra con "objetivo":"<id>" al abrirla o con `corregir <tipo> <id>` —{"objetivo":null} lo quita—: uno abierto, y nunca desde otro objetivo
         "dependeDe" son los objetivos que este espera, los que se logran antes: al abrirlo, o con `corregir objetivos <id>` {"dependeDe":["<id>","<id>"]},
         la lista entera en su orden, y {"dependeDe":[]} la saca; cada id es OTRO objetivo del proyecto y la lista deja el orden sin ciclos
@@ -2181,8 +2183,9 @@ Escritura (el cuerpo JSON entra por stdin):
         `dependeDe` y `destraba` —los que espera y los que lo esperan, cada uno {id,titulo,estado,enlace}—, y en `camino.espera` cada objetivo esperado
         que todavía lo frena —abierto o descartado; el logrado lo destraba— con "clase":"objetivo" y su `avance`;
         se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400
-        «Lo que sigue», después de «Cuándo está logrado», ordena sus planes por etapas: el dibujo de etapas y debajo, por etapa, su negrita y su
-        checklist «- [ ] [Título](enlace) — avanza cuando …» con cada plan, también el que cerró; se escribe con `corregir objetivos <id>` y el
+        «Lo que sigue», después de «Cuándo está logrado», ordena sus planes por etapas: el dibujo de etapas y debajo, por etapa, su negrita
+        con el nombre de lo que trae —«**Etapa 1 · El catálogo de hoy**»— y su checklist «- [ ] [Título](enlace) — avanza cuando …» con cada
+        plan, también el que cerró, y la nota en palabras de todos los días para quien lee la página; se escribe con `corregir objetivos <id>` y el
         cuerpo entero, y la página pinta sobre los dos el estado de hoy —listo en verde, en marcha en ámbar, pendiente en gris— y dibuja la
         checklist como línea de tiempo. Con planes abiertos que lo nombran —desde que el proyecto cerró `caminos` o desde que el cuerpo la trae—
         la puerta cobra su dibujo de etapas y cada plan por su enlace en su checklist, en 300 sin los ítems; si no, va libre en 600
