@@ -508,7 +508,8 @@ decides it:
 | `cierraEn` | Where it closes: a PR, an entry in the client record, or nothing |
 | `cuerpo` | What triggered the point and where the work is. **The longest of them all** — it is the analysis, and the server measures it |
 
-Optional: `"tanda":"<id>"` adds it to a batch, `"objetivo"` names the goal it pursues,
+Optional: `"tanda":"<id>"` adds it to a batch, `"objetivo"` names the goal it pursues (a
+published goal opens the piece outside, see *The Goal*),
 `"flujos"` the runs it unblocks, and `"capturas"` the paths `capturar` returned when it is
 decided by looking.
 
@@ -1235,8 +1236,10 @@ $API -p <project> mover objetivos <id> <<< '{"estado":"descartado","nota":"why i
 visual check checks its plan: an id that does not exist answers 404 `objetivoInexistente`,
 one that is `logrado` or `descartado` answers 400 `objetivoCerrado`, and **a goal does not
 name another one** —there is a single level—: 400 `objetivoAnidado`, which says where the
-order between goals goes: in `dependeDe`. `{"objetivo":null}` removes it. **You write the id
-and read the address**: the piece's read brings it resolved,
+order between goals goes: in `dependeDe`. `{"objetivo":null}` removes it. **Naming a published
+goal puts the piece outside in the same act**, under the goal's password and in its language
+—a decision stays inside—: before writing the field on a piece whose goal is published, read it
+as something whoever holds that link will read. **You write the id and read the address**: the piece's read brings it resolved,
 `"objetivo":{"id":"…","titulo":"…","enlace":"https://…"}`.
 
 **A goal that comes after another declares it in `dependeDe`**: the list of ids of the goals
