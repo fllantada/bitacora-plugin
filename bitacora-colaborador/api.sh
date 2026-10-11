@@ -557,10 +557,9 @@ aviso_viejo() { echo "· «${comando}» es de la consulta de antes y sigue respo
 case "$comando" in
 # La doctrina que la sesión cargó, la versión instalada y la última publicada. El mismo
 # push que despliega el servidor publica el plugin, así que lo que el servidor contesta ES
-# lo último que existe. Es lo primero que corre cada invocación de la skill, con la carpeta
-# de la skill cargada: el manifiesto dos niveles arriba de esa carpeta dice la doctrina de la
-# sesión, que sigue con la que cargó aunque el comando instalado sea de una versión
-# posterior. Sin carpeta compara la instalada contra la publicada. Sale 0 aunque haya
+# lo último que existe. El manifiesto dos niveles arriba de la carpeta de la skill cargada
+# dice la doctrina de la sesión, que sigue con la que cargó aunque el comando instalado sea
+# de otra versión. Sin carpeta compara la instalada contra la publicada. Sale 0 aunque haya
 # versión nueva — estar atrás no corta el trabajo, lo avisa.
 version)
   manifiesto="$(manifiesto_instalado)"
@@ -569,8 +568,14 @@ version)
   publicada="$(leer "/api/version" 2>/dev/null | jq -r --arg n "$nombre" '.[$n] // empty' || true)"
   cargada=""
   if [ -n "${1:-}" ]; then
-    cargada="$(jq -r '.version // empty' "$1/../../.claude-plugin/plugin.json" 2>/dev/null || true)"
-    [ -n "$cargada" ] || echo "No encuentro el manifiesto de la skill cargada en $1; comparo la instalada contra la publicada."
+    cargado="$1/../../.claude-plugin/plugin.json"
+    if [ -f "$cargado" ]; then
+      # El manifiesto de otro plugin —la skill del colaborador con el shim en el del dueño—
+      # deja `cargada` vacía, y la versión se compara como sin carpeta.
+      cargada="$(jq -r --arg n "$nombre" 'select(.name == $n) | .version // empty' "$cargado" 2>/dev/null || true)"
+    else
+      echo "No encuentro el manifiesto de la skill cargada en $1; comparo la instalada contra la publicada."
+    fi
   fi
   # `/reload-plugins` recarga el plugin y deja en el contexto el texto de la skill que ya se
   # leyó: la doctrina nueva entra al volver a invocarla.
@@ -585,13 +590,16 @@ version)
     actualizar="claude plugin marketplace update bitacora && claude plugin update bitacora@bitacora"
   fi
   if [ -z "$publicada" ]; then
-    # El chequeo que no llega al servidor no frena nada: es un aviso, no una puerta.
     echo "No pude consultar la última versión (sin red, o la llave venció). Seguí con el trabajo:"
     echo "las escrituras se encolan solas, y si la llave venció el camino es  bitacora-api renovar"
   elif [ -z "$instalada" ]; then
     echo "No encuentro el manifiesto instalado; la última publicada es $publicada."
   elif [ "$instalada" = "$publicada" ]; then
     [ -n "$vieja" ] || echo "Al día: $instalada."
+  elif [ "$cargada" = "$publicada" ] && anterior "$instalada" "$cargada"; then
+    # La sesión cargó la publicada y el shim apunta a una anterior: lo mueve el próximo
+    # SessionStart (`plugin/hooks/ensure-shim.sh`).
+    echo "Al día: la doctrina de esta sesión es la $cargada. El comando instalado sigue en la $instalada hasta la próxima sesión."
   else
     echo "Hay una versión nueva: $publicada (instalada: $instalada)."
     [ -n "$vieja" ] || echo "La doctrina de ESTA sesión es la ${cargada:-instalada}: puede faltarle lo que la nueva cuenta."
