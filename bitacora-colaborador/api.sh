@@ -374,6 +374,19 @@ leer() {
   esac
 }
 
+# Una pieza que se lee para corregirla —las instrucciones, el dominio—, como se escribió: el
+# `cuerpo` del sobre, que su `escribir-*` vuelve a guardar igual (el salto final que suma
+# `jq -r` lo saca `$(cat)` al escribir). Con `--json`, el sobre entero.
+leer_cuerpo() {
+  local sobre
+  sobre="$(leer "$1")" || return 1
+  if [ "${2:-}" = "--json" ]; then
+    printf '%s\n' "$sobre"
+  else
+    printf '%s\n' "$sobre" | jq -r .cuerpo
+  fi
+}
+
 # Lo que viaja en la URL: un slug con espacios o un texto de búsqueda.
 uri() { jq -rn --arg v "$1" '$v|@uri'; }
 
@@ -615,11 +628,11 @@ contexto) leer "/api/contexto" ;;
 # Cómo se corre el ciclo acá, solas: dónde se para cada sesión, qué gatea un commit, cómo
 # sale la PR, dónde se publica la review, cómo se factura, las fuentes, los registros, las
 # skills. Es material del proyecto: la lee todo miembro. Sin cargar contesta 404.
-instrucciones) leer "/api/instrucciones" ;;
+instrucciones) leer_cuerpo "/api/instrucciones" "${1:-}" ;;
 # De qué vive el cliente, con SUS palabras: a qué se dedica, qué vende, a quién llega y qué
 # lo distingue. Es la primera lectura del proyecto — el glosario es su vocabulario, no él.
 # Sin escribir contesta 404 diciendo qué va adentro.
-dominio) leer "/api/dominio" ;;
+dominio) leer_cuerpo "/api/dominio" "${1:-}" ;;
 # Las herramientas que esta sesión tiene a mano, con qué hace cada una: las propias del
 # repo, las compartidas del perfil y las del método del plugin. El catálogo lo mantiene
 # la skill /skills del plugin, a mano, con `sincronizar-skills`.
@@ -1771,11 +1784,6 @@ seccion)
   vaciar_cola
   escribir POST "/api/secciones"
   ;;
-# Las instrucciones del ciclo se escriben ENTERAS y en markdown crudo por stdin: es un
-# documento y se reemplaza. La primera vez crea la sección reservada `instrucciones`.
-#   bitacora-api escribir-instrucciones < instrucciones.md
-# Con `--json` el stdin es el JSON de la puerta ({"cuerpo":{"es":"…","en":"…"},"queEs":"…"}),
-# para el proyecto que las escribe en dos idiomas.
 # ─────────────────────────────────────────────────────────────────────────────
 # EL CATÁLOGO DE SKILLS — se mantiene solo, con UNA llamada determinística.
 #
@@ -1903,6 +1911,11 @@ editar-estado)
   vaciar_cola
   escribir PATCH "/api/areas/$(uri "$1")/estado"
   ;;
+# Las instrucciones del ciclo se escriben ENTERAS y en markdown crudo por stdin: es un
+# documento y se reemplaza. La primera vez crea la sección reservada `instrucciones`.
+#   bitacora-api escribir-instrucciones < instrucciones.md
+# Con `--json` el stdin es el JSON de la puerta ({"cuerpo":{"es":"…","en":"…"},"queEs":"…"}),
+# para el proyecto que las escribe en dos idiomas.
 escribir-instrucciones)
   vaciar_cola
   if [ "${1:-}" = "--json" ]; then
@@ -2091,8 +2104,9 @@ Uso: bitacora-api [-p <proyecto>] <comando>
 
 El sistema del proyecto — la tríada, las instrucciones y las skills. Primera lectura al llegar:
   bitacora-api contexto                     (el dominio + el glosario + el stack + los flujos + las fuentes + las instrucciones, de una)
-  bitacora-api dominio                      (de qué vive el cliente, con sus palabras; 404 si no está escrito)
+  bitacora-api dominio                      (de qué vive el cliente, con sus palabras, en markdown crudo; 404 si no está escrito)
   bitacora-api instrucciones                (cómo se corre el ciclo del encargo acá, en markdown crudo; 404 si no están cargadas)
+        las dos imprimen el texto que su escribir-* vuelve a guardar igual · --json imprime el sobre {cuerpo, escritoEn, actualizado, url}
   bitacora-api skills                       (las herramientas a mano: las del repo, las del perfil y las del plugin, con qué hace cada una)
   bitacora-api skill <nombre>               (una entera: cómo se la cuenta, con qué se encadena y su SKILL.md)
   bitacora-api nota-skill <nombre>          {"paraQue":"…","cuando":"…","deja":"…","ojo":"…"}
