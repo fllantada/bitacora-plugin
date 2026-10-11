@@ -15,13 +15,16 @@ server, and the web shows every record's author — yours in one color, everyone
 in another. Write freely: attribution is the mechanism of trust here, and visible
 authorship replaces asking for permission.
 
-**Step zero, every time this skill is invoked: `bitacora-api version`.** The plugin
-updates itself, but a new version only takes effect in the next session — this very
-document may be the previous one without anything saying so. The command compares the
-installed version against the latest published one (the server knows it: the same push
-deploys both), and if there is a newer one it prints how to bring it in. In that case:
-run the update it prints, tell the user this session's instructions are the installed
-ones, and carry on — whatever the API answers is the truth in force, and its 400 errors
+**Step zero, every time this skill is invoked: `bitacora-api version "${CLAUDE_SKILL_DIR}"`.**
+The plugin updates itself, and the session works with the instructions it loaded when the
+skill was invoked: a new version can land in between without anything saying so. With the
+skill's folder, the command compares three versions —the one this session loaded, the
+installed one and the latest published one (the server knows it: the same push deploys
+both)— and says what to do about each difference. If the loaded one is older than the
+installed one, tell the user in one line what it prints —a new session, or `/reload-plugins`
+and invoking the skill again, because the reload keeps the text already read in the
+context— and carry on. If there is a newer published one, run the update it prints, tell
+the user, and carry on — whatever the API answers is the truth in force, and its 400 errors
 name the right door whenever something moved. And if the check can't reach the server
 — no network, or your key expired — it stops nothing either: carry on with the work,
 writes queue themselves, and an expired key is renewed with `bitacora-api renovar`.

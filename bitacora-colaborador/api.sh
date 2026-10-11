@@ -434,6 +434,12 @@ manifiesto_instalado() {
   printf '%s\n' "$manifiesto"
 }
 
+# Contesta si la versión del primer argumento es anterior a la del segundo, número por número.
+# Una versión que no se lee como números contesta que no.
+anterior() {
+  jq -en --arg a "$1" --arg b "$2" '($a | split(".") | map(tonumber)) < ($b | split(".") | map(tonumber))' >/dev/null 2>&1
+}
+
 # El plugin instalado, como `<nombre>@<versión>`, que `pedir` manda en cada pedido. La forma y
 # lo que el servidor hace con él, en `src/server/shared/versionDelPlugin.ts`.
 PLUGIN="$(jq -r 'select(.name and .version) | "\(.name)@\(.version)"' "$(manifiesto_instalado)" 2>/dev/null || true)"
@@ -549,16 +555,30 @@ exige() {
 aviso_viejo() { echo "· «${comando}» es de la consulta de antes y sigue respondiendo; hoy: $1" >&2; }
 
 case "$comando" in
-# La versión instalada contra la última publicada. El mismo push que despliega el
-# servidor publica el plugin, así que lo que el servidor contesta ES lo último que
-# existe. Es lo primero que corre cada invocación de la skill: una sesión abierta
-# sigue con la doctrina con la que arrancó, y sin esto no hay forma de enterarse.
-# Sale 0 aunque haya versión nueva — estar atrás no corta el trabajo, lo avisa.
+# La doctrina que la sesión cargó, la versión instalada y la última publicada. El mismo
+# push que despliega el servidor publica el plugin, así que lo que el servidor contesta ES
+# lo último que existe. Es lo primero que corre cada invocación de la skill, con la carpeta
+# de la skill cargada: el manifiesto dos niveles arriba de esa carpeta dice la doctrina de la
+# sesión, que sigue con la que cargó aunque el comando instalado sea de una versión
+# posterior. Sin carpeta compara la instalada contra la publicada. Sale 0 aunque haya
+# versión nueva — estar atrás no corta el trabajo, lo avisa.
 version)
   manifiesto="$(manifiesto_instalado)"
   nombre="$(jq -r '.name // "bitacora"' "$manifiesto" 2>/dev/null || echo bitacora)"
   instalada="$(jq -r '.version // empty' "$manifiesto" 2>/dev/null || true)"
   publicada="$(leer "/api/version" 2>/dev/null | jq -r --arg n "$nombre" '.[$n] // empty' || true)"
+  cargada=""
+  if [ -n "${1:-}" ]; then
+    cargada="$(jq -r '.version // empty' "$1/../../.claude-plugin/plugin.json" 2>/dev/null || true)"
+    [ -n "$cargada" ] || echo "No encuentro el manifiesto de la skill cargada en $1; comparo la instalada contra la publicada."
+  fi
+  # `/reload-plugins` recarga el plugin y deja en el contexto el texto de la skill que ya se
+  # leyó: la doctrina nueva entra al volver a invocarla.
+  vieja=""
+  if [ -n "$cargada" ] && [ -n "$instalada" ] && anterior "$cargada" "$instalada"; then
+    vieja=1
+    echo "Esta sesión corre la doctrina $cargada y la instalada es la $instalada: abrí una sesión nueva, o /reload-plugins y volvé a invocar la skill."
+  fi
   if [ "$nombre" = "bitacora-colaborador" ]; then
     actualizar="claude plugin marketplace update bitacora-plugin && claude plugin update bitacora-colaborador@bitacora-plugin"
   else
@@ -571,12 +591,12 @@ version)
   elif [ -z "$instalada" ]; then
     echo "No encuentro el manifiesto instalado; la última publicada es $publicada."
   elif [ "$instalada" = "$publicada" ]; then
-    echo "Al día: $instalada."
+    [ -n "$vieja" ] || echo "Al día: $instalada."
   else
     echo "Hay una versión nueva: $publicada (instalada: $instalada)."
-    echo "La doctrina de ESTA sesión es la instalada: puede faltarle lo que la nueva cuenta."
+    [ -n "$vieja" ] || echo "La doctrina de ESTA sesión es la ${cargada:-instalada}: puede faltarle lo que la nueva cuenta."
     echo "Para traerla:  $actualizar"
-    echo "Rige en la próxima sesión, o ya con /reload-plugins."
+    echo "Rige en la próxima sesión, o con /reload-plugins y volviendo a invocar la skill."
   fi
   # Lo que a ESTE proyecto le falta adaptar cuando el modelo de la bitácora cambió. Es un
   # aviso y nunca una puerta: fuera de un proyecto, sin red o sin llave, no dice nada.
@@ -2100,7 +2120,7 @@ Uso: bitacora-api [-p <proyecto>] <comando>
   Lo marcado (dueño) contesta 403 con la llave de un colaborador.
   bitacora-api proyecto                      (dice cuál resolvió)
   bitacora-api alias [<carpeta> <tenant>]    (las raíces, los alias y los tenants con llave, sin mostrar ninguna llave; con dos argumentos agrega uno)
-  bitacora-api version                       (la instalada contra la última publicada — lo primero de cada invocación)
+  bitacora-api version [<carpeta de la skill>]   (la doctrina que la sesión cargó, la instalada y la última publicada — lo primero de cada invocación)
 
 El sistema del proyecto — la tríada, las instrucciones y las skills. Primera lectura al llegar:
   bitacora-api contexto                     (el dominio + el glosario + el stack + los flujos + las fuentes + las instrucciones, de una)
