@@ -556,8 +556,8 @@ aviso_viejo() { echo "· «${comando}» es de la consulta de antes y sigue respo
 
 case "$comando" in
 # La doctrina que la sesión cargó, la versión instalada y la última publicada. El mismo
-# push que despliega el servidor publica el plugin, así que lo que el servidor contesta ES
-# lo último que existe. El manifiesto dos niveles arriba de la carpeta de la skill cargada
+# push que despliega el servidor publica el plugin, así que el servidor contesta la versión
+# de su despliegue. El manifiesto dos niveles arriba de la carpeta de la skill cargada
 # dice la doctrina de la sesión, que sigue con la que cargó aunque el comando instalado sea
 # de otra versión. Sin carpeta compara la instalada contra la publicada. Sale 0 aunque haya
 # versión nueva — estar atrás no corta el trabajo, lo avisa.
@@ -594,12 +594,15 @@ version)
     echo "las escrituras se encolan solas, y si la llave venció el camino es  bitacora-api renovar"
   elif [ -z "$instalada" ]; then
     echo "No encuentro el manifiesto instalado; la última publicada es $publicada."
+  elif [ -n "$cargada" ] && anterior "$instalada" "$cargada" && ! anterior "$cargada" "$publicada"; then
+    # La sesión cargó la publicada o una posterior y el shim apunta a una anterior: lo mueve
+    # el próximo SessionStart (`plugin/hooks/ensure-shim.sh`).
+    echo "Al día: la doctrina de esta sesión es la $cargada. El comando instalado sigue en la $instalada hasta la próxima sesión."
   elif [ "$instalada" = "$publicada" ]; then
     [ -n "$vieja" ] || echo "Al día: $instalada."
-  elif [ "$cargada" = "$publicada" ] && anterior "$instalada" "$cargada"; then
-    # La sesión cargó la publicada y el shim apunta a una anterior: lo mueve el próximo
-    # SessionStart (`plugin/hooks/ensure-shim.sh`).
-    echo "Al día: la doctrina de esta sesión es la $cargada. El comando instalado sigue en la $instalada hasta la próxima sesión."
+  elif anterior "$publicada" "$instalada"; then
+    # La instalada salió en un push cuyo despliegue sigue en camino.
+    [ -n "$vieja" ] || echo "Al día: $instalada, posterior a la publicada ($publicada)."
   else
     echo "Hay una versión nueva: $publicada (instalada: $instalada)."
     [ -n "$vieja" ] || echo "La doctrina de ESTA sesión es la ${cargada:-instalada}: puede faltarle lo que la nueva cuenta."
