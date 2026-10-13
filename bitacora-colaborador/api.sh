@@ -820,9 +820,10 @@ reviews) leer "/api/reviews" ;;
 # hilo, las otras piezas— sigue adentro, y el espejo público no tiene navegación, así que
 # de una pieza publicada no se llega a nada más.
 #
-# `--contrasena <la que quieras>` (8 caracteres o más) pone la tuya; sin el flag la pieza
-# conserva la que ya tenía, y la que sale por primera vez recibe una de la casa. Publicar
-# de nuevo con `--contrasena` es la forma de cambiarla.
+# `--contrasena <la que quieras>` (6 caracteres o más) pone la tuya; sin el flag la pieza
+# conserva la que ya tenía, y la que sale por primera vez recibe la contraseña de la casa,
+# la misma para toda pieza nueva. Publicar de nuevo con `--contrasena` es la forma de
+# cambiarla.
 #
 # `--idioma <es|en|…>`, uno de los del proyecto, fija la capa que abre el enlace: afuera la
 # pieza se lee en ese idioma solo. Sin el flag conserva el que tenía, y la que sale por
@@ -2441,7 +2442,7 @@ Poner una pieza afuera — se lee sin cuenta, con su contraseña, y nada más qu
   bitacora-api publicar <subarea> <slug>       → devuelve `enlace`, `contrasena` y `paraMandar` (los dos juntos, para pegar)
   bitacora-api publicar objetivo <id>       (un objetivo: abre afuera en /publico/<proyecto>/objetivo/<id>)
   bitacora-api publicar <seccion>           (una review: es una sección de un solo documento)
-  bitacora-api publicar … --contrasena <…>  (la que quieras, 8 caracteres o más; sin el flag conserva la suya o recibe una de la casa)
+  bitacora-api publicar … --contrasena <…>  (la que quieras, 6 caracteres o más; sin el flag conserva la suya o recibe la de la casa)
   bitacora-api publicar … --idioma <es|en>  (uno de los del proyecto: el enlace abre esa capa sola; sin el flag conserva
                                              el suyo o sale en la capa de afuera de hoy)
   bitacora-api publicar objetivo <id> --idioma en
