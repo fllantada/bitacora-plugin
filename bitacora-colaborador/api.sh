@@ -567,6 +567,7 @@ version)
   instalada="$(jq -r '.version // empty' "$manifiesto" 2>/dev/null || true)"
   publicada="$(leer "/api/version" 2>/dev/null | jq -r --arg n "$nombre" '.[$n] // empty' || true)"
   cargada=""
+  perfil=""
   if [ -n "${1:-}" ]; then
     cargado="$1/../../.claude-plugin/plugin.json"
     if [ -f "$cargado" ]; then
@@ -576,6 +577,19 @@ version)
     else
       echo "No encuentro el manifiesto de la skill cargada en $1; comparo la instalada contra la publicada."
     fi
+    # Con la skill en la caché de un perfil (<perfil>/plugins/cache/…), la instalada sale del
+    # `installed_plugins.json` de ese perfil: el shim es uno por máquina, en la versión más alta
+    # de todos los perfiles (`plugin/hooks/ensure-shim.sh`).
+    case "$1" in
+      */plugins/cache/*)
+        de_perfil="$(jq -r --arg n "$nombre" '(.plugins // .) | to_entries[] | select(.key | startswith($n + "@")) | .value[0].version // empty' \
+          "${1%%/plugins/cache/*}/plugins/installed_plugins.json" 2>/dev/null | head -1 || true)"
+        if [ -n "$de_perfil" ]; then
+          instalada="$de_perfil"
+          perfil="${1%%/plugins/cache/*}"
+        fi
+        ;;
+    esac
   fi
   # `/reload-plugins` recarga el plugin y deja en el contexto el texto de la skill que ya se
   # leyó: la doctrina nueva entra al volver a invocarla.
@@ -603,6 +617,10 @@ version)
   elif anterior "$publicada" "$instalada"; then
     # La instalada salió en un push cuyo despliegue sigue en camino.
     [ -n "$vieja" ] || echo "Al día: $instalada, posterior a la publicada ($publicada)."
+  elif [ -n "$perfil" ] && [ "$nombre" = "bitacora" ]; then
+    # El perfil quedó atrás de la publicada y /reload-plugins vuelve a cargar la suya: el aviso
+    # manda al `autoUpdate` del marketplace en la próxima sesión, o a /recargar.
+    echo "Tu perfil (${perfil/#$HOME/~}) tiene instalada la $instalada y la publicada es la $publicada: la actualización automática la instala en tu próxima sesión, o /recargar la instala ya, cuando Fran lo pida."
   else
     echo "Hay una versión nueva: $publicada (instalada: $instalada)."
     [ -n "$vieja" ] || echo "La doctrina de ESTA sesión es la ${cargada:-instalada}: puede faltarle lo que la nueva cuenta."

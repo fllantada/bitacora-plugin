@@ -611,8 +611,10 @@ worktree), `entregado` (the PR is open and the report written; waiting for sign-
 `hecho`. One plan is one PR. **The body and the report are a contract the server
 enforces.** Entering `encargado` requires the body to carry eight sections as markdown
 headings, each with content below — `# What changes` first: the plan's TL;DR in two to
-four sentences, what happens today as the person using the system sees it and what
-happens after, in the client's words and without code (the server rejects backticks and
+four sentences: what it is about and who uses it, what that person lives today and what
+they will live after, in their words and without code, with every name that needs the
+conversation to be understood —a piece of the system, a field, «the second of three»—
+explained on the spot or replaced by what it does (the server rejects backticks and
 code blocks there with `seccionConCodigo` and a long one with `seccionLarga`; a `d2`
 drawing is allowed and not counted; the why belongs in Context and the mechanism in The
 idea) — then `# Task`, `# The idea`, `# Destination`, `# Context`,
