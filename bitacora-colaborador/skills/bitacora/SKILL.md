@@ -1277,7 +1277,7 @@ $API -p <project> mover objetivos <id> <<< '{"estado":"descartado","nota":"why i
 
 **A goal carries a priority, in the plan's words**: `alta` · `media` · `baja` · `algun-dia`,
 and `media` when it declares none. It is the order the open goals are read in —the menu's
-block and the phone's Goal axis, with an arrow on the one that moves away from `media`—, and
+block and the phone's Goals axis, with an arrow on the one that moves away from `media`—, and
 whoever plans decides it: it goes in the JSON at opening and changes at any desk with
 `corregir objetivos <id>`, or from the header of its page. An open `algun-dia` goal waits for
 its moment at the foot of the open ones. The read always serves it, with `media` when none was
@@ -1362,7 +1362,7 @@ with its pieces from every area in the order of the work and each one's place in
 Open goals come first, by their priority —high, medium, low and someday— and within each from
 the most recent activity —its own or its pieces'— to the oldest, and achieved ones after them,
 dimmed; a dropped one leaves. Under each one's name goes **the bar of its standing**, filled up
-to its percentage, with the figure and the state in one word. The phone's Goal axis orders them
+to its percentage, with the figure and the state in one word. The phone's Goals axis orders them
 the same way and carries the same bar in each group's head. The by-type axis
 (`/<project>/tipo/objetivos`) lists them in a single batch, the project's, and the project's
 timeline says «Goal» in the margin of its moves.
