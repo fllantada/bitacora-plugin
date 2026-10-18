@@ -2220,8 +2220,10 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
                                              cada lista con su puerta de vuelta — el estado vuelve por editar-estado con `traduccion`)
 
 Escritura (el cuerpo JSON entra por stdin):
-  bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"}}
-        encabeza su área por su fecha mientras está vivo —en su página y en el menú, del más nuevo al más viejo—; el que lleva semanas sin tocarse pasa a «Lo anterior», al pie, y reescribirlo lo trae arriba
+  bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"},"vigente":true}
+        encabeza su área por su fecha mientras está vivo —en su página y en el menú, del más nuevo al más viejo—;
+        "vigente":true es el que explica algo que dura y le sirve a quien abra el área dentro de unos meses: sigue a la vista hasta que se descarta;
+        sin la marca es material de trabajo: el que lleva semanas sin tocarse pasa a «Lo anterior», al pie, y reescribirlo lo trae arriba
   bitacora-api plan <subarea>                  {"titulo":"…","cierraEn":"…","prioridad":"alta","cuerpo":{"es":"# …"},"flujos":["…"]}
         "prioridad": alta · media · baja · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es media;
         algun-dia es el plan que espera su momento en el área de su tema: cuelga al pie y la cifra del área no lo cuenta
@@ -2339,7 +2341,9 @@ Escritura (el cuerpo JSON entra por stdin):
                                               el cuerpo de un objetivo va entero, con su «Lo que sigue»)
                                             · {"prioridad":"alta"} (su orden entre los de su escritorio, en cualquier escritorio:
                                               un plan alta · media · baja · algun-dia, un bug critico · mayor · menor · algun-dia)
-  bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado)
+                                            · {"vigente":true} · {"vigente":false} (un análisis: si explica algo que dura; marcar deja quieto
+                                              su reloj, así desmarcar uno viejo lo saca de la vista en el acto)
+  bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado, el vigente también)
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
   Cada pieza va a un ÁREA: `plan <area>`, `analisis <area>`… cae en su lugar, y el servidor lo crea si falta.
   Todo proyecto trae Comercial (`comercial`, alias `marketing`), QA (`qa`), SEO (`seo`, alias `posicionamiento`) y Harness.

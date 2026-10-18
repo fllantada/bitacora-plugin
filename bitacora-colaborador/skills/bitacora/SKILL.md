@@ -170,7 +170,7 @@ colour:
 
 | Type | What it is | What opening it costs | Desks |
 |---|---|---|---|
-| **Analysis** | what was understood about a topic | its body | escrito, or descartado when it stopped holding: it is material you read |
+| **Analysis** | what was understood about a topic; a **lasting** one (`"vigente":true`) explains something that endures and stays in view while it holds | its body | escrito, or descartado when it stopped holding: it is material you read |
 | **Plan** | how something gets solved — strategy AND execution; it also carries a dispatched job | its body and where it closes | pendiente · encargado · en-curso · entregado · hecho · descartado |
 | **Bug** | a defect found while doing something else | its body, with What happens · Where · How to reproduce | abierto · arreglado · descartado |
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
@@ -215,14 +215,21 @@ when opening it), with the same names a route takes —slug or alias—.
 
 **AN AREA'S LIST SHOWS WHAT IS ALIVE, NEWEST ANALYSIS ON TOP.** What stays in view is decided
 by one rule each type declares in the registry (`retira`), derived from its desk and the
-clock: **the fixed bug** and **the analysis untouched for more than `DIAS_DE_SILENCIO`
-days** —the same silence that dims an area on the board— leave the live list, the menu and
-the phone navigator, and go with what was discarded to **«Earlier»**, the folded pile at the
-foot of the area, sub-area and goal pages, with its count. Each one still opens at its
-address, search finds it, the per-type axis lists it and the API serves it as always. Nobody
-marks it: **a reopened bug comes back with its desk, and rewriting an analysis brings it to
-the top**, with its whole body:
-`$API -p <project> corregir analisis <id> <<< '{"cuerpo":{"en":"# …"}}'`. Live analyses
+clock: **the fixed bug** and **the working analysis untouched for more than
+`DIAS_DE_SILENCIO` days** —the same silence that dims an area on the board— leave the live
+list, the menu and the phone navigator, and go with what was discarded to **«Earlier»**, the
+folded pile at the foot of the area, sub-area and goal pages, with its count. Each one still
+opens at its address, search finds it, the per-type axis lists it and the API serves it as
+always. **A lasting analysis stays in view however quiet it gets**, and leaves only when it
+is discarded: it explains something of the world —how an engine works, the limits that were
+validated— and serves whoever opens the area months from now without context. Working
+material serves one moment of a goal, and leaves with its silence. The rule is derived from
+the desk, the clock and that mark: **a reopened bug comes back with its desk, rewriting an
+analysis brings it to the top**, with its whole body —
+`$API -p <project> corregir analisis <id> <<< '{"cuerpo":{"en":"# …"}}'`—, and marking it
+lasting brings it back with its date
+(`$API -p <project> corregir analisis <id> <<< '{"vigente":true}'`, `false` takes it off;
+marking leaves its clock still). Live analyses
 **head the list**, under the open critical bug only, newest first and **with their day in
 view** in every list they appear in, the menu included; what was touched today reads
 **«today»**, highlighted, on the reader's own clock. A freshly written analysis opens its
@@ -400,8 +407,8 @@ with open plans 300 without its checklist items— and the whole snapshot fits t
 sections' caps, text outside the sections included. A table counts as text; a drawing does not. Over a cap
 the server answers 400 `seccionLarga` or `estadoLargo`, listing every section with what it
 carries and what fits. It slims down by drawing what can be drawn, a checklist instead of
-each table, dropping what closed or repeats, and moving what explains and lasts to an
-analysis of the area, linked from the snapshot in one line. **A new snapshot starts
+each table, dropping what closed or repeats, and moving what explains and lasts to a
+lasting analysis of the area (`"vigente":true`), linked from the snapshot in one line. **A new snapshot starts
 from the area's live sources**: a live source tagged with the area whose copy is stale
 answers 400 `fuentesSinRefrescar`, naming how to refresh it (`$API refrescar`, or its
 skill and `sincronizada`); one that cannot be refreshed today —the Figma quota, missing
