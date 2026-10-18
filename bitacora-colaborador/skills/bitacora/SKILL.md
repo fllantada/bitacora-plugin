@@ -1157,8 +1157,9 @@ Work that takes several PRs —the back end, the web and the app of one feature;
 built in stages; a migration in parts— is split into small plans, each in the area of its
 world. **The goal is what those plans pursue together**: a project piece, with no place, that
 says what we're after and when it's achieved, and that each plan, bug or analysis names as its
-own. Its page shows **its progress** at the top —the stage it is in and how many of its plans
-and bugs are done, with its bar— and under the body its path: what holds it back, the
+own. Its page shows **its standing and its progress** at the top —how it is going in one word
+with its percentage, the stage it is in and how many of its plans and bugs are done, with its
+bar— and under the body its path: what holds it back, the
 timeline of its stages with each piece at its current desk, and **«Material»** with the rest
 that names it, from any area (§The Goal).
 
@@ -1207,9 +1208,11 @@ with everything done carrying its ✓. The checklist is drawn underneath as a ve
 timeline: the done stage folded with its ✓, the current one open under «Now», the next ones in
 soft ink, and «No stage» closing the line with the plans and bugs that pursue the goal and no
 stage names. Each box and each row of a plan opens its card —its title and its «What
-changes»—, and the card's title leads to the plan. The page header says «Stage N of M · X of Y
-done» with its segmented bar in the same colours, counted over the same line, and each piece
-its reader sees turn done gets a small celebration once. A section that does not read as
+changes»—, and the card's title leads to the plan. The page header opens with its standing
+—«In progress 40%», the word in its state's colour— and says «Stage N of M · X of Y done» with
+its segmented bar in the same colours, counted over what pursues the goal —a piece a stage names
+without pursuing it is painted in its stage, outside the count—, and each piece its reader sees
+turn done gets a small celebration once. A section that does not read as
 stages is painted as its markdown, with its drawing painted.
 
 **The patch charges it** (`$API -p <project> corregir objetivos <id>`, with the whole
@@ -1355,7 +1358,9 @@ goals»**, between «The areas» and «Recent»: every goal its reader opens, fo
 with its pieces from every area in the order of the work and each one's place in the margin.
 Open goals come first, by their priority —high, medium, low and someday— and within each from
 the most recent activity —its own or its pieces'— to the oldest, and achieved ones after them,
-dimmed; a dropped one leaves. The phone's Goal axis orders them the same way. The by-type axis
+dimmed; a dropped one leaves. Under each one's name goes **the bar of its standing**, filled up
+to its percentage, with the figure and the state in one word. The phone's Goal axis orders them
+the same way and carries the same bar in each group's head. The by-type axis
 (`/<project>/tipo/objetivos`) lists them in a single batch, the project's, and the project's
 timeline says «Goal» in the margin of its moves.
 
@@ -1367,11 +1372,12 @@ the public mirror one that is not published, leave their pieces loose, like what
 none. **`subarea <place>` lists the place's pieces with the
 resolved `objetivo` on every row**, so a session reads the same grouping, and **`tablero`
 brings the goals in their own list**, `objetivos`, each with its `id`, `titulo`, `queEs`,
-`estado`, `prioridad` and `url`, and its `dependeDe` and `destraba` when it has them:
+`estado`, `prioridad`, `marcha` and `url`, and its `dependeDe` and `destraba` when it has
+them:
 
 ```bash
 $API -p <project> subarea <place> | jq '[.items[][] | select(.objetivo) | {titulo, objetivo: .objetivo.titulo}]'
-$API -p <project> tablero | jq '.objetivos[] | {id, titulo, estado, prioridad, dependeDe, destraba}'
+$API -p <project> tablero | jq '.objetivos[] | {id, titulo, estado, prioridad, marcha, dependeDe, destraba}'
 ```
 
 **An entry names it too**: `"objetivo"` in the JSON of `$API -p <project> entrada <area>`,
@@ -1397,7 +1403,21 @@ $API -p <project> corregir-entrada <area> <entry id> <<< '{"objetivo":null}'    
 
 The progress counts plans and bugs: `cerradas` is what is done or fixed, `abiertas` the
 rest, and `enCurso` names the plans a session has in hand. What is dropped leaves the count;
-an analysis, a consultation or a decision is listed without counting. The page lists and counts what
+an analysis, a consultation or a decision is listed without counting.
+
+**And `marcha` says it at a glance**, with the same number as the menu and its page:
+
+```json
+{"marcha":{"estado":"en-curso","hechas":2,"total":5,"porcentaje":40}}
+```
+
+The `porcentaje` is what is done over the total, rounded down. The `estado` follows this
+precedence: `logrado`, its desk; `espera`, when a goal in its `dependeDe` still holds it back
+—open or dropped—; `por-cerrar`, with everything done and the goal open: the signal to close it
+with its note; `en-curso`, with a piece commissioned, in progress or delivered, or with one done
+and another pending; and `sin-empezar`. A dropped goal brings `marcha` as `null`.
+
+The page lists and counts what
 the reader can see: on the public mirror, the published goal opens every piece that pursues it,
 under the goal's password and in the language the owner chose when publishing it —a decision
 stays inside—; a guest, the ones seen from the lines shared with them.
