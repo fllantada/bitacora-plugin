@@ -385,7 +385,10 @@ full on top of the area's page —its date, its milestone, the big picture, what
 and its sections, with «← Previous» to the earlier one— and with its history at
 `/<project>/area/<slug>/estado`. It is a series of
 snapshots and the latest one is read; each carries the milestone that produced it —a
-relevant plan signed, a client decision, a source that moved the ground— and the earlier
+relevant plan signed, a client decision, a source that moved the ground—, the `plan` whose
+sign-off was that milestone and the achieved `objetivo` (goal) that prompted it, each by its id
+when there was one and both together when the plan's sign-off achieved the goal (an id that is
+not a goal of the project answers 400 `objetivoDesconocido`), and the earlier
 ones are the history, walked one step back at a time with "Previous". **The body tells the
 area's world**, from the broadest to the most specific, and the server requires its sections
 in this order: `# Where we stand` (the big picture in a few sentences, without code), the
@@ -394,7 +397,7 @@ pieces with their state, with its legend underneath). **A snapshot that brings `
 changed` pays it after the map**: what changed in the area since the previous snapshot, told
 by the session that takes it in the words of whoever uses the system and without code —
 empty or «None» answers 400 `estadoIncompleto`—, and underneath it the page lists by itself
-what was signed and decided in the area between the two snapshots. **The path of each piece of work lives
+what was signed, decided and achieved in the area between the two snapshots. **The path of each piece of work lives
 in its goal** (§The Goal): the order of its plans in its `# What's next`, and what is in
 flight and what waits on others, derived on its page. **Snapshots written in the earlier
 shape** carry `# In flight`, `# What's next` and `# Waiting on others` after the world, and

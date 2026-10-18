@@ -1932,8 +1932,10 @@ sincronizar-skills)
 # `escribir-estado` toma una foto: el cuerpo con el mundo del área —# Dónde estamos · la
 # sexta cuando el área la lleva · # El mapa—, el `hito` que la produjo (la firma de un plan,
 # una decisión del cliente, una fuente que movió el terreno), el `plan` cuya firma fue el
-# hito cuando lo hubo, los `diagramas` compilados con `bitacora-diagramas`, y `sinRefrescar`
-# con cada fuente viva del área que hoy no se puede traer al día y su porqué en una línea.
+# hito cuando lo hubo, el `objetivo` logrado que la motivó cuando lo hubo —los dos juntos
+# valen; un id ajeno es 400 `planDesconocido` u `objetivoDesconocido`—, los `diagramas`
+# compilados con `bitacora-diagramas`, y `sinRefrescar` con cada fuente viva del área que
+# hoy no se puede traer al día y su porqué en una línea.
 # El servidor pide antes las vivas del área al día (400 `fuentesSinRefrescar`, que dice cómo
 # se trae cada una; `sinRefrescarDeMas` si se declara una que no espera) y cobra el contrato
 # —cada sección en su techo y la foto entera en la suma (400 `seccionLarga` y `estadoLargo`,
@@ -1947,17 +1949,18 @@ sincronizar-skills)
 # que sigue» con su dibujo de etapas y cada plan abierto por su enlace en un ítem de
 # checklist, `- [ ] [Título](enlace) — avanza cuando …` (400 `planesSinNombrar`, que los
 # lista listos para pegar).
-# `editar-estado` corrige la vigente sin abrir versión: una frase, un
-# diagrama recompilado, el hito, o la capa traducida con la huella del original.
+# `editar-estado` corrige la vigente sin abrir versión: una frase, un diagrama recompilado,
+# el hito, su plan u objetivo (`null` los saca), o la capa traducida con la huella del
+# original.
 #   bitacora-api escribir-estado <area> < estado.json
 #   bitacora-api editar-estado <area> <<< '{"hito":"…"}'
 escribir-estado)
-  exige 1 "escribir-estado <area>   < {\"cuerpo\":{\"es\":\"# Dónde estamos\\n…\"},\"hito\":\"…\",\"plan\":\"<id>\",\"diagramas\":[…],\"sinRefrescar\":[{\"fuente\":\"<slug>\",\"porque\":\"…\"}]}" "$@"
+  exige 1 "escribir-estado <area>   < {\"cuerpo\":{\"es\":\"# Dónde estamos\\n…\"},\"hito\":\"…\",\"plan\":\"<id>\",\"objetivo\":\"<id>\",\"diagramas\":[…],\"sinRefrescar\":[{\"fuente\":\"<slug>\",\"porque\":\"…\"}]}" "$@"
   vaciar_cola
   escribir PUT "/api/areas/$(uri "$1")/estado"
   ;;
 editar-estado)
-  exige 1 "editar-estado <area>   < {\"cuerpo\":…} · {\"hito\":\"…\"} · {\"traduccion\":{\"idioma\":\"en\",\"cuerpo\":\"…\",\"hash\":\"…\"}}" "$@"
+  exige 1 "editar-estado <area>   < {\"cuerpo\":…} · {\"hito\":\"…\"} · {\"objetivo\":\"<id>\"} · {\"traduccion\":{\"idioma\":\"en\",\"cuerpo\":\"…\",\"hash\":\"…\"}}" "$@"
   vaciar_cola
   escribir PATCH "/api/areas/$(uri "$1")/estado"
   ;;
@@ -2387,19 +2390,20 @@ Escritura (el cuerpo JSON entra por stdin):
                                              y cuántas siguen sin contar; los <repo> extra son otras carpetas del mismo tenant)
                                             la corre la skill /skills, a mano; su última línea dice qué cambió y es su plan de trabajo
   bitacora-api escribir-estado <area>       {"cuerpo":{"es":"# Dónde estamos\n…\n# El mapa\n…"},
-                                             "hito":"…","plan":"<id>","diagramas":[…],
+                                             "hito":"…","plan":"<id>","objetivo":"<id>","diagramas":[…],
                                              "sinRefrescar":[{"fuente":"<slug>","porque":"<qué lo impide, en una línea>"}]}
         toma la FOTO nueva del estado del área, al cierre de un cambio importante, escrita ENTERA sobre la vigente
         (`estado <area>`) y con las fuentes vivas del área al día (`refrescar`; la que no se puede, en sinRefrescar):
         el mundo del área de lo amplio a lo específico, cada sección en su techo —Dónde estamos 500, la sexta de harness,
         QA y SEO 1200 después del panorama, El mapa 400 sin el dibujo— y la foto entera en la suma (las tablas cuentan
-        como texto; los dibujos, no); el hito que la produjo y el plan firmado cuando fue uno; la foto anterior queda
+        como texto; los dibujos, no); el hito que la produjo, el plan firmado cuando fue uno y el objetivo logrado
+        que la motivó cuando lo hubo (los dos juntos valen; la página enlaza cada uno); la foto anterior queda
         como historia y se recorre con «Anterior». El camino vive en el objetivo: con `caminos` cerrada, una foto con
         «En vuelo», «Lo que sigue» o «Lo que espera de otros» contesta 400 caminoEnElArea; mientras está pendiente, la
         foto escrita con la forma de antes se toma y se corrige con ella (cada una 600; con planes abiertos en el área,
         «Lo que sigue» con su dibujo de etapas y por etapa su checklist, `- [ ] [Título](enlace) — avanza cuando …`,
         en 300 sin los ítems)
-  bitacora-api editar-estado <area>         {"cuerpo":…} · {"hito":"…"} · {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"},"diagramas":[…]}
+  bitacora-api editar-estado <area>         {"cuerpo":…} · {"hito":"…"} · {"objetivo":"<id>"} · {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"},"diagramas":[…]}
         corrige la foto vigente sin abrir versión, con la forma en que se escribió mientras `caminos` está pendiente
   bitacora-api escribir-instrucciones       < instrucciones.md   (el markdown entero por stdin; reemplaza; crea la sección la primera vez)
   bitacora-api escribir-dominio             < dominio.md          (el negocio del cliente, con sus palabras; reemplaza)
