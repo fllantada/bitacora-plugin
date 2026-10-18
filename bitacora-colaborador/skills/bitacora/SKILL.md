@@ -120,7 +120,7 @@ $API -p <project> nota-skill <name>   # tell it for a person: {"paraQue":"…","
                                 #   write it right after reading that skill's text — the catalogue lists it uncounted until someone does
 $API -p <project> tablero       # the board: every area with its pieces, and the goals apart
 $API -p <project> areas         # the project's areas
-$API -p <project> area <slug>   # ONE area: its name, its place, its `estado` —where that world stands today— and its `objetivos`, the open goals that cross it
+$API -p <project> area <slug>   # ONE area: its name, its place, its `estado` —where that world stands today—, its `vigentes` (the lasting analyses: id, titulo, enlace) and its `objetivos`, the open goals that cross it, each with its `avance`
 $API -p <project> subarea <place> # the area's place: its pieces, entries, decisions and documents
 $API -p <project> estado <slug> # the area's state in full: the current snapshot with its sections, its milestone and its chain of earlier ones
 $API -p <project> libro <slug>  # the area's book: what was decided and done there, newest first · `libro objetivo <id>`, a goal's
@@ -350,8 +350,11 @@ work is done. Its dimensions: its **pieces** (the eleven types above), the **dec
 happened, when, why in that order), its **state** (where it stands today) and its **book**
 (what was decided and done there, newest first). A topic of a few weeks is a **piece** of its area.
 
-**The area's page is where the work is read**: its state, its pieces, its attachments, its
-decisions, its timeline and its access. The left menu is the list of areas, with each
+**The area's page is where the work is read**: its state, and under it the area's world in
+three derived sections —«What we know», its lasting analyses newest first; «What's broken»,
+its open bugs with the critical one first; and «The goals that cross it», each with its
+progress bar—, then the rest of its pieces, its attachments, its decisions, its timeline and
+its access. The left menu is the list of areas, with each
 area's pieces hanging straight from it, and a piece's route reads Home › Area. An area with
 more than one place belongs to a project whose `sin-subareas` adaptation is pending: it is
 read with its sub-areas, and the owner folds each one into its area

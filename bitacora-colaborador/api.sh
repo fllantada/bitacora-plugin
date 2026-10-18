@@ -2189,8 +2189,9 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api adaptado <clave>             (cierra la adaptación; 400 con lo que falta si el material todavía no está)
   bitacora-api areas                        (los mundos del proyecto, con sus sub-áreas)
   bitacora-api area <slug>                  (un área con las sub-áreas que viven ahí, su `estado` resumido —la foto vigente,
-                                             su panorama y lo que se firmó y cambió desde que se tomó— y sus `objetivos`, los
-                                             abiertos que la cruzan; `areas <slug>` es lo mismo)
+                                             su panorama y lo que se firmó y cambió desde que se tomó—, sus `vigentes`, los
+                                             análisis vigentes, y sus `objetivos`, los abiertos que la cruzan con su `avance`;
+                                             `areas <slug>` es lo mismo)
   bitacora-api estado <area> [--version N]  (el estado del área entero: la foto vigente —o una anterior— con su mundo,
                                              su hito, su cadena de anteriores y `desde`: la señal de que toca renovarla)
   bitacora-api libro <area>                 (el libro del área: lo firme de sus piezas —la decisión tomada, el plan firmado, el bug arreglado,
