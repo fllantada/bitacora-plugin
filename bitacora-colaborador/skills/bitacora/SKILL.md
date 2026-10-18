@@ -390,7 +390,11 @@ ones are the history, walked one step back at a time with "Previous". **The body
 area's world**, from the broadest to the most specific, and the server requires its sections
 in this order: `# Where we stand` (the big picture in a few sentences, without code), the
 sixth section when the area carries one (below), and `# The map` (a `d2` drawing of the
-pieces with their state, with its legend underneath). **The path of each piece of work lives
+pieces with their state, with its legend underneath). **A snapshot that brings `# What
+changed` pays it after the map**: what changed in the area since the previous snapshot, told
+by the session that takes it in the words of whoever uses the system and without code —
+empty or «None» answers 400 `estadoIncompleto`—, and underneath it the page lists by itself
+what was signed and decided in the area between the two snapshots. **The path of each piece of work lives
 in its goal** (§The Goal): the order of its plans in its `# What's next`, and what is in
 flight and what waits on others, derived on its page. **Snapshots written in the earlier
 shape** carry `# In flight`, `# What's next` and `# Waiting on others` after the world, and
@@ -401,7 +405,7 @@ the ones it does not name yet—. Once the project closes `caminos`, a snapshot 
 any of the three answers 400 `caminoEnElArea`, naming each one.
 **A snapshot is read whole every time it is written**, because a person reads it end to
 end: each section fits its cap in visible characters —`# Where we stand` 500, `# The map`
-400 (its legend; the drawing does not count), the sixth section 1200, and in the earlier
+400 (its legend; the drawing does not count), the sixth section and `# What changed` 1200 each, and in the earlier
 shape `# In flight`, `# What's next` and `# Waiting on others` 600 each, `# What's next`
 with open plans 300 without its checklist items— and the whole snapshot fits the sum of its
 sections' caps, text outside the sections included. A table counts as text; a drawing does not. Over a cap
