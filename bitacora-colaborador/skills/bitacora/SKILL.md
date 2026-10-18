@@ -595,9 +595,9 @@ without moving the plan, and its history and contract stay as they were:
 $API -p <project> corregir planes <id> <<< '{"prioridad":"alta"}'
 ```
 
-Each type that carries a priority says it in its own words —the plan `alta` · `media` ·
-`baja` · `algun-dia`, the bug `critico` · `mayor` · `menor` · `algun-dia`— and both are read on
-the same scale: the first word of each vocabulary weighs the same, and «someday» weighs the
+Each type that carries a priority says it in its own words —the plan and the goal `alta` ·
+`media` · `baja` · `algun-dia`, the bug `critico` · `mayor` · `menor` · `algun-dia`— and the
+vocabularies are read on the same scale: the first word of each vocabulary weighs the same, and «someday» weighs the
 same in both. A word from the other vocabulary gets a 400 naming
 the valid ones for that type.
 
@@ -1244,7 +1244,7 @@ pieces that pursue it live in their areas; the patch turns down the place gestur
 
 ```bash
 $API -p <project> objetivo <<'JSON'
-{"titulo":"…","queEs":"what the back end, the web and the app pursue together",
+{"titulo":"…","queEs":"what the back end, the web and the app pursue together","prioridad":"alta",
  "cuerpo":{"en":"# What we're after\n…\n\n# Why\n…\n\n# When it's achieved\n…"}}
 JSON
 # → answers the goal's id: it is what each piece names
@@ -1263,6 +1263,19 @@ JSON
 $API -p <project> abiertos objetivos      # what is pursued today in the project
 $API -p <project> mover objetivos <id> <<< '{"estado":"logrado","nota":"what was achieved"}'
 $API -p <project> mover objetivos <id> <<< '{"estado":"descartado","nota":"why it is no longer pursued"}'
+```
+
+**A goal carries a priority, in the plan's words**: `alta` · `media` · `baja` · `algun-dia`,
+and `media` when it declares none. It is the order the open goals are read in —the menu's
+block and the phone's Goal axis, with an arrow on the one that moves away from `media`—, and
+whoever plans decides it: it goes in the JSON at opening and changes at any desk with
+`corregir objetivos <id>`, or from the header of its page. An open `algun-dia` goal waits for
+its moment at the foot of the open ones. The read always serves it, with `media` when none was
+declared.
+
+```bash
+$API -p <project> corregir objetivos <id> <<< '{"prioridad":"alta"}'        # moves it to the front of the open ones
+$API -p <project> corregir objetivos <id> <<< '{"prioridad":"algun-dia"}'   # leaves it at the foot, waiting for its moment
 ```
 
 **Every piece takes the `objetivo` field**, when opened or through `corregir`: the id of an
@@ -1336,8 +1349,9 @@ published address, and an unpublished goal reads by its name alone.
 **The goal belongs to the project, and reads that way.** The menu has its own block, **«The
 goals»**, between «The areas» and «Recent»: every goal its reader opens, folded like an area,
 with its pieces from every area in the order of the work and each one's place in the margin.
-Open goals come first, from the most recent activity —its own or its pieces'— to the oldest,
-and achieved ones after them, dimmed; a dropped one leaves. The by-type axis
+Open goals come first, by their priority —high, medium, low and someday— and within each from
+the most recent activity —its own or its pieces'— to the oldest, and achieved ones after them,
+dimmed; a dropped one leaves. The phone's Goal axis orders them the same way. The by-type axis
 (`/<project>/tipo/objetivos`) lists them in a single batch, the project's, and the project's
 timeline says «Goal» in the margin of its moves.
 
@@ -1349,11 +1363,11 @@ the public mirror one that is not published, leave their pieces loose, like what
 none. **`subarea <place>` lists the place's pieces with the
 resolved `objetivo` on every row**, so a session reads the same grouping, and **`tablero`
 brings the goals in their own list**, `objetivos`, each with its `id`, `titulo`, `queEs`,
-`estado` and `url`, and its `dependeDe` and `destraba` when it has them:
+`estado`, `prioridad` and `url`, and its `dependeDe` and `destraba` when it has them:
 
 ```bash
 $API -p <project> subarea <place> | jq '[.items[][] | select(.objetivo) | {titulo, objetivo: .objetivo.titulo}]'
-$API -p <project> tablero | jq '.objetivos[] | {id, titulo, estado, dependeDe, destraba}'
+$API -p <project> tablero | jq '.objetivos[] | {id, titulo, estado, prioridad, dependeDe, destraba}'
 ```
 
 **An entry names it too**: `"objetivo"` in the JSON of `$API -p <project> entrada <area>`,
