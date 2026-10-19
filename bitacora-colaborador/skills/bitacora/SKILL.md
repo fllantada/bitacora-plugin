@@ -1251,13 +1251,15 @@ the single language of its publication.
 
 **It opens in the project**: `$API -p <project> objetivo`, with no area (`POST /api/objetivos`),
 and it takes its number and its slug in the project. An area that a session on the previous
-client still names is accepted and left unused, and the response says so in its `aviso`. The
+client still names becomes its first area when it is a live one, and the response says so in
+its `aviso`. The
 pieces that pursue it live in their areas; the patch turns down the place gestures on a goal
 —`hilo` and `tambienEn`— with 400 `sinLugar`.
 
 ```bash
 $API -p <project> objetivo <<'JSON'
 {"titulo":"…","queEs":"what the back end, the web and the app pursue together","prioridad":"alta",
+ "areas":["<area>","<area>"],
  "cuerpo":{"en":"# What we're after\n…\n\n# Why\n…\n\n# When it's achieved\n…"}}
 JSON
 # → answers the goal's id: it is what each piece names
@@ -1320,6 +1322,33 @@ JSON
 $API -p <project> corregir objetivos <id> <<< '{"dependeDe":["<id>","<id>"]}'   # the whole list, in its order
 $API -p <project> corregir objetivos <id> <<< '{"dependeDe":[]}'                # and removes it
 $API -p <project> item objetivos <id> | jq '{dependeDe, destraba}'
+```
+
+**A goal is born naming the areas it changes, in `areas`**. Every goal changes one or more
+worlds, and each area's snapshot tells where its world stands: **before opening it, read the
+snapshot of every area it touches** (`$API -p <project> estado <area>`), and declare them when it
+opens. The field names worlds —the `objetivos` collection and the `objetivos` adaptation are
+other things—: each name is the slug of a live area, or of one of its sub-areas, which leads
+to its area. The list arrives whole and replaces the previous one through `corregir objetivos
+<id>`, each area once and in its order, and `[]` removes it. A name that is not an area of the
+project answers 404 `areaInexistente` with the areas there are, and `compartida` or Nice To
+Have answer 400 `areaRetirada`. The read serves `areas` with the declared ones first and then
+the areas of the places its pieces are seen from, each once and only the live ones, each with
+its `nombre`, its link and its current snapshot —`numero`, `fecha`, `hito` and `delObjetivo`,
+whether that snapshot carries this goal as its milestone—; an area with no snapshot yet travels
+without `foto`. Its page lists them inside, in «The areas it touches».
+
+**Once achieved, the response names the areas waiting for their snapshot**, in
+`areasPorRenovar`: every area of the goal whose current snapshot does not carry it as its
+milestone yet, with its `nombre`, its `foto` when it has one and the `comando` that takes the
+new one. The session that achieves it takes each one with `"objetivo":"<id>"` as its milestone
+and its «What changed»; Harness stays out,
+because its snapshot belongs to the owner, and the field is missing when none waits.
+
+```bash
+$API -p <project> corregir objetivos <id> <<< '{"areas":["<area>","<area>"]}'   # the whole list, in its order
+$API -p <project> corregir objetivos <id> <<< '{"areas":[]}'                    # and removes it
+$API -p <project> item objetivos <id> | jq '.areas'
 ```
 
 **The dependency orders and warns**: the plans of a goal that waits are commissioned all the

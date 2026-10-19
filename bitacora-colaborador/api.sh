@@ -789,8 +789,8 @@ por-traducir) leer "/api/traducir?idioma=${1:-en}" ;;
 #
 # Con un slug detrás contesta por ESA área, sea `areas` o `area`: quien tipeó el plural
 # con un slug quiso una sola, y devolverle la lista entera le daba otra cosa sin avisar.
-# El área trae su `estado` resumido y sus `objetivos`: los abiertos que nombra alguna pieza
-# abierta de sus lugares, cada uno con su enlace.
+# El área trae su `estado` resumido y sus `objetivos`: los abiertos que la declaran en sus
+# `areas` o que nombra alguna pieza abierta de sus lugares, cada uno con su enlace.
 areas | area)
   if [ "$#" -ge 1 ]; then
     leer "/api/areas/$(uri "$1")"
@@ -2179,7 +2179,7 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
 El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la API lo guarda como `lineas`):
   bitacora-api abrir [destino]              (el tablero en tu navegador, sin login: enlace fresco de un solo uso;
                                              con la ruta o el enlace de una pieza, abre esa página)
-  bitacora-api tablero                      (las sub-áreas con su área y sus ítems, los objetivos del proyecto en su lista `objetivos` —cada uno con su `dependeDe` y su `destraba` cuando los tiene—, las áreas, lo pendiente por escritorio, la tríada contada)
+  bitacora-api tablero                      (las sub-áreas con su área y sus ítems, los objetivos del proyecto en su lista `objetivos` —cada uno con su `dependeDe`, su `destraba` y sus `areas` con su foto cuando los tiene—, las áreas, lo pendiente por escritorio, la tríada contada)
   bitacora-api bandeja                      (sin -p: las consultas en tu mano o en la del cliente —con su `mano` y su `falta`—, los chequeos por mirar
                                              y los planes entregados, en curso y encargados de TODOS los proyectos)
   bitacora-api encargados · en-curso · entregados   (el ciclo del encargo, por escritorio; cada plan con su sub-área y su área)
@@ -2190,7 +2190,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api areas                        (los mundos del proyecto, con sus sub-áreas)
   bitacora-api area <slug>                  (un área con las sub-áreas que viven ahí, su `estado` resumido —la foto vigente,
                                              su panorama y lo que se firmó y cambió desde que se tomó—, sus `vigentes`, los
-                                             análisis vigentes, y sus `objetivos`, los abiertos que la cruzan con su `avance`;
+                                             análisis vigentes, y sus `objetivos`, los abiertos que la declaran o la cruzan con su `avance`;
                                              `areas <slug>` es lo mismo)
   bitacora-api estado <area> [--version N]  (el estado del área entero: la foto vigente —o una anterior— con su mundo,
                                              su hito, su cadena de anteriores y `desde`: la señal de que toca renovarla)
@@ -2241,7 +2241,7 @@ Escritura (el cuerpo JSON entra por stdin):
         "prioridad": critico · mayor · menor · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
         el crítico abierto encabeza toda lista, cruzando áreas, y algun-dia espera su momento al pie, como el del plan
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
-  bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"},"dependeDe":["<id>"]}
+  bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"},"areas":["<área>"],"dependeDe":["<id>"]}
         lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; sus tres secciones van sin código y en el techo de «Qué cambia»,
         con las palabras de quien lo pide: «Por qué», lo que necesita con el enlace a la pieza que lo desarrolla; «Cuándo está logrado», lo que se ve
         funcionando al final (400 seccionConCodigo · seccionLarga, al abrirlo y en el parche que reescribe una; la que vuelve igual pasa)
@@ -2249,10 +2249,17 @@ Escritura (el cuerpo JSON entra por stdin):
         "dependeDe" son los objetivos que este espera, los que se logran antes: al abrirlo, o con `corregir objetivos <id>` {"dependeDe":["<id>","<id>"]},
         la lista entera en su orden, y {"dependeDe":[]} la saca; cada id es OTRO objetivo del proyecto y la lista deja el orden sin ciclos
         (400 dependeDeSiMismo · 404 dependenciaInexistente · 400 dependenciaCircular, que nombra el ciclo por sus títulos); los planes de un objetivo que espera se encargan igual
+        "areas" son las áreas que el objetivo cambia, leída antes la foto de cada una con `estado <área>`: al abrirlo, o con `corregir objetivos <id>`
+        {"areas":["<área>","<área>"]}, la lista entera en su orden, y {"areas":[]} la saca; cada nombre es el slug de un área viva o el de una de sus
+        sub-áreas, que lleva a su área (404 areaInexistente, con las que hay · 400 areaRetirada para compartida y Nice To Have); al leer se le suman
+        las áreas de sus piezas, y la que se retiró sale sola
         `item objetivos <id>` lo lee con sus `piezas`, su `avance`, su `camino` —`enVuelo`, `espera`, y `sinNombrar` cuando ordena sus planes—,
         `dependeDe` y `destraba` —los que espera y los que lo esperan, cada uno {id,titulo,estado,enlace}—, y en `camino.espera` cada objetivo esperado
-        que todavía lo frena —abierto o descartado; el logrado lo destraba— con "clase":"objetivo" y su `avance`;
-        se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400
+        que todavía lo frena —abierto o descartado; el logrado lo destraba— con "clase":"objetivo" y su `avance`; sus `areas`, cada una
+        {area,nombre,url,enlace,foto:{numero,fecha,hito,delObjetivo}} —sin `foto` el área todavía no tiene una; `delObjetivo` dice si la vigente lo lleva de hito—;
+        se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400 —, y la respuesta trae `areasPorRenovar`:
+        cada área cuya foto vigente todavía no lo lleva de hito, {area,nombre,enlace,foto,comando}, con el comando `escribir-estado <área>` que saca
+        la nueva con "objetivo":"<id>" y su «Qué cambió»; Harness queda afuera —su foto la pide el dueño— y el campo falta cuando ninguna espera
         «Lo que sigue», después de «Cuándo está logrado», ordena sus planes por etapas: el dibujo de etapas y debajo, por etapa, su negrita
         con el nombre de lo que trae —«**Etapa 1 · El catálogo de hoy**»— y su checklist «- [ ] [Título](enlace) — avanza cuando …» con cada
         plan, también el que cerró, y la nota en palabras de todos los días para quien lee la página; se escribe con `corregir objetivos <id>` y el
