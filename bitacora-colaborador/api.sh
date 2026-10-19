@@ -682,6 +682,19 @@ instrucciones) leer_cuerpo "/api/instrucciones" "${1:-}" ;;
 # lo distingue. Es la primera lectura del proyecto — el glosario es su vocabulario, no él.
 # Sin escribir contesta 404 diciendo qué va adentro.
 dominio) leer_cuerpo "/api/dominio" "${1:-}" ;;
+# Quiénes hacen a mano las gestiones del proyecto. Sin nada por stdin lee la lista como se
+# escribe —cada nombre con sus capas—, y con la lista por stdin la reemplaza entera (dueño):
+# `[]` la saca.
+responsables)
+  lista_json=""
+  [ -t 0 ] || lista_json="$(cat)"
+  if [ -z "$(printf '%s' "$lista_json" | tr -d '[:space:]')" ]; then
+    leer "/api/responsables"
+  else
+    vaciar_cola
+    printf '%s' "$lista_json" | escribir PUT "/api/responsables"
+  fi
+  ;;
 # Las herramientas que esta sesión tiene a mano, con qué hace cada una: las propias del
 # repo, las compartidas del perfil y las del método del plugin. El catálogo lo mantiene
 # la skill /skills del plugin, a mano, con `sincronizar-skills`.
@@ -2160,6 +2173,9 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
   bitacora-api dominio                      (de qué vive el cliente, con sus palabras, en markdown crudo; 404 si no está escrito)
   bitacora-api instrucciones                (cómo se corre el ciclo del encargo acá, en markdown crudo; 404 si no están cargadas)
         las dos imprimen el texto que su escribir-* vuelve a guardar igual · --json imprime el sobre {cuerpo, escritoEn, actualizado, url}
+  bitacora-api responsables                 (quiénes hacen a mano las gestiones, con su tinta: la lista como se escribe)
+  bitacora-api responsables                 < lista.json   (la reemplaza entera — dueño; [] la saca)
+        [{"slug":"merch","nombre":{"es":"Merch","en":"Merch"},"tinta":"violeta","email":"merch@…"}] · tinta: turquesa · violeta · rosa · ambar · email opcional
   bitacora-api skills                       (las herramientas a mano: las del repo, las del perfil y las del plugin, con qué hace cada una)
   bitacora-api skill <nombre>               (una entera: cómo se la cuenta, con qué se encadena y su SKILL.md)
   bitacora-api nota-skill <nombre>          {"paraQue":"…","cuando":"…","deja":"…","ojo":"…"}

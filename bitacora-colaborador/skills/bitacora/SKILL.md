@@ -1542,7 +1542,8 @@ do, what they sell, to whom, and what sets them apart), the **glossary** (what e
 means HERE, and whose voice it is — the client's vocabulary wins), the **stack** (each
 piece with its responsibility, its level and what it is built with), and the **flows**
 (end-to-end journeys, step by step, the project's integration tests), the **sources**
-(`fuentes`: what the client handed over, with how old each thing is and which one rules)
+(`fuentes`: what the client handed over, with how old each thing is and which one rules),
+the **people responsible** for the manual steps (`proyecto.responsables`, each with their colour)
 — plus the project's
 **instructions** (`instrucciones`: how the job cycle runs here — where each session
 stands, what gates a commit, how the PR goes out, how it is billed), as raw markdown
@@ -1571,6 +1572,27 @@ the detail is for whoever builds it; both in the same row is what keeps a journe
 having to pick one of the two readers. The flow's page opens its run with a map drawn from
 those steps —one box per step carrying its sentence up to the first pause, grouped by stage
 when the run is long—, so a `que` whose first clause names the step reads well in the map.
+
+### The people responsible — who does each manual step
+
+A manual step is what a person does by hand so the work can carry on —creating a key in
+production, Merch loading their synonyms, the client making a call—, and **each project
+declares once who those people are, each with their colour**: their `slug` names them and their
+`tinta` is the colour they are recognised by. `$API contexto` brings the list in
+`proyecto.responsables`, each name in the language you asked for.
+
+```bash
+$API responsables      # the list as it is written: each name with its layers, its tinta and its email
+```
+
+| Field | What it carries |
+|---|---|
+| `slug` | How they are named: kebab-case, once in the list |
+| `nombre` | How they read, by language |
+| `tinta` | Their colour, one of the house four: `turquesa` · `violeta` · `rosa` · `ambar` |
+| `email` | Optional: the account they sign in to the logbook with; with it they read «Your turn» on what is theirs |
+
+The list belongs to the owner, who writes it whole.
 
 ### The sources — what the client handed over, and which one rules
 
