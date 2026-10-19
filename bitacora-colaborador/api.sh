@@ -2273,7 +2273,8 @@ Escritura (el cuerpo JSON entra por stdin):
         {"estado":"descartada","nota":"por qué"} la cierran, y sin nota contesta 400 cierreSinNota; cuenta en el avance del objetivo como un plan
   bitacora-api a-gestion <plan-id>             {"responsable":"<slug>","cuerpo":{"es":"# Qué hace falta\n…\n\n# Cómo se comprueba\n…"},"mensaje":{"en":"…"},"jira":{…}}
         el plan pendiente que es trabajo de una persona pasa a gestión con su mismo id, su lugar, su slug, su objetivo y su historia;
-        "titulo" y "queEs" reemplazan los del plan; el plan que salió de pendiente, o con PR, reporte, pedidos, consumo, horas o un chequeo, contesta 400 planConTrabajo
+        "titulo" y "queEs" reemplazan los del plan; los textos van en el idioma del plan (400 sinLaCapaDelPlan);
+        el plan que salió de pendiente, o con PR, reporte, pedidos, consumo, horas, un chequeo o hallazgos que tomó, contesta 400 planConTrabajo
   bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"},"areas":["<área>"],"dependeDe":["<id>"]}
         lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; sus tres secciones van sin código y en el techo de «Qué cambia»,
         con las palabras de quien lo pide: «Por qué», lo que necesita con el enlace a la pieza que lo desarrolla; «Cuándo está logrado», lo que se ve
