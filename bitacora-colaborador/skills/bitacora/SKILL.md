@@ -1676,7 +1676,7 @@ $API responsables      # the list as it is written: each name with its layers, i
 | `tinta` | Their colour, one of the house four: `turquesa` · `violeta` · `rosa` · `ambar` |
 | `email` | Optional: the account they sign in to the logbook with; with it they read «Your turn» on what is theirs |
 
-The list belongs to the owner, who writes it whole. **A manual step in the hands of someone
+The list belongs to the owner, who writes it whole with `$API escribir-responsables`; `$API responsables` only reads it. **A manual step in the hands of someone
 the list does not have waits for them to be on it** (§Manual steps): ask the owner to add them
 —their slug, their name and a colour that sets them apart from the ones there— and open the
 step naming that slug once they are.
