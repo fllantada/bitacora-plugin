@@ -1053,20 +1053,20 @@ bajar)
   esac
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · client-reports · decisiones · simulaciones · consultas · consultas-cliente · chequeos · preguntas-jev · objetivos
+# LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · gestiones · client-reports · decisiones · simulaciones · consultas · consultas-cliente · chequeos · preguntas-jev · objetivos
 #
 # Una sub-área es el lugar y adentro cuelgan cosas de tipo distinto. El tipo se nombra
 # en plural y en la misma palabra que se lee en la app, así lo que se escribe y lo
 # que se navega dicen igual.
 # ─────────────────────────────────────────────────────────────────────────────
 tipo)
-  exige 1 "tipo <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|preguntas-jev|objetivos> [estado]" "$@"
+  exige 1 "tipo <analisis|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|preguntas-jev|objetivos> [estado]" "$@"
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
   # Con la palabra de prioridad deja solo esas: `abiertos bugs critico` son los críticos sin cerrar,
   # y `abiertos planes algun-dia` lo que espera su momento en todas las áreas.
-  exige 1 "abiertos <analisis|planes|bugs|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|preguntas-jev|objetivos> [prioridad]" "$@"
+  exige 1 "abiertos <analisis|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|preguntas-jev|objetivos> [prioridad]" "$@"
   leer "/api/items/$(uri "$1")?abiertos${2:+&prioridad=$(uri "${2:-}")}"
   ;;
 de-la-subarea | del-hilo)
@@ -1095,7 +1095,7 @@ objetivo)
   vaciar_cola
   escribir POST "/api/objetivos"
   ;;
-analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente | chequeo | pregunta-jev)
+analisis | plan | bug | gestion | client-report | simulacion | consulta | consulta-cliente | chequeo | pregunta-jev)
   exige 1 "$comando <subarea>   < JSON" "$@"
   # Un id donde va la sub-área es la lectura confundida con el alta: se nombra la lectura.
   if [ -t 0 ] && [[ "$1" =~ ^[0-9a-f]{24}$ ]]; then
@@ -1111,6 +1111,7 @@ analisis | plan | bug | client-report | simulacion | consulta | consulta-cliente
     analisis) ruta_tipo=analisis ;;
     plan) ruta_tipo=planes ;;
     bug) ruta_tipo=bugs ;;
+    gestion) ruta_tipo=gestiones ;;
     client-report) ruta_tipo=client-reports ;;
     simulacion) ruta_tipo=simulaciones ;;
     consulta) ruta_tipo=consultas ;;
@@ -2222,7 +2223,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api abiertos <tipo> [prioridad]  (los que quedaron sin cerrar; el análisis y la decisión no tienen;
                                              el bug crítico va primero, y `abiertos bugs critico` deja solo esos;
                                              `abiertos planes algun-dia` y `abiertos bugs algun-dia`, lo que espera su momento en todas las áreas)
-        tipo = analisis | planes | bugs | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos | preguntas-jev | objetivos
+        tipo = analisis | planes | bugs | gestiones | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos | preguntas-jev | objetivos
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
   bitacora-api capturar [--reemplazar] <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una: la nombra el paso de un chequeo, y el texto de un punto la muestra con ![pie](/adjunto/<ruta>);
@@ -2257,6 +2258,11 @@ Escritura (el cuerpo JSON entra por stdin):
         "prioridad": critico · mayor · menor · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
         el crítico abierto encabeza toda lista, cruzando áreas, y algun-dia espera su momento al pie, como el del plan
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
+  bitacora-api gestion <subarea>               {"titulo":"…","responsable":"<slug>","cuerpo":{"es":"# Qué hace falta\n…\n\n# Cómo se comprueba\n…"},"mensaje":{"en":"…"},"jira":{"clave":"WP-12","titulo":"…","url":"https://…"},"objetivo":"<id>"}
+        lo que una persona hace a mano para que el trabajo siga: nace `por-hacer` en manos de su "responsable", uno de `bitacora-api responsables`
+        (404 responsableInexistente con los que hay); "mensaje" es el texto listo para mandarle, en el idioma de quien lo recibe, y "jira" su ticket
+        `mover gestiones <id>` {"estado":"pedida"} cuando el responsable la tiene; {"estado":"hecha","nota":"cómo se comprobó"} o
+        {"estado":"descartada","nota":"por qué"} la cierran, y sin nota contesta 400 cierreSinNota; cuenta en el avance del objetivo como un plan
   bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"},"areas":["<área>"],"dependeDe":["<id>"]}
         lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; sus tres secciones van sin código y en el techo de «Qué cambia»,
         con las palabras de quien lo pide: «Por qué», lo que necesita con el enlace a la pieza que lo desarrolla; «Cuándo está logrado», lo que se ve

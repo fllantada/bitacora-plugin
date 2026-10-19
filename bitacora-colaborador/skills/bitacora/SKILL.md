@@ -161,7 +161,7 @@ $API -p <project> corregir analisis <id> <<< '{"cuerpo":{"en":"…"},"diagramas"
 $API -p <project> mover analisis <id> <<< '{"estado":"descartado","nota":"why it stopped holding"}'
 ```
 
-## An area holds ELEVEN TYPES, each with its own door
+## An area holds TWELVE TYPES, each with its own door
 
 An **area** is a world of the project — search, the engine's infrastructure, the contract —
 and the PLACE where its work lives: what hangs from it has a type. A topic of a few weeks is
@@ -173,6 +173,7 @@ colour:
 | **Analysis** | what was understood about a topic; a **lasting** one (`"vigente":true`) explains something that endures and stays in view while it holds | its body | escrito, or descartado when it stopped holding: it is material you read |
 | **Plan** | how something gets solved — strategy AND execution; it also carries a dispatched job | its body and where it closes | pendiente · encargado · en-curso · entregado · hecho · descartado |
 | **Bug** | a defect found while doing something else | its body, with What happens · Where · How to reproduce | abierto · arreglado · descartado |
+| **Manual step** | what a person does by hand so the work can carry on —creating a key in production, Merch loading their synonyms, the client making a call—, in the hands of its person responsible (§Manual steps) | its body, with What's needed · How we check, and its `responsable`, one of the project's | por-hacer · pedida · hecha · descartada — closing it takes its `nota` |
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off with its analysis: made, or open and waiting on whoever decides it | the whole frame, and its verdict or who decides it (`decide`) | abierta · decidida · aplicada · descartada — `resuelta`, the inherited one, reads as aplicada |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
@@ -190,6 +191,9 @@ $API -p <project> plan <area> <<'JSON'
 JSON
 $API -p <project> bug <area> <<'JSON'
 {"titulo":"…","prioridad":"critico","cuerpo":{"en":"# What happens\n…\n\n# Where\n…\n\n# How to reproduce\n1. …\n2. …"}}
+JSON
+$API -p <project> gestion <area> <<'JSON'
+{"titulo":"…","responsable":"merch","cuerpo":{"en":"# What's needed\n…\n\n# How we check\n…"}}
 JSON
 $API -p <project> client-report <area> <<'JSON'
 {"titulo":"…","ficha":{"For":"who receives it"},"cuerpo":{"en":"# …"}}
@@ -345,7 +349,7 @@ blank screen.
 
 An **area** is a world of the project — search, the engine's infrastructure, the contract,
 the commercial side — and the place where its work lives: it is still there once today's
-work is done. Its dimensions: its **pieces** (the eleven types above), the **decision book**
+work is done. Its dimensions: its **pieces** (the twelve types above), the **decision book**
 (what was decided, one point at a time), the **chronology** (dated entries: what
 happened, when, why in that order), its **state** (where it stands today) and its **book**
 (what was decided and done there, newest first). A topic of a few weeks is a **piece** of its area.
@@ -1163,6 +1167,51 @@ $API -p <project> jev-veredicto <run> archivo      # the file was wrong: the que
 $API -p <project> jev-veredicto <run> pregunta     # the question is miscalibrated
 ```
 
+## Manual steps — what a person does by hand
+
+**What a person has to do outside the code so the work can carry on is written as a manual
+step** (`gestion`): creating a key in production, Merch loading their synonyms, the client
+making a call. A plan carries the whole contract the coding session reads; a manual step
+carries its person responsible, what's needed and how we check it was done, with all the
+explanation it takes, in both languages. **Its door takes, when you open it**, like the bug's,
+two sections as headings of the body —**What's needed** (what the person responsible has to
+do, said so it can be done: what, where and with which data) and **How we check** (what you
+look at to know it is done: the command, the screen, the figure)— and its **`responsable`**:
+the slug of one of the project's people responsible (§The people responsible). The 400
+`aperturaIncompleta` names the missing section, and a person responsible who is not on the
+list answers 404 `responsableInexistente` with the ones there are. The rest of the body is
+free: the why, the context, the team's position.
+
+Two optional fields go with it: **`mensaje`**, the text you leave ready for the owner to send
+to the person responsible —in the language of whoever receives it—, and **`jira`**, the ticket
+that follows it outside, `{"clave","titulo","url"}`. Its page shows who does it in their
+colour —«Your turn» to whoever has their email—, the ticket, and the message with the button
+that copies it. **And it names the goal it pursues in its `objetivo` field, like a plan, and
+counts in its progress** (§The Goal).
+
+```bash
+$API -p <project> responsables | jq -r '.[].slug'   # who it can be assigned to
+$API -p <project> gestion algolia <<'JSON'
+{"titulo":"Merch loads the region synonyms","responsable":"merch","objetivo":"<goal id>",
+ "queEs":"what search by region expects from Merch",
+ "mensaje":{"en":"Hi Merch, could you load the region synonyms in Algolia? The list is in the sheet."},
+ "jira":{"clave":"WP-212","titulo":"Region synonyms","url":"https://…/browse/WP-212"},
+ "cuerpo":{"en":"# What's needed\nLoad into Algolia the synonyms of each region in the sheet…\n\n# How we check\nSearching «Dolomites» returns the Südtirol trips."}}
+JSON
+$API -p <project> mover gestiones <id> <<< '{"estado":"pedida","nota":"message sent on Slack"}'   # the person responsible has it
+$API -p <project> mover gestiones <id> <<< '{"estado":"hecha","nota":"searching Dolomites returns the Südtirol trips"}'
+$API -p <project> mover gestiones <id> <<< '{"estado":"descartada","nota":"why it is no longer needed"}'
+$API -p <project> corregir gestiones <id> <<< '{"responsable":"fran"}'   # into other hands, with the same check
+$API -p <project> abiertos gestiones          # what is waiting on hands, across areas
+```
+
+**Its desks**: `por-hacer` is the step written down; `pedida`, the one the person responsible
+already has —moved there when the message is sent—; and it closes **`hecha`**, with the note of
+how it was checked, or **`descartada`**, with its why. Both take their `nota` (400
+`cierreSinNota`), and a manual step is born open (400 `naceAbierta`). The done one leaves the
+view and enters the book with its note. **The owner closes it from its page too**, with
+**Done** and **Drop**, each with its line.
+
 ## The Goal — what several pieces pursue together
 
 Work that takes several PRs —the back end, the web and the app of one feature; an index
@@ -1170,10 +1219,16 @@ built in stages; a migration in parts— is split into small plans, each in the 
 world. **The goal is what those plans pursue together**: a project piece, with no place, that
 says what we're after and when it's achieved, and that each plan, bug or analysis names as its
 own. Its page shows **its standing and its progress** at the top —how it is going in one word
-with its percentage, the stage it is in and how many of its plans and bugs are done, with its
-bar— and under the body its path: what holds it back, the
+with its percentage, the stage it is in and how many of its plans, bugs and manual steps are
+done, with its bar— and under the body its path: what holds it back, the
 timeline of its stages with each piece at its current desk, and **«Material»** with the rest
 that names it, from any area (§The Goal).
+
+**What a person does by hand so the goal can carry on goes in as a manual step** (§Manual
+steps): the plan is for what a session builds, and the manual step —creating a key in
+production, Merch loading their data, the client making a call— names the goal in its
+`objetivo` field, is listed with what pursues it and counts in its progress just like a plan:
+the requested one is under way and the done one, ready.
 
 **A goal is written for whoever reads it, and that can be the client once it is shared**:
 each part in the words of whoever asks for it, while what ordered the work —the tickets, the
@@ -1220,8 +1275,8 @@ and **pending** on the paper with its grey outline. The drawing goes on top, at 
 width, with each box filled by its plan's state, the current lane highlighted and the lane
 with everything done carrying its ✓. The checklist is drawn underneath as a vertical
 timeline: the done stage folded with its ✓, the current one open under «Now», the next ones in
-soft ink, and «No stage» closing the line with the plans and bugs that pursue the goal and no
-stage names. Each box and each row of a plan opens its card —its title and its «What
+soft ink, and «No stage» closing the line with the plans, bugs and manual steps that pursue the
+goal and no stage names. Each box and each row of a plan opens its card —its title and its «What
 changes»—, and the card's title leads to the plan. The page header opens with its standing
 —«In progress 40%», the word in its state's colour— and says «Stage N of M · X of Y done» with
 its segmented bar in the same colours, counted over what pursues the goal —a piece a stage names
@@ -1451,8 +1506,8 @@ $API -p <project> corregir-entrada <area> <entry id> <<< '{"objetivo":null}'    
 {"avance":{"total":5,"cerradas":2,"abiertas":3,"enCurso":["<id of the plan in progress>"]}}
 ```
 
-The progress counts plans and bugs: `cerradas` is what is done or fixed, `abiertas` the
-rest, and `enCurso` names the plans a session has in hand. What is dropped leaves the count;
+The progress counts plans, bugs and manual steps: `cerradas` is what is done or fixed,
+`abiertas` the rest, and `enCurso` names the plans a session has in hand. What is dropped leaves the count;
 an analysis, a consultation or a decision is listed without counting.
 
 **And `marcha` says it at a glance**, with the same number as the menu and its page:
@@ -1594,7 +1649,10 @@ $API responsables      # the list as it is written: each name with its layers, i
 | `tinta` | Their colour, one of the house four: `turquesa` · `violeta` · `rosa` · `ambar` |
 | `email` | Optional: the account they sign in to the logbook with; with it they read «Your turn» on what is theirs |
 
-The list belongs to the owner, who writes it whole.
+The list belongs to the owner, who writes it whole. **A manual step in the hands of someone
+the list does not have waits for them to be on it** (§Manual steps): ask the owner to add them
+—their slug, their name and a colour that sets them apart from the ones there— and open the
+step naming that slug once they are.
 
 ### The sources — what the client handed over, and which one rules
 
