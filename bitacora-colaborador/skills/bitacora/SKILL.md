@@ -354,8 +354,9 @@ happened, when, why in that order), its **state** (where it stands today) and it
 three derived sections —«What we know», its lasting analyses newest first; «What's broken»,
 its open bugs with the critical one first; and «The goals that cross it», each with its
 progress bar—, then the rest of its pieces, its attachments, its decisions, its timeline and
-its access. The left menu is the list of areas, with each
-area's pieces hanging straight from it, and a piece's route reads Home › Area. An area with
+its access. The left menu reads like the phone navigator: the goals first, then the areas —each
+one opens its page and unfolds its open bugs, the critical one on top and the «someday» ones at
+the foot— and last the lasting analyses grouped by area; a piece's route reads Home › Area. An area with
 more than one place belongs to a project whose `sin-subareas` adaptation is pending: it is
 read with its sub-areas, and the owner folds each one into its area
 (`fusionar <sub-area> <area>`: its pieces keep the sub-area's name and brief as their
@@ -1389,11 +1390,14 @@ reads the piece opens the goal it pursues. In the public mirror the link leads t
 published address, and an unpublished goal reads by its name alone.
 
 **The goal belongs to the project, and reads that way.** The menu has its own block, **«The
-goals»**, between «The areas» and «Recent»: every goal its reader opens, folded like an area,
+goals»**, at the very top: every goal its reader opens, folded like an area,
 with its pieces from every area in the order of the work and each one's place in the margin.
 Open goals come first, by their priority —high, medium, low and someday— and within each from
 the most recent activity —its own or its pieces'— to the oldest, and achieved ones after them,
-dimmed; a dropped one leaves. Under each one's name goes **the bar of its standing**, filled up
+dimmed; a dropped one leaves. At the foot, whoever sees the whole project gets **«No goal»**,
+with the live pieces that pursue none and each one's place in the margin, except the bugs and the
+lasting analyses, which read in their area and in «The analyses». Under each one's name goes
+**the bar of its standing**, filled up
 to its percentage, with the figure and the state in one word. The phone's Goals axis orders them
 the same way and carries the same bar in each group's head. The by-type axis
 (`/<project>/tipo/objetivos`) lists them in a single batch, the project's, and the project's
