@@ -621,6 +621,23 @@ vocabularies are read on the same scale: the first word of each vocabulary weigh
 same in both. A word from the other vocabulary gets a 400 naming
 the valid ones for that type.
 
+**`dependeDe` names the manual steps a plan waits on before it starts**: the ids of manual
+steps of the project, when opening it or with `corregir planes <id>`, the whole list in its
+order, and `[]` removes it; an id that is not a manual step of the project gets 404
+`dependenciaInexistente`. The plan's read serves them resolved in `dependeDe`, each
+`{id, titulo, estado, enlace, responsable}`, and a manual step's read serves in `destraba` the
+plans waiting on it. While one is still open, the plan's box on the goal's map says so
+(§The Goal), and moving the plan to `encargado` answers its `aviso` naming each open step and
+who does it, and leaves it assigned. A done step frees the plan, and so does a dropped one; the
+order between plans lives in the map's arrows.
+
+```bash
+$API -p <project> corregir planes <id> <<< '{"dependeDe":["<manual step id>"]}'   # the whole list, in its order
+$API -p <project> corregir planes <id> <<< '{"dependeDe":[]}'                     # and removes it
+$API -p <project> item planes <id> | jq '.dependeDe'      # each step with its desk and its person
+$API -p <project> item gestiones <id> | jq '.destraba'    # the plans waiting on it
+```
+
 **On the web, a plan's desks read in THREE GROUPS**: **to do** is `pendiente`, **assigned**
 holds `encargado` and `en-curso`, and **done** holds `entregado` and `hecho` —the delivered one
 marked «awaiting your sign-off» and first within its group, since it is the only one that
@@ -1213,9 +1230,9 @@ opens the manual step. The JSON is the manual step's: its `responsable` and the 
 opening, plus `titulo`, `queEs`, `mensaje` and `jira` when needed; a title and a summary that
 arrive replace the plan's. The texts go in the plan's language, which the manual step keeps:
 one that arrives only in another layer answers 400 `sinLaCapaDelPlan`. It takes the `pendiente`
-plan nobody started: one that has left `pendiente`, or with a PR, a report, requests, usage, hours
-in the bank, a visual check reviewing it or review findings it took, answers 400
-`planConTrabajo` with what it found, and stays a plan.
+plan nobody started: one that has left `pendiente`, or with a PR, a report, requests, usage, the
+manual steps it waits on, hours in the bank, a visual check reviewing it or review findings it
+took, answers 400 `planConTrabajo` with what it found, and stays a plan.
 
 ```bash
 $API -p <project> a-gestion <plan id> <<'JSON'
@@ -1306,8 +1323,13 @@ and the house fills it with the pale of that person's colour and an ink outline,
 narrator's box on its top corner —the hand-drawn frame in the full colour— holding their name,
 or «Your turn» to whoever has their email; one no longer on the list reads by its slug, in
 grey. Plans keep their state's colour, so what a person does by hand stands out at a glance,
-and a done step is painted done, with its ✓, and keeps the name on its corner. A section that
-does not read as stages is painted as its markdown, with its drawing painted.
+and a done step is painted done, with its ✓, and keeps the name on its corner. **A plan waiting
+on an open manual step says so at the foot of its box** (§Plans, `dependeDe`): a monospace line
+in the colour of that step's person —«WAITS ON A MANUAL STEP OF YOURS» to whoever has it,
+«WAITS ON A MANUAL STEP BY MERCH» to everyone else—, naming the reader's own when one is
+theirs, and the first open one otherwise; it goes once the step is done. The arrow from the
+step to the plan is written in the map, like every dependency. A section that does not read as
+stages is painted as its markdown, with its drawing painted.
 
 **The patch charges it** (`$API -p <project> corregir objetivos <id>`, with the whole
 body) while the goal is open and has open plans or manual steps that name it, once the project
