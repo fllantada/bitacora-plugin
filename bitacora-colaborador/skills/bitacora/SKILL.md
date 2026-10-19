@@ -401,7 +401,9 @@ pieces with their state, with its legend underneath). **A snapshot that brings `
 changed` pays it after the map**: what changed in the area since the previous snapshot, told
 by the session that takes it in the words of whoever uses the system and without code —
 empty or «None» answers 400 `estadoIncompleto`—, and underneath it the page lists by itself
-what was signed, decided and achieved in the area between the two snapshots. **The path of each piece of work lives
+what was signed, decided and achieved in the area between the two snapshots. Once the project
+closes its `estado-actual` adaptation, every snapshot with a previous one pays it, except
+Harness's. **The path of each piece of work lives
 in its goal** (§The Goal): the order of its plans in its `# What's next`, and what is in
 flight and what waits on others, derived on its page. **Snapshots written in the earlier
 shape** carry `# In flight`, `# What's next` and `# Waiting on others` after the world, and
@@ -434,10 +436,13 @@ spot, `# How we work`, and SEO carries `# How we get found` —each surface wher
 has to show up (Google, Bing and the AI assistants that answer by citing), what each reads
 from the site, what it understands of the project and how showing up is measured, with its
 `d2` drawing—, required once the project closes its `seo` adaptation. Read it with `$API estado <slug>`; a new snapshot is taken at the close of an important
-change (`$API escribir-estado <slug>`). **When that change is a signed-off plan, the session
-that signs it off takes the snapshot**: a plan that changes its world's big picture is a
-milestone, and the session takes the snapshot with that plan as its milestone and tells the
-person in one line.
+change (`$API escribir-estado <slug>`). **Each area's milestone is the achieved goal that
+changed it**: once a goal is achieved, `areasPorRenovar` names the areas waiting for their
+snapshot (§The Goal), and the session that achieved it takes each one with
+`"objetivo":"<id>"` as its milestone and its `# What changed`. So an area's series of
+snapshots is the series of goals that changed it. A signed-off plan that pursues no goal and
+changes its world's big picture is a milestone too, and the session that signs it off takes
+the snapshot with that `plan`; either session tells the person in one line.
 
 **The state says where a world stands today; its book, what was decided and done to get
 there.** Every area and every goal has one, on its page next to the state
@@ -1341,12 +1346,16 @@ without `foto`. Its page lists them inside, in «The areas it touches».
 
 **Once achieved, the response names the areas waiting for their snapshot**, in
 `areasPorRenovar`: every area of the goal whose current snapshot does not carry it as its
-milestone yet, with its `nombre`, its `foto` when it has one and the `comando` that takes the
-new one. The session that achieves it takes each one with `"objetivo":"<id>"` as its milestone
-and its «What changed»; Harness stays out,
-because its snapshot belongs to the owner, and the field is missing when none waits.
+milestone yet, with its `area`, its `nombre`, its `foto` when it has one and the `comando` that
+takes the new one, `bitacora-api escribir-estado <area>`. The session that achieves it runs
+each `comando` with `-p <project>` and the snapshot's body on stdin —its sections in `cuerpo`,
+its `hito`, `"objetivo":"<id>"` as its milestone and the compiled `diagramas`—, with its
+`# What changed`; Harness stays out, because its snapshot belongs to the owner, and the field
+is missing when none waits.
 
 ```bash
+$API -p <project> mover objetivos <id> <<< '{"estado":"logrado","nota":"what was achieved"}' | jq -r '.areasPorRenovar[]? | .area'
+$API -p <project> escribir-estado <area> < snapshot.json   # {"escritoEn":"en","cuerpo":{"en":"# Where we stand\n…\n\n# The map\n…\n\n# What changed\n…"},"hito":{"en":"…"},"objetivo":"<id>","diagramas":[…]}
 $API -p <project> corregir objetivos <id> <<< '{"areas":["<area>","<area>"]}'   # the whole list, in its order
 $API -p <project> corregir objetivos <id> <<< '{"areas":[]}'                    # and removes it
 $API -p <project> item objetivos <id> | jq '.areas'
