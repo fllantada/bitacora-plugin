@@ -1617,7 +1617,7 @@ diferir)
   ;;
 # Corregir una decisión registrada: su veredicto, su marco, sus textos — o mudarla de hilo.
 # Corregir: con el tipo, cualquier pieza por su puerta genérica; con el id solo, una decisión
-# por la suya, que es la única con puerta propia. El objetivo lleva su «Lo que sigue» en el
+# por la suya, que es la única con puerta propia. El objetivo lleva su «El mapa» en el
 # cuerpo entero, y con planes abiertos que lo nombran la puerta lo cobra desde que el
 # proyecto cerró `caminos` o desde que el cuerpo lo trae.
 corregir)
@@ -1954,8 +1954,8 @@ sincronizar-skills)
 # —cada sección en su techo y la foto entera en la suma (400 `seccionLarga` y `estadoLargo`,
 # que la listan sección por sección), «Dónde estamos» sin código, «El mapa» con su dibujo— y
 # sella las fuentes del área; la foto anterior queda como historia. La foto se escribe entera
-# sobre la vigente, que se lee antes con `estado <area>`. El orden de los planes va al «Lo
-# que sigue» de su objetivo (`corregir objetivos <id>`): en el proyecto que cerró la
+# sobre la vigente, que se lee antes con `estado <area>`. El orden de los planes va al mapa
+# de su objetivo (`corregir objetivos <id>`): en el proyecto que cerró la
 # adaptación `caminos`, la foto que trae «En vuelo», «Lo que sigue» o «Lo que espera de
 # otros» contesta 400 `caminoEnElArea`. Mientras `caminos` está pendiente, la foto escrita
 # con la forma de antes se toma y se corrige con ella: con planes abiertos en el área, «Lo
@@ -2276,7 +2276,7 @@ Escritura (el cuerpo JSON entra por stdin):
         se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400 —, y la respuesta trae `areasPorRenovar`:
         cada área cuya foto vigente todavía no lo lleva de hito, {area,nombre,enlace,foto,comando}, con el comando `escribir-estado <área>` que saca
         la nueva con "objetivo":"<id>" y su «Qué cambió»; Harness queda afuera —su foto la pide el dueño— y el campo falta cuando ninguna espera
-        «Lo que sigue», después de «Cuándo está logrado», ordena sus planes por etapas: el dibujo de etapas y debajo, por etapa, su negrita
+        «El mapa», después de «Cuándo está logrado», ordena sus planes por etapas: el dibujo de etapas y debajo, por etapa, su negrita
         con el nombre de lo que trae —«**Etapa 1 · El catálogo de hoy**»— y su checklist «- [ ] [Título](enlace) — avanza cuando …» con cada
         plan, también el que cerró, y la nota en palabras de todos los días para quien lee la página; se escribe con `corregir objetivos <id>` y el
         cuerpo entero, y la página pinta sobre los dos el estado de hoy —listo en verde, en marcha en ámbar, pendiente en gris— y dibuja la
@@ -2365,7 +2365,7 @@ Escritura (el cuerpo JSON entra por stdin):
         "tanda":"<id>" la suma a una tanda. Lo que se decide MIRANDO lleva sus "capturas", que `capturar` sube antes
   bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}   (una decisión)
   bitacora-api corregir <tipo> <id>         {"cuerpo":{…},"diagramas":[…]} · {"titulo":"…"} · {"queEs":"…"}   (cualquier otra pieza;
-                                              el cuerpo de un objetivo va entero, con su «Lo que sigue»)
+                                              el cuerpo de un objetivo va entero, con su «El mapa»)
                                             · {"prioridad":"alta"} (su orden entre los de su escritorio, en cualquier escritorio:
                                               un plan alta · media · baja · algun-dia, un bug critico · mayor · menor · algun-dia)
                                             · {"vigente":true} · {"vigente":false} (un análisis: si explica algo que dura; marcar deja quieto

@@ -404,7 +404,7 @@ empty or «None» answers 400 `estadoIncompleto`—, and underneath it the page 
 what was signed, decided and achieved in the area between the two snapshots. Once the project
 closes its `estado-actual` adaptation, every snapshot with a previous one pays it, except
 Harness's. **The path of each piece of work lives
-in its goal** (§The Goal): the order of its plans in its `# What's next`, and what is in
+in its goal** (§The Goal): the order of its plans in the goal's own `# The map`, and what is in
 flight and what waits on others, derived on its page. **Snapshots written in the earlier
 shape** carry `# In flight`, `# What's next` and `# Waiting on others` after the world, and
 are read, corrected and painted with it; while the project's `caminos` adaptation is
@@ -1195,14 +1195,16 @@ The 400 `aperturaIncompleta` names them with what each one states, and the one t
 code or goes over its ceiling answers `seccionConCodigo` or `seccionLarga`, naming it. **The
 patch that rewrites one charges it too** —`corregir objetivos <id>` with the whole body—, and
 the one that comes back as it was goes through: what is already written reads as it is until
-someone rewrites it, and the patch that only reorders «What's next» at sign-off goes through
+someone rewrites it, and the patch that only reorders «The map» at sign-off goes through
 clean.
 
-**Its path: «What's next» is written, and the house paints today's state on it.** **What's
-next** is one more section of its body, after «When it's achieved» and at the same heading
-level: the order of its plans by stage, which is judgement. Its shape is a `d2` drawing of
-stages —one lane per stage, one box per plan saying what it changes and carrying `link:` to
-its plan, arrows are dependencies—, then per stage a bold line with the stage and its
+**Its path: «The map» is written, and the house paints today's state on it.** **The map**
+is one more section of its body, after «When it's achieved» and at the same heading level:
+the order of its plans by stage, which is judgement, with what is done and what is moving
+painted on it, so it is the whole goal at a glance. A body written with the earlier name,
+`# What's next` or `# Lo que sigue`, is read, charged and painted as «The map». Its shape
+is a `d2` drawing of stages —one lane per stage, one box per plan saying what it changes
+and carrying `link:` to its plan, arrows are dependencies—, then per stage a bold line with the stage and its
 checklist, one item per plan that names the goal, `- [ ] [Plan title](link) — moves when …`,
 the closed ones included, and one or two sentences on why that order, within 300 visible
 characters without the drawing or the checklist items. **Each stage's name says what it
@@ -1244,7 +1246,7 @@ every goal in its `dependeDe` that still holds it back —open or dropped—, wi
 in the list's order, then every live request of its plans with its role and what it needs,
 linked to `…#pedido-N`. The goal's page reads from the visual to the hardest to read: the
 header with its progress —and the «Achieved» band with its date once closed—, the «Waits on»
-strip with one row per thing waiting on others, «What's next» with its drawing and the
+strip with one row per thing waiting on others, «The map» with its drawing and the
 timeline —where a plan in flight carries its front—, then the body in a fixed order whatever
 order it was written in —«What we're after», «When it's achieved» and «Why», each under its
 own heading, and any section the author added after them—, «Unblocks», «Material» with what the
@@ -1279,7 +1281,7 @@ $API -p <project> corregir <decision id> <<< '{"objetivo":"<goal id>"}' # a deci
 
 $API -p <project> item objetivos <id>     # the goal with its `piezas`, its `avance` and its `camino`
 $API -p <project> corregir objetivos <id> <<'JSON'   # orders its plans: the whole body goes
-{"cuerpo":{"en":"# What we're after\n…\n\n# Why\n…\n\n# When it's achieved\n…\n\n# What's next\n…"}}
+{"cuerpo":{"en":"# What we're after\n…\n\n# Why\n…\n\n# When it's achieved\n…\n\n# The map\n…"}}
 JSON
 $API -p <project> abiertos objetivos      # what is pursued today in the project
 $API -p <project> mover objetivos <id> <<< '{"estado":"logrado","nota":"what was achieved"}'
