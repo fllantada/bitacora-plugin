@@ -816,8 +816,9 @@ areas | area)
 # Contesta la vigente entera —su cuerpo con el mundo del área (# Dónde estamos, la sexta
 # cuando la lleva, # El mapa), su hito, el plan que la produjo— más la cadena (`anterior`,
 # `siguiente`, `fotos`) y `desde`: lo que se firmó y qué fuente cambió después de tomarla,
-# que es la señal de que toca renovarla. La foto que trae «Lo que sigue» suma los planes
-# abiertos del área que la sección no nombra (`desde.planes`, con su enlace).
+# que es la señal de que toca renovarla. La foto que trae «Lo que sigue» suma los planes y
+# las gestiones abiertas del área que la sección no nombra (`desde.planes`, con su tipo y su
+# enlace).
 # Con `--version N` contesta una foto anterior. Sin ninguna foto, 404 diciendo cómo se toma.
 estado)
   exige 1 "estado <area> [--version N]" "$@"
@@ -1627,8 +1628,8 @@ diferir)
 # Corregir una decisión registrada: su veredicto, su marco, sus textos — o mudarla de hilo.
 # Corregir: con el tipo, cualquier pieza por su puerta genérica; con el id solo, una decisión
 # por la suya, que es la única con puerta propia. El objetivo lleva su «El mapa» en el
-# cuerpo entero, y con planes abiertos que lo nombran la puerta lo cobra desde que el
-# proyecto cerró `caminos` o desde que el cuerpo lo trae.
+# cuerpo entero, y con planes o gestiones abiertas que lo nombran la puerta lo cobra desde
+# que el proyecto cerró `caminos` o desde que el cuerpo lo trae.
 corregir)
   exige 1 "corregir <id>   < {\"veredicto\":\"…\"} (una decisión) · corregir <tipo> <id>   < {\"cuerpo\":{…}} (cualquier otra pieza)" "$@"
   vaciar_cola
@@ -1967,9 +1968,9 @@ sincronizar-skills)
 # de su objetivo (`corregir objetivos <id>`): en el proyecto que cerró la
 # adaptación `caminos`, la foto que trae «En vuelo», «Lo que sigue» o «Lo que espera de
 # otros» contesta 400 `caminoEnElArea`. Mientras `caminos` está pendiente, la foto escrita
-# con la forma de antes se toma y se corrige con ella: con planes abiertos en el área, «Lo
-# que sigue» con su dibujo de etapas y cada plan abierto por su enlace en un ítem de
-# checklist, `- [ ] [Título](enlace) — avanza cuando …` (400 `planesSinNombrar`, que los
+# con la forma de antes se toma y se corrige con ella: con planes o gestiones abiertas en el
+# área, «Lo que sigue» con su dibujo de etapas y cada plan o gestión abierta por su enlace en
+# un ítem de checklist, `- [ ] [Título](enlace) — avanza cuando …` (400 `planesSinNombrar`, que los
 # lista listos para pegar).
 # `editar-estado` corrige la vigente sin abrir versión: una frase, un diagrama recompilado,
 # el hito, su plan u objetivo (`null` los saca), o la capa traducida con la huella del
@@ -2294,12 +2295,13 @@ Escritura (el cuerpo JSON entra por stdin):
         se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400 —, y la respuesta trae `areasPorRenovar`:
         cada área cuya foto vigente todavía no lo lleva de hito, {area,nombre,enlace,foto,comando}, con el comando `escribir-estado <área>` que saca
         la nueva con "objetivo":"<id>" y su «Qué cambió»; Harness queda afuera —su foto la pide el dueño— y el campo falta cuando ninguna espera
-        «El mapa», después de «Cuándo está logrado», ordena sus planes por etapas: el dibujo de etapas y debajo, por etapa, su negrita
-        con el nombre de lo que trae —«**Etapa 1 · El catálogo de hoy**»— y su checklist «- [ ] [Título](enlace) — avanza cuando …» con cada
-        plan, también el que cerró, y la nota en palabras de todos los días para quien lee la página; se escribe con `corregir objetivos <id>` y el
+        «El mapa», después de «Cuándo está logrado», ordena sus planes y sus gestiones por etapas: el dibujo de etapas y debajo, por etapa, su
+        negrita con el nombre de lo que trae —«**Etapa 1 · El catálogo de hoy**»— y su checklist «- [ ] [Título](enlace) — avanza cuando …» con
+        cada plan y cada gestión, también los que cerraron, y la nota en palabras de todos los días para quien lee la página; se escribe con `corregir objetivos <id>` y el
         cuerpo entero, y la página pinta sobre los dos el estado de hoy —listo en verde, en marcha en ámbar, pendiente en gris— y dibuja la
-        checklist como línea de tiempo. Con planes abiertos que lo nombran —desde que el proyecto cerró `caminos` o desde que el cuerpo la trae—
-        la puerta cobra su dibujo de etapas y cada plan por su enlace en su checklist, en 300 sin los ítems; si no, va libre en 600
+        checklist como línea de tiempo. Con planes o gestiones abiertas que lo nombran —desde que el proyecto cerró `caminos` o desde que el
+        cuerpo la trae— la puerta cobra su dibujo de etapas y cada plan o gestión por su enlace en su checklist, en 300 sin los ítems; si no,
+        va libre en 600
         (400 caminoIncompleto · seccionSinDibujo · seccionLarga · planesSinNombrar, que los lista listos para pegar)
   bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"}}
   bitacora-api simulacion <subarea>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
@@ -2442,7 +2444,7 @@ Escritura (el cuerpo JSON entra por stdin):
         que la motivó cuando lo hubo (los dos juntos valen; la página enlaza cada uno); la foto anterior queda
         como historia y se recorre con «Anterior». El camino vive en el objetivo: con `caminos` cerrada, una foto con
         «En vuelo», «Lo que sigue» o «Lo que espera de otros» contesta 400 caminoEnElArea; mientras está pendiente, la
-        foto escrita con la forma de antes se toma y se corrige con ella (cada una 600; con planes abiertos en el área,
+        foto escrita con la forma de antes se toma y se corrige con ella (cada una 600; con planes o gestiones abiertas en el área,
         «Lo que sigue» con su dibujo de etapas y por etapa su checklist, `- [ ] [Título](enlace) — avanza cuando …`,
         en 300 sin los ítems)
   bitacora-api editar-estado <area>         {"cuerpo":…} · {"hito":"…"} · {"objetivo":"<id>"} · {"traduccion":{"idioma":"en","cuerpo":"…","hash":"…"},"diagramas":[…]}

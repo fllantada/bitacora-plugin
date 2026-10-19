@@ -413,14 +413,14 @@ flight and what waits on others, derived on its page. **Snapshots written in the
 shape** carry `# In flight`, `# What's next` and `# Waiting on others` after the world, and
 are read, corrected and painted with it; while the project's `caminos` adaptation is
 pending, a snapshot that brings any of those headings is charged with that shape —with open
-plans in the area, `# What's next` is their order, as in a goal, and `desde.planes` lists
-the ones it does not name yet—. Once the project closes `caminos`, a snapshot that brings
+plans or manual steps in the area, `# What's next` is their order, as in a goal, and
+`desde.planes` lists the ones it does not name yet, each with its `tipo`—. Once the project closes `caminos`, a snapshot that brings
 any of the three answers 400 `caminoEnElArea`, naming each one.
 **A snapshot is read whole every time it is written**, because a person reads it end to
 end: each section fits its cap in visible characters —`# Where we stand` 500, `# The map`
 400 (its legend; the drawing does not count), the sixth section and `# What changed` 1200 each, and in the earlier
 shape `# In flight`, `# What's next` and `# Waiting on others` 600 each, `# What's next`
-with open plans 300 without its checklist items— and the whole snapshot fits the sum of its
+with open plans or manual steps 300 without its checklist items— and the whole snapshot fits the sum of its
 sections' caps, text outside the sections included. A table counts as text; a drawing does not. Over a cap
 the server answers 400 `seccionLarga` or `estadoLargo`, listing every section with what it
 carries and what fits. It slims down by drawing what can be drawn, a checklist instead of
@@ -1310,12 +1310,15 @@ and a done step is painted done, with its ✓, and keeps the name on its corner.
 does not read as stages is painted as its markdown, with its drawing painted.
 
 **The patch charges it** (`$API -p <project> corregir objetivos <id>`, with the whole
-body) while the goal is open and has open plans that name it, once the project closes its
-`caminos` adaptation or once the body already brings the heading: missing or empty answers
-400 `caminoIncompleto` with its outline, without a drawing `seccionSinDibujo`, too long
-`seccionLarga`, and an open plan the checklist does not name by its link `planesSinNombrar`,
-with the items ready to paste. Any other goal carries the section free, within 600; its
-opening takes only the three sections, because it is born before its plans.
+body) while the goal is open and has open plans or manual steps that name it, once the project
+closes its `caminos` adaptation or once the body already brings the heading: missing or empty
+answers 400 `caminoIncompleto` with its outline, without a drawing `seccionSinDibujo`, too long
+`seccionLarga`, and an open plan or manual step the checklist does not name by its link
+`planesSinNombrar`, with the items ready to paste. **The map names every open plan and every
+open manual step**: a step in `por-hacer` or `pedida` goes in its stage, next to the plans it
+unblocks, and a done one leaves the count like a done plan. Any other goal carries the section
+free, within 600; its opening takes only the three sections, because it is born before its
+plans.
 
 **«In flight» and «Waiting on others» are derived when read** from the pieces that name
 the goal, so they are always current: in flight, its plans in `encargado`, `en-curso` or
@@ -1332,8 +1335,8 @@ order it was written in —«What we're after», «When it's achieved» and «Wh
 own heading, and any section the author added after them—, «Unblocks», «Material» with what the
 line does not hold, and the closing, its history and its book at the foot. Its read brings
 the path in `camino` —`enVuelo`, `espera` with each row's `clase` (`decision`, `pieza`,
-`objetivo` with its `avance`, `pedido`), and `sinNombrar` with the open plans its «What's
-next» does not name yet, while it charges its order—. What the path closed is told by the
+`objetivo` with its `avance`, `pedido`), and `sinNombrar` with the open plans and manual steps its
+«What's next» does not name yet, while it charges its order—. What the path closed is told by the
 goal's book, and the public mirror serves the header, the body, the line and «Material», in
 the single language of its publication.
 
