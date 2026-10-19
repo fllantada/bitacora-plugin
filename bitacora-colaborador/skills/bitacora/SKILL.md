@@ -1298,8 +1298,14 @@ changes»—, and the card's title leads to the plan. The page header opens with
 —«In progress 40%», the word in its state's colour— and says «Stage N of M · X of Y done» with
 its segmented bar in the same colours, counted over what pursues the goal —a piece a stage names
 without pursuing it is painted in its stage, outside the count—, and each piece its reader sees
-turn done gets a small celebration once. A section that does not read as
-stages is painted as its markdown, with its drawing painted.
+turn done gets a small celebration once. **A manual step is painted in its person
+responsible's colour**: its box is written like a plan's, with `link:` to the step's `enlace`,
+and the house fills it with the pale of that person's colour and an ink outline, with a
+narrator's box on its top corner —the hand-drawn frame in the full colour— holding their name,
+or «Your turn» to whoever has their email; one no longer on the list reads by its slug, in
+grey. Plans keep their state's colour, so what a person does by hand stands out at a glance,
+and a done step is painted done, with its ✓, and keeps the name on its corner. A section that
+does not read as stages is painted as its markdown, with its drawing painted.
 
 **The patch charges it** (`$API -p <project> corregir objetivos <id>`, with the whole
 body) while the goal is open and has open plans that name it, once the project closes its
