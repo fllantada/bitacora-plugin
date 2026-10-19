@@ -1456,18 +1456,17 @@ reads the piece opens the goal it pursues. In the public mirror the link leads t
 published address, and an unpublished goal reads by its name alone.
 
 **The goal belongs to the project, and reads that way.** The menu has its own block, **«The
-goals»**, at the very top: every goal its reader opens, folded like an area,
-with its pieces from every area in the order of the work and each one's place in the margin.
-Open goals come first, by their priority —high, medium, low and someday— and within each from
-the most recent activity —its own or its pieces'— to the oldest, and achieved ones after them,
-dimmed; a dropped one leaves. At the foot, whoever sees the whole project gets **«No goal»**,
-with the live pieces that pursue none and each one's place in the margin, except the bugs and the
-lasting analyses, which read in their area and in «The analyses». Under each one's name goes
-**the bar of its standing**, filled up
-to its percentage, with the figure and the state in one word. The phone's Goals axis orders them
-the same way and carries the same bar in each group's head. The by-type axis
-(`/<project>/tipo/objetivos`) lists them in a single batch, the project's, and the project's
-timeline says «Goal» in the margin of its moves.
+goals»**, at the very top: every goal its reader opens is a row that opens its page, where its
+pieces are walked through. Open goals come first, by their priority —high, medium, low and
+someday— and within each from the most recent activity —its own or its pieces'— to the oldest,
+and achieved ones after them, dimmed; a dropped one leaves. At the foot, whoever sees the whole
+project gets **«No goal»**, with the live pieces that pursue none and each one's place in the
+margin, except the bugs and the lasting analyses, which read in their area and in «The
+analyses». Under each one's name goes **the bar of its standing**, filled up to its percentage,
+with the figure and the state in one word. The phone's Goals axis orders them the same way and
+carries the same bar in each group's head. The by-type axis (`/<project>/tipo/objetivos`) lists
+them in a single batch, the project's, and the project's timeline says «Goal» in the margin of
+its moves.
 
 **Inside each area, the goal heads the place's pieces that pursue it**, with the glyph of its
 desk and in the order of the work, and the group sits where its most advanced piece sits: the
