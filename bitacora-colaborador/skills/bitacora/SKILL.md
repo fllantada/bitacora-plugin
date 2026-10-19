@@ -1205,6 +1205,23 @@ $API -p <project> corregir gestiones <id> <<< '{"responsable":"fran"}'   # into 
 $API -p <project> abiertos gestiones          # what is waiting on hands, across areas
 ```
 
+**A plan that turns out to be a person's work becomes a manual step with `a-gestion`**, and
+keeps its address: the same id, its place, its slug, `tambienEn`, its goal, its publication,
+its translation and its history, with one more step «converted from a plan», and it takes its
+number among the manual steps of its place. Whatever linked to it —the map's box, a document—
+opens the manual step. The JSON is the manual step's: its `responsable` and the body with its
+opening, plus `titulo`, `queEs`, `mensaje` and `jira` when needed; a title and a summary that
+arrive replace the plan's. It takes the `pendiente` plan nobody started: one that has left
+`pendiente`, or with a PR, a report, requests, usage, hours in the bank or a visual check reviewing it,
+answers 400 `planConTrabajo` with what it found, and stays a plan.
+
+```bash
+$API -p <project> a-gestion <plan id> <<'JSON'
+{"responsable":"merch","mensaje":{"en":"Hi Merch, could you load the region synonyms in Algolia?"},
+ "cuerpo":{"en":"# What's needed\nLoad into Algolia the synonyms of each region in the sheet…\n\n# How we check\nSearching «Dolomites» returns the Südtirol trips."}}
+JSON
+```
+
 **Its desks**: `por-hacer` is the step written down; `pedida`, the one the person responsible
 already has —moved there when the message is sent—; and it closes **`hecha`**, with the note of
 how it was checked, or **`descartada`**, with its why. Both take their `nota` (400

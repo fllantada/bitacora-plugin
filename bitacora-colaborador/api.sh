@@ -1121,6 +1121,14 @@ analisis | plan | bug | gestion | client-report | simulacion | consulta | consul
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
   ;;
+# El plan pendiente que es trabajo de una persona pasa a gestión con su misma dirección: el
+# JSON de la gestión por stdin —su responsable y el cuerpo con su apertura—, y el servidor
+# conserva del plan su lugar, su slug, su objetivo y su historia.
+a-gestion)
+  exige 1 "a-gestion <plan-id>   < {\"responsable\":\"<slug>\",\"cuerpo\":{\"es\":\"# Qué hace falta\\n…\\n\\n# Cómo se comprueba\\n…\"}}" "$@"
+  vaciar_cola
+  escribir POST "/api/items/planes/$(uri "$1")/gestion"
+  ;;
 # Lo que dejaron las reviews. Sin nada, las clases de FIX: cada una con sus reviews, el
 # peldaño que debió frenarla, qué pasó con sus FIX, si se repite (`seRepite`) y las
 # preguntas de Jev que la reemplazan; con una clase, esa entera. Con --bandeja, lo que junta
@@ -2263,6 +2271,9 @@ Escritura (el cuerpo JSON entra por stdin):
         (404 responsableInexistente con los que hay); "mensaje" es el texto listo para mandarle, en el idioma de quien lo recibe, y "jira" su ticket
         `mover gestiones <id>` {"estado":"pedida"} cuando el responsable la tiene; {"estado":"hecha","nota":"cómo se comprobó"} o
         {"estado":"descartada","nota":"por qué"} la cierran, y sin nota contesta 400 cierreSinNota; cuenta en el avance del objetivo como un plan
+  bitacora-api a-gestion <plan-id>             {"responsable":"<slug>","cuerpo":{"es":"# Qué hace falta\n…\n\n# Cómo se comprueba\n…"},"mensaje":{"en":"…"},"jira":{…}}
+        el plan pendiente que es trabajo de una persona pasa a gestión con su mismo id, su lugar, su slug, su objetivo y su historia;
+        "titulo" y "queEs" reemplazan los del plan; el plan que salió de pendiente, o con PR, reporte, pedidos, consumo, horas o un chequeo, contesta 400 planConTrabajo
   bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"},"areas":["<área>"],"dependeDe":["<id>"]}
         lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; sus tres secciones van sin código y en el techo de «Qué cambia»,
         con las palabras de quien lo pide: «Por qué», lo que necesita con el enlace a la pieza que lo desarrolla; «Cuándo está logrado», lo que se ve
