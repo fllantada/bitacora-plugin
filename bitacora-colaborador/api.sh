@@ -1493,7 +1493,9 @@ aplicar-cliente)
 #      solo a `contestado`.
 #   4. `visto <id>` trae lo que dijo de cada paso; los rechazos y los `cambiosPedidos` —lo
 #      aceptado con una línea escrita— son la ronda siguiente del plan, sobre la misma rama.
-#      `aplicar-chequeo <id>` lo cierra, y firmar el plan que revisa también.
+#      `aplicar-chequeo <id>` lo cierra, y firmar el plan que revisa también. El OK que la
+#      persona da en el chat de la sesión contesta el chequeo: `aplicar-chequeo <id>
+#      --en-la-sesion "<sus palabras>"` lo cierra aprobado, con esas palabras en su historia.
 #
 # Las capturas de web se toman con Playwright y las de mobile del device o del simulador:
 # de dónde salen es de la sesión, y el tipo es indiferente a eso.
@@ -1532,12 +1534,22 @@ pasos)
   vaciar_cola
   escribir PATCH "/api/items/chequeos/$(uri "$1")"
   ;;
-# La sesión tomó lo aprobado: el chequeo cierra. Sin decidir entero, 400.
+# La sesión tomó lo aprobado, o la persona le dio el OK (`--en-la-sesion`): el chequeo cierra.
+# Sin decidir entero y sin ese OK, 400.
 aplicar-chequeo)
-  exige 1 "aplicar-chequeo <id> [nota]" "$@"
+  exige 1 'aplicar-chequeo <id> [--en-la-sesion "<sus palabras>"] [nota]' "$@"
+  id_chequeo="$1"
+  shift
+  ok_chequeo=()
+  if [ "${1:-}" = "--en-la-sesion" ]; then
+    exige 2 'aplicar-chequeo <id> --en-la-sesion "<sus palabras>" [nota]' "$@"
+    ok_chequeo=(--arg ok "$2")
+    shift 2
+  fi
   vaciar_cola
-  jq -cn --arg n "${2:-}" '{estado:"aplicado"} + (if $n == "" then {} else {nota:$n} end)' |
-    escribir PATCH "/api/items/chequeos/$(uri "$1")"
+  jq -cn --arg n "${1:-}" ${ok_chequeo[@]+"${ok_chequeo[@]}"} \
+    '{estado:"aplicado"} + (if $n == "" then {} else {nota:$n} end) + (if $ARGS.named.ok == null then {} else {okEnLaSesion:$ARGS.named.ok} end)' |
+    escribir PATCH "/api/items/chequeos/$(uri "$id_chequeo")"
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
 # EL PEDIDO — la vuelta corta entre especialistas, adentro del plan.
@@ -2286,6 +2298,8 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api pasos <id>                   < {"pasos":[{"id":"p2","despues":"<ruta>","queCuenta":"…"},{"titulo":"…","queCuenta":"…","despues":"<ruta>","origen":"<ruta>","gesto":"…","propuesta":"…","porque":"…"}]}
                                             (con id se corrige ese paso; sin id nace entero, con la forma del paso de `chequeo <subarea>`)
   bitacora-api aplicar-chequeo <id> [nota]  (la sesión tomó lo aprobado: el chequeo cierra)
+  bitacora-api aplicar-chequeo <id> --en-la-sesion "<sus palabras>" [nota]
+                                            (la persona dio el OK en la sesión: el chequeo cierra aprobado, con sus palabras en la historia)
   bitacora-api decidido                     (lo que espera a la sesión: las consultas en su mano —las decididas primero, con su veredicto y su tanda;
                                              las que pidieron más contexto; las que decide ella— y los chequeos que la persona ya miró)
   bitacora-api por-traducir [idioma]        (documentos, ítems, fichas y el estado vigente de cada área: lo que falta y lo que quedó viejo,

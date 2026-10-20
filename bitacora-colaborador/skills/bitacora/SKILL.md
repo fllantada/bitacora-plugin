@@ -1119,7 +1119,7 @@ The same step, written from the user:
 |---|---|---|
 | `abierto` | waiting for the person's eyes — or for the session, when what is left undecided asked for more context | it is born here |
 | `contestado` | every step decided: the signal for the session | the server, with the last decision |
-| `aplicado` | the session took what was approved: rejections and requested changes become the next round of the plan, on the same branch | the session, with `aplicar-chequeo`, or the plan's sign-off on an answered one |
+| `aplicado` | the session took what was approved: rejections and requested changes become the next round of the plan, on the same branch | the session, with `aplicar-chequeo`; the session on an open one, with the OK the person gave it in the chat (`aplicar-chequeo <id> --en-la-sesion "<their words>"`, which keeps those words in the history); or the plan's sign-off on an answered one |
 | `descartado` | it stopped applying, with its reason | the session, or the plan's sign-off on one still open, with the note «firmado sin mirar» |
 
 ```bash
@@ -1160,6 +1160,10 @@ $API -p <project> pasos <id> <<'JSON'
 {"pasos":[{"id":"p2","despues":"<place>/step2-recaptured.png","queCuenta":"…what was missing to see…"}]}
 JSON
 $API -p <project> aplicar-chequeo <id> "round 2 written in the plan · two screens rebuilt"
+
+# The person gave the OK in the session's chat: that answers the check, open or answered.
+$API -p <project> aplicar-chequeo <id> --en-la-sesion "go ahead, it looks right"   # → aplicado, with their words in the history
+# without the OK, an open one answers 400 sinContestar naming both ways out; an empty OK, okVacio
 ```
 
 **The check is born declaring the plan it reviews** (`plan`, the plan's id, at creation):
