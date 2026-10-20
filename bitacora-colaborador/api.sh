@@ -2077,7 +2077,7 @@ anotar-acceso)
 review)
   # review  ← {"titulo":"<título del PR>","pr":"…","cuerpo":"…"}
   # review <archivo.md> --pr <owner/repo#n> [--titulo "…"] [--publicar [--contrasena <…>]] [--escrito-en <idioma>]
-  #        [--traduccion <archivo.<idioma>.md>] [--hallazgos <hallazgos.json>]
+  #        [--traduccion <archivo.<idioma>.md>] [--hallazgos <hallazgos.json>] [--commit <sha>]
   #
   # La segunda forma sube el documento que /review deja en disco tal cual: el markdown
   # viaja entero sin escaparlo a mano dentro de un JSON, y el título sale de su primer
@@ -2090,12 +2090,13 @@ review)
   # suerte —el FIX además con su clase, su rule, su archivo y su peldaño—, y la puerta pide la
   # suerte de cada FIX y cada ASK del documento. Los dibujos viajan solos: cada bloque d2 del
   # documento y de su traducción se compila acá con el trazo de la casa (diagramas.mjs, al
-  # lado de este archivo), porque la puerta pide cada bloque con su dibujo.
+  # lado de este archivo), porque la puerta pide cada bloque con su dibujo. Con --commit queda en
+  # la ficha del documento el commit que revisó la última vuelta: la ronda siguiente revisa desde él.
   vaciar_cola
   if [ "$#" -ge 1 ] && [ -f "$1" ]; then
     archivo="$1"
     shift
-    pr="" titulo="" publicar=false escrito="" traduccion="" hallazgos="" contrasena=""
+    pr="" titulo="" publicar=false escrito="" traduccion="" hallazgos="" contrasena="" commit=""
     while [ "$#" -gt 0 ]; do
       case "$1" in
       --pr) pr="${2:-}" && shift 2 ;;
@@ -2105,8 +2106,9 @@ review)
       --contrasena) contrasena="${2:-}" && shift 2 ;;
       --traduccion) traduccion="${2:-}" && shift 2 ;;
       --hallazgos) hallazgos="${2:-}" && shift 2 ;;
+      --commit) commit="${2:-}" && shift 2 ;;
       *)
-        echo "No conozco «$1». Uso: bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar [--contrasena <…>]] [--escrito-en <idioma>] [--traduccion <archivo.<idioma>.md>] [--hallazgos <hallazgos.json>]" >&2
+        echo "No conozco «$1». Uso: bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar [--contrasena <…>]] [--escrito-en <idioma>] [--traduccion <archivo.<idioma>.md>] [--hallazgos <hallazgos.json>] [--commit <sha>]" >&2
         exit 1
         ;;
       esac
@@ -2150,10 +2152,11 @@ review)
       rm -f "$dibujos.orig" "$dibujos.trad"
     fi
     cuerpo="$(jq -n --rawfile c "$archivo" --arg t "$titulo" --arg p "$pr" --argjson pub "$publicar" --arg e "$escrito" \
-      --arg ti "$idioma_trad" --arg tt "$titulo_trad" --arg w "$contrasena" \
+      --arg ti "$idioma_trad" --arg tt "$titulo_trad" --arg w "$contrasena" --arg k "$commit" \
       --rawfile tc "${traduccion:-/dev/null}" --slurpfile h "${hallazgos:-/dev/null}" --slurpfile d "$dibujos" \
       '{titulo:$t, pr:$p, cuerpo:$c} + (if $pub then {publicar:true} else {} end) + (if $e == "" then {} else {escritoEn:$e} end)
        + (if $w == "" then {} else {contrasena:$w} end)
+       + (if $k == "" then {} else {commit:$k} end)
        + (if $ti == "" then {} else {traduccion: ({idioma:$ti, cuerpo:$tc} + (if $tt == "" then {} else {titulo:$tt} end))} end)
        + (if ($h | length) == 0 then {} else {hallazgos: $h[0]} end)
        + (if ($d[0] | length) == 0 then {} else {diagramas: $d[0]} end)')" || { rm -f "$dibujos"; exit 1; }
@@ -2500,8 +2503,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api anotar-acceso                {"nombre":"Engine API","url":"https://…","nota":"staging"}
                                             · con qué se entra: {"usuario":"…","clave":"…"}
   bitacora-api review                       {"titulo":"<título del PR>","pr":"…","cuerpo":"…","publicar":true}
-  bitacora-api review <doc.md> --pr <owner/repo#n> [--traduccion <doc.en.md>] [--hallazgos <hallazgos.json>]
-        con --traduccion la otra capa nace sellada en el mismo acto; con --hallazgos viaja lo que encontró, cada uno con su suerte:
+  bitacora-api review <doc.md> --pr <owner/repo#n> [--traduccion <doc.en.md>] [--hallazgos <hallazgos.json>] [--commit <sha>]
+        con --traduccion la otra capa nace sellada en el mismo acto; con --commit, el commit que revisó la última vuelta
+        queda en su ficha, y la ronda siguiente revisa desde él; con --hallazgos viaja lo que encontró, cada uno con su suerte:
         [{"tipo":"fix","accion":"1","clase":"<kebab, la misma en cada review>","titulo":"<el título corto de su encabezado>","rule":"…","archivo":"…",
           "peldano":"encargo|bien-de-entrada|mecanico|jev|review","grosero":false,"suerte":"aplicado","commit":"<sha>"},
          {"tipo":"ask","accion":"4","titulo":"…","contexto":"…","opciones":[{"nombre":"…","implica":"…"},{"nombre":"…","implica":"…"}],
