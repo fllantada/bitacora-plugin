@@ -29,12 +29,11 @@ name the right door whenever something moved. And if the check can't reach the s
 — no network, or your key expired — it stops nothing either: carry on with the work,
 writes queue themselves, and an expired key is renewed with `bitacora-api renovar`.
 
-**And if step zero prints «⚠ Adaptación pendiente», the logbook's model changed and this
-project's material still carries the previous shape.** The notice says what changed and
-which gesture adapts it. Tell the person in one line and leave the call to them: adapting
-means reclassifying the project's own material, and that belongs to whoever owns it. Each
-notice shows once per project, so pass it on in the turn it appears; after that,
-`bitacora-api adaptacion` brings the pending ones on request.
+**When the logbook's model changes, the project's material still carries the previous
+shape until its owner adapts it.** Adapting means reclassifying the project's own material,
+and that belongs to whoever owns it, so the one-time notice goes to the owner's sessions.
+`bitacora-api adaptacion` lists the pending ones on request, with what changed and which
+gesture adapts each.
 
 ## Setup — once per machine
 
