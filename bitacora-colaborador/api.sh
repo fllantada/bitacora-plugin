@@ -716,6 +716,23 @@ escribir-responsables)
   vaciar_cola
   printf '%s' "$lista_json" | escribir PUT "/api/responsables"
   ;;
+# Si el código del proyecto se sostiene con tests (dueño). Con `no`, el código se prueba en
+# integración: la review caza con cuatro preguntas y /coding verifica con tipos y lint; `sí`
+# vuelve al valor por defecto.
+# `contexto` lo lee en `proyecto.tests`.
+#   bitacora-api escribir-tests no
+escribir-tests)
+  case "${1:-}" in
+  sí | si) tests="sí" ;;
+  no) tests="no" ;;
+  *)
+    echo "escribir-tests lleva sí o no:  bitacora-api escribir-tests no" >&2
+    exit 1
+    ;;
+  esac
+  vaciar_cola
+  jq -n --arg tests "$tests" '{tests: $tests}' | escribir PUT "/api/tests"
+  ;;
 # Las herramientas que esta sesión tiene a mano, con qué hace cada una: las propias del
 # repo, las compartidas del perfil y las del método del plugin. El catálogo lo mantiene
 # la skill /skills del plugin, a mano, con `sincronizar-skills`.
@@ -2207,6 +2224,7 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
   bitacora-api responsables                 (quiénes hacen a mano las gestiones, con su tinta: la lista como se escribe)
   bitacora-api escribir-responsables        < lista.json   (la reemplaza entera — dueño; [] la saca)
         [{"slug":"merch","nombre":{"es":"Merch","en":"Merch"},"tinta":"violeta","email":"merch@…"}] · tinta: turquesa · violeta · rosa · ambar · email opcional
+  bitacora-api escribir-tests <sí|no>       (si el código se sostiene con tests — dueño; contexto lo lee en proyecto.tests, sí sin declarar)
   bitacora-api skills                       (las herramientas a mano: las del repo, las del perfil y las del plugin, con qué hace cada una)
   bitacora-api skill <nombre>               (una entera: cómo se la cuenta, con qué se encadena y su SKILL.md)
   bitacora-api nota-skill <nombre>          {"paraQue":"…","cuando":"…","deja":"…","ojo":"…"}

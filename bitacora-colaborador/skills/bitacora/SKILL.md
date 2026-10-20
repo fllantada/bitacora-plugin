@@ -725,7 +725,8 @@ refactor); `captura` when something on screen changes and the right result is al
 written (a fix, a text, a configuration, data, a style that exists elsewhere, whatever an
 ASK, a Figma file or a recorded decision already settled): whoever looks captures the
 before and the after, and they sit at the foot of the plan as evidence; a state that has to
-be manufactured to be seen goes to a test. `chequeo` when **a design decision stays open
+be manufactured to be seen goes to a test, or —in a project without tests (`proyecto.tests`
+is `no`)— to QA, who seeds it through data. `chequeo` when **a design decision stays open
 that is only made by looking and whose answer changes the code**, before the work ships;
 the plan names it in one line of its body: a visual check is opened declaring this plan,
 the person answers it, and signing off closes it. **Where the push deploys** —the project
