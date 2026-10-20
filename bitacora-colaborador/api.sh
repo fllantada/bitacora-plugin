@@ -2306,9 +2306,9 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
 
 Escritura (el cuerpo JSON entra por stdin):
   bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"},"vigente":true}
-        encabeza su área por su fecha mientras está vivo —en su página y en el menú, del más nuevo al más viejo—;
+        se lee en la página de análisis de su área y en el menú mientras está vivo, del más nuevo al más viejo;
         "vigente":true es el que explica algo que dura y le sirve a quien abra el área dentro de unos meses: sigue a la vista hasta que se descarta;
-        sin la marca es material de trabajo: el que lleva semanas sin tocarse pasa a «Lo anterior», al pie, y reescribirlo lo trae arriba
+        sin la marca es material de trabajo: el que lleva semanas sin tocarse sale de la lista viva a «Lo anterior», y reescribirlo lo trae arriba
   bitacora-api plan <subarea>                  {"titulo":"…","cierraEn":"…","prioridad":"alta","modelo":"opus","esfuerzo":"high","cuerpo":{"es":"# …"},"flujos":["…"]}
         "modelo": opus · sonnet · fable · haiku y "esfuerzo": low · medium · high · xhigh · max — con qué se construye, el alias y el nivel
         con que el envío abre la sesión del frente; van siempre, y sin alguno de los dos el alta contesta 400 construccionIncompleta (la que nace encargado, encargoIncompleto);

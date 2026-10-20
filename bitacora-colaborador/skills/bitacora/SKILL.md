@@ -223,7 +223,8 @@ by one rule each type declares in the registry (`retira`), derived from its desk
 clock: **the fixed bug** and **the working analysis untouched for more than
 `DIAS_DE_SILENCIO` days** —the same silence that dims an area on the board— leave the live
 list, the menu and the phone navigator, and go with what was discarded to **«Earlier»**, the
-folded pile at the foot of the area, sub-area and goal pages, with its count. Each one still
+folded pile at the foot of the sub-area and goal pages, with its count; from the area they are
+read on the page of their type (`/<project>/area/<slug>/<type>`), which lists them all. Each one still
 opens at its address, search finds it, the per-type axis lists it and the API serves it as
 always. **A lasting analysis stays in view however quiet it gets**, and leaves only when it
 is discarded: it explains something of the world —how an engine works, the limits that were
@@ -356,9 +357,11 @@ happened, when, why in that order), its **state** (where it stands today) and it
 (what was decided and done there, newest first). A topic of a few weeks is a **piece** of its area.
 
 **The area's page is where the work is read**: its state, and under it the area's world in
-three derived sections —«What we know», its lasting analyses newest first; «What's broken»,
-its open bugs with the critical one first; and «The goals that cross it», each with its
-progress bar—, then the rest of its pieces, its attachments, its decisions, its timeline and
+three derived sections of five rows each —«What we know», its newest lasting analyses;
+«What's broken», its open bugs with the critical one first; and «The goals that cross it»,
+each with its progress bar—, then an index of its pieces, one row per type with its three
+most recent and a link to its page (`/<project>/area/<slug>/<type>`), its attachments with
+their count and a link to their page, its decisions, its ten latest timeline events with a link to the whole timeline, and
 its access. The left menu reads like the phone navigator: the goals first, then the areas —each
 one opens its page and unfolds its open bugs, the critical one on top and the «someday» ones at
 the foot— and last the lasting analyses grouped by area; a piece's route reads Home › Area. An area with
@@ -606,7 +609,7 @@ taken in among the plans waiting at its same desk; `algun-dia` is the «someday�
 for its moment in the area of its topic, out of the area's count. It is declared when opening the plan if you know it, and
 a plan that declares none is `media`: every read serves it, with that value. Within each step
 of the work order, `alta` goes first and `baja` last, and the clock decides inside each one
-—on the area's page, in the menu, in the home tray and on the by-type axis—; it orders what
+—on the page of each of the area's types, in the menu, in the home tray and on the by-type axis—; it orders what
 is still open, and closed plans go back to the clock. Rows show it in words («↑ high
 priority», «medium priority», «↓ low priority», «↓ someday»), the menu carries the arrow of
 the high one and of the last two, and the plan's header shows it next to its desk. It is corrected in any desk
