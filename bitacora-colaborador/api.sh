@@ -627,19 +627,28 @@ version)
     echo "Para traerla:  $actualizar"
     echo "Rige en la próxima sesión, o con /reload-plugins y volviendo a invocar la skill."
   fi
-  # Lo que a ESTE proyecto le falta adaptar cuando el modelo de la bitácora cambió. Es un
-  # aviso y nunca una puerta: fuera de un proyecto, sin red o sin llave, no dice nada.
-  if [ -n "${TOKEN:-}" ]; then
-    leer "/api/adaptacion" 2>/dev/null | jq -r --arg n "$nombre" '
-      (if $n == "bitacora-colaborador" then "en" else "es" end) as $i
-      | .pendientes[]?
-      | "\n⚠ Adaptación pendiente «\(.clave)» (rige desde \(.desde)):\n  \(.queCambio[$i])\n  → \(.queHacer[$i])"
-        + (if (.senales.enCompartida // [] | length) > 0
-           then "\n  En «compartida» siguen: \(.senales.enCompartida | join(", "))" else "" end)
-        + (if (.senales.candidatas // [] | length) > 0
-           then "\n  \(if $i == "en" then "Areas that may be a goal" else "Áreas que pueden ser un objetivo" end): \(.senales.candidatas | map(.area) | join(", "))" else "" end)
-    ' 2>/dev/null || true
-  fi
+  # Lo que a ESTE proyecto le falta adaptar cuando el modelo de la bitácora cambió, avisado
+  # una sola vez por proyecto: lo pide solo el paso cero de /thinking y de /bitacora, y la
+  # puerta marca avisado lo que entrega. Después queda a pedido en `adaptacion`. Es un aviso
+  # y nunca una puerta: fuera de un proyecto, sin red o sin llave, no dice nada, y nunca se
+  # encola.
+  carpeta="${1:-}"
+  case "${carpeta%/}" in
+  */skills/thinking | */skills/bitacora)
+    if [ -n "${TOKEN:-}" ]; then
+      respuesta="$(pedir POST "$TOKEN" "/api/adaptacion/aviso" '{}')"
+      case "${respuesta##*$'\n'}" in
+      2*)
+        jq -r --arg n "$nombre" '
+          (if $n == "bitacora-colaborador" then "en" else "es" end) as $i
+          | .pendientes[]?
+          | "\n⚠ Adaptación pendiente «\(.clave)» (rige desde \(.desde)):\n  \(.queCambio[$i])\n  → \(.queHacer[$i])"
+        ' <<<"${respuesta%$'\n'*}" 2>/dev/null || true
+        ;;
+      esac
+    fi
+    ;;
+  esac
   ;;
 tablero) leer "/api/tablero" ;;
 # El ciclo del encargo, leído por escritorio: lo que una sesión /coding puede tomar, lo
@@ -656,7 +665,8 @@ subarea | hilo | linea)
   leer "/api/lineas/$(uri "$1")"
   ;;
 # Las adaptaciones de modelo que este proyecto todavía no hizo, con lo que su material
-# dice hoy (`senales`), y las que ya cerró. El paso cero (`version`) las recuerda.
+# dice hoy (`senales`), y las que ya cerró. El paso cero de /thinking y de /bitacora
+# (`version`) avisa cada una una sola vez; acá quedan a pedido.
 adaptacion) leer "/api/adaptacion" ;;
 # Cierra una: el servidor comprueba lo comprobable y contesta 400 con lo que falta.
 adaptado)

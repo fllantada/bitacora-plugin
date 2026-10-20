@@ -32,7 +32,9 @@ writes queue themselves, and an expired key is renewed with `bitacora-api renova
 **And if step zero prints «⚠ Adaptación pendiente», the logbook's model changed and this
 project's material still carries the previous shape.** The notice says what changed and
 which gesture adapts it. Tell the person in one line and leave the call to them: adapting
-means reclassifying the project's own material, and that belongs to whoever owns it.
+means reclassifying the project's own material, and that belongs to whoever owns it. Each
+notice shows once per project, so pass it on in the turn it appears; after that,
+`bitacora-api adaptacion` brings the pending ones on request.
 
 ## Setup — once per machine
 
