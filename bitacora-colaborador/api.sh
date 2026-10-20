@@ -716,10 +716,9 @@ escribir-responsables)
   vaciar_cola
   printf '%s' "$lista_json" | escribir PUT "/api/responsables"
   ;;
-# Si el código del proyecto se sostiene con tests (dueño). Con `no`, el código se prueba en
-# integración: la review caza con cuatro preguntas y /coding verifica con tipos y lint; `sí`
-# vuelve al valor por defecto.
-# `contexto` lo lee en `proyecto.tests`.
+# Declara si el proyecto se sostiene con tests (dueño), el dato que elige qué corre /coding.
+# Antes de cada commit corre, con `sí`, la suite que existe, y con `no`, tipos y lint; el
+# proyecto sin declarar vale `sí`. `contexto` lo lee en `proyecto.tests`.
 #   bitacora-api escribir-tests no
 escribir-tests)
   case "${1:-}" in
