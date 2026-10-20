@@ -742,9 +742,11 @@ change the code?* → `chequeo`; *does it show, and is the right result already 
 **And its review runs whole on the builder's side.** The review checks compliance and
 produces two things: the FIX, a breach of the law —gross, with its Blocking row, or of
 style—, and the ASK, what has more than one reasonable way out. The session that builds
-loops review → fix until a round leaves no FIX to apply: any applied FIX asks for another
-round, since one fix can bring another, and the round that reaches the cap with FIXes still
-open says so in the report and leaves its row in Harness. On finishing it gives each result
+loops review → fix while a round brings a gross FIX: the applied gross FIX asks for another
+round, since one fix can bring another, the batch of style and tests is applied and closes the
+loop —each account can set in «The review» of its instructions that every FIX asks for
+another round—, and the round that reaches the cap with a gross FIX still open says so in the
+report and leaves its row in Harness. On finishing it gives each result
 its fate and uploads the review with its findings (`bitacora-api review <file.md> --pr … --hallazgos
 findings.json`): on its own PR the applied FIX goes `aplicado` with its `commit` (Harness), the
 ASK `diferido` (nit), the FIX outside the plan's Scope `diferido` and also into
