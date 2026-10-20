@@ -1639,7 +1639,7 @@ decision)
 accion)
   exige 1 "accion <subarea>   (cerrado: el trabajo por hacer es un plan)" "$@"
   echo "El trabajo por hacer es un PLAN, que además lleva su análisis:" >&2
-  echo "  bitacora-api plan $1 <<< '{\"titulo\":\"…\",\"cierraEn\":\"…\",\"cuerpo\":{\"es\":\"# …\"}}'" >&2
+  echo "  bitacora-api plan $1 <<< '{\"titulo\":\"…\",\"cierraEn\":\"…\",\"modelo\":\"opus\",\"esfuerzo\":\"high\",\"cuerpo\":{\"es\":\"# …\"}}'" >&2
   exit 1
   ;;
 hecha)
@@ -1660,7 +1660,7 @@ diferir)
   exige 1 "diferir <id>   (cerrado: lo que espera su momento es un plan)" "$@"
   echo "Diferir era del modelo anterior. Lo que espera su momento es un PLAN," >&2
   echo "con su gatillo escrito en el cuerpo:" >&2
-  echo "  bitacora-api plan <subarea> <<< '{\"titulo\":\"…\",\"cierraEn\":\"…\",\"cuerpo\":{\"es\":\"…\"}}'" >&2
+  echo "  bitacora-api plan <subarea> <<< '{\"titulo\":\"…\",\"cierraEn\":\"…\",\"modelo\":\"opus\",\"esfuerzo\":\"high\",\"cuerpo\":{\"es\":\"…\"}}'" >&2
   exit 1
   ;;
 # Corregir una decisión registrada: su veredicto, su marco, sus textos — o mudarla de hilo.
@@ -2296,7 +2296,9 @@ Escritura (el cuerpo JSON entra por stdin):
         encabeza su área por su fecha mientras está vivo —en su página y en el menú, del más nuevo al más viejo—;
         "vigente":true es el que explica algo que dura y le sirve a quien abra el área dentro de unos meses: sigue a la vista hasta que se descarta;
         sin la marca es material de trabajo: el que lleva semanas sin tocarse pasa a «Lo anterior», al pie, y reescribirlo lo trae arriba
-  bitacora-api plan <subarea>                  {"titulo":"…","cierraEn":"…","prioridad":"alta","cuerpo":{"es":"# …"},"flujos":["…"]}
+  bitacora-api plan <subarea>                  {"titulo":"…","cierraEn":"…","prioridad":"alta","modelo":"opus","esfuerzo":"high","cuerpo":{"es":"# …"},"flujos":["…"]}
+        "modelo": opus · sonnet · fable · haiku y "esfuerzo": low · medium · high · xhigh · max — con qué se construye, el alias y el nivel
+        con que el envío abre la sesión del frente; van siempre, y sin alguno de los dos el alta contesta 400 construccionIncompleta (la que nace encargado, encargoIncompleto);
         "prioridad": alta · media · baja · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es media;
         algun-dia es el plan que espera su momento en el área de su tema: cuelga al pie y la cifra del área no lo cuenta
         "dependeDe":["<id>"] son las gestiones que espera para empezar, del proyecto (404 dependenciaInexistente); `item planes <id>` las trae
@@ -2433,6 +2435,7 @@ Escritura (el cuerpo JSON entra por stdin):
                                               el cuerpo de un objetivo va entero, con su «El mapa»)
                                             · {"prioridad":"alta"} (su orden entre los de su escritorio, en cualquier escritorio:
                                               un plan alta · media · baja · algun-dia, un bug critico · mayor · menor · algun-dia)
+                                            · {"modelo":"sonnet","esfuerzo":"medium"} (un plan: con qué se construye, en cualquier escritorio)
                                             · {"vigente":true} · {"vigente":false} (un análisis: si explica algo que dura; marcar deja quieto
                                               su reloj, así desmarcar uno viejo lo saca de la vista en el acto)
                                             · {"dependeDe":["<id>"]} (un plan: las gestiones que espera para empezar, la lista entera en su orden;

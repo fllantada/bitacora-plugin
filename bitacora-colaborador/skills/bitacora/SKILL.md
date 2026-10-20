@@ -188,7 +188,7 @@ $API -p <project> analisis <area> <<'JSON'
 {"titulo":"…","queEs":"what the reader will find","cuerpo":{"en":"# …"}}
 JSON
 $API -p <project> plan <area> <<'JSON'
-{"titulo":"…","cierraEn":"the PR that brings it","prioridad":"alta","cuerpo":{"en":"# How it gets solved\n…"}}
+{"titulo":"…","cierraEn":"the PR that brings it","prioridad":"alta","modelo":"opus","esfuerzo":"high","cuerpo":{"en":"# How it gets solved\n…"}}
 JSON
 $API -p <project> bug <area> <<'JSON'
 {"titulo":"…","prioridad":"critico","cuerpo":{"en":"# What happens\n…\n\n# Where\n…\n\n# How to reproduce\n1. …\n2. …"}}
@@ -622,6 +622,24 @@ vocabularies are read on the same scale: the first word of each vocabulary weigh
 same in both. A word from the other vocabulary gets a 400 naming
 the valid ones for that type.
 
+**Every plan says what it is built with: `modelo` and `esfuerzo`** — the model and the effort
+of the session that builds it, chosen by whoever writes the plan, who knows the weight of the
+work best. `modelo` is a CLI alias —`opus` · `sonnet` · `fable` · `haiku`— and `esfuerzo` one
+of its levels —`low` · `medium` · `high` · `xhigh` · `max`—: `medium` for a simple,
+well-specified plan of few files that leaves stored data and contracts alone, `high` for the
+middle one, `xhigh` for the critical one —stored data, a contract, security, a long series—.
+The door demands both when the plan is opened, at any desk: a plan without one of them gets a
+400 `construccionIncompleta` naming what is missing with its values —one born `encargado` hears it
+in its `encargoIncompleto`, together with everything else it lacks—, and a word outside the
+vocabulary gets a 400 naming the valid ones. A plan written before them pays them when it moves
+to `encargado`, in the same 400 `encargoIncompleto` as the contract. Every read serves them,
+the plan's header shows them next to its priority, and they are corrected in any desk without
+moving the plan, like the priority:
+
+```bash
+$API -p <project> corregir planes <id> <<< '{"modelo":"sonnet","esfuerzo":"medium"}'
+```
+
 **`dependeDe` names the manual steps a plan waits on before it starts**: the ids of manual
 steps of the project, when opening it or with `corregir planes <id>`, the whole list in its
 order, and `[]` removes it; an id that is not a manual step of the project gets 404
@@ -825,6 +843,7 @@ pending item with a trigger is work that waits, and the type that waits is the p
 ```bash
 $API -p <project> plan <area> <<'JSON'
 {"titulo":"Decide where the axis rule lives","cierraEn":"the schema PR",
+ "modelo":"opus","esfuerzo":"high",
  "cuerpo":{"en":"# What wakes this up\nPete's second localisation proposal.\n\n# The analysis so far\n…"}}
 JSON
 ```
@@ -1382,7 +1401,7 @@ JSON
 # → answers the goal's id: it is what each piece names
 
 $API -p <project> plan <area> <<'JSON'
-{"titulo":"…","cierraEn":"the PR that brings it","objetivo":"<goal id>","cuerpo":{"en":"# …"}}
+{"titulo":"…","cierraEn":"the PR that brings it","objetivo":"<goal id>","modelo":"opus","esfuerzo":"high","cuerpo":{"en":"# …"}}
 JSON
 $API -p <project> corregir planes <id> <<< '{"objetivo":"<goal id>"}'   # a piece already open joins it
 $API -p <project> corregir planes <id> <<< '{"objetivo":null}'          # and leaves it
@@ -1609,8 +1628,9 @@ area (`$API abrir-area`) and say so in your report.
 
 **The plan comes out of what was already discussed.** A title that names the topic in
 everyday words, with the conclusion in `queEs` and in the body; a `cierraEn` saying where
-it closes — the door demands it: without a close there is no plan —; and a body carrying
-the reasoning the conversation produced. Write it with
+it closes — the door demands it: without a close there is no plan —; a `modelo` and an
+`esfuerzo` saying what it is built with, which the door demands too (see *Plans* above); and a
+body carrying the reasoning the conversation produced. Write it with
 `$API plan <area>` and finish the gesture by handing the user the `enlace` the response
 returns — the item's full address — so they can keep reading it in the web app. **When the
 topic takes several PRs, open its goal first** (`$API objetivo`, in the project, §The Goal) and each
@@ -1630,6 +1650,7 @@ $API -p <project> objetivo <<'JSON'   # when the topic takes several PRs: what t
 JSON
 $API -p <project> plan <area> <<'JSON'
 {"titulo":"…","cierraEn":"the PR that brings it","objetivo":"<goal id, when it pursues one>",
+ "modelo":"opus","esfuerzo":"high",
  "cuerpo":{"en":"# How it gets solved\n…"}}
 JSON
 ```
