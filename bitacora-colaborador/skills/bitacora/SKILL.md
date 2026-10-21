@@ -1718,6 +1718,11 @@ the detail is for whoever builds it; both in the same row is what keeps a journe
 having to pick one of the two readers. The flow's page opens its run with a map drawn from
 those steps —one box per step carrying its sentence up to the first pause, grouped by stage
 when the run is long—, so a `que` whose first clause names the step reads well in the map.
+A flow that crosses areas is read from each of them: with `?area=<slug>` in its address, the
+map opens that area's stretch step by step and folds each stretch of another area into one
+dotted box with its colour dot —"comes from", "passes through", "continues in"— that leads to
+the same flow seen from that area; the strip runs through that stretch's screens, and each
+area under "passes through" in the header leads to that view.
 Below the map come the flow's screens when it has them (`capturar-paso`): the strip of the
 run with each step's screen in order, phone or desktop —a switch picks which when there are
 both—, and each step with a screen shows it small beside its sentence; tapping one opens it
