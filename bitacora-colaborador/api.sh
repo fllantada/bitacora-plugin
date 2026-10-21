@@ -780,7 +780,17 @@ termino)
   exige 1 "termino <palabra|alias>" "$@"
   leer "/api/glosario/$(uri "$1")"
   ;;
-flujos) leer "/api/flujos" ;;
+flujos)
+  # flujos [--area <slug>]: con área, los que viven en ella y los que tienen un paso que pasa por ahí.
+  area_flujos=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+    --area) area_flujos="${2:?Falta el área después de --area}"; shift 2 ;;
+    *) echo "uso: bitacora-api flujos [--area <slug>]" >&2; exit 1 ;;
+    esac
+  done
+  leer "/api/flujos${area_flujos:+?area=$(uri "$area_flujos")}"
+  ;;
 flujo)
   exige 1 "flujo <slug>" "$@"
   leer "/api/flujos/$(uri "$1")"
@@ -1732,10 +1742,11 @@ ascender)
   if [ "$#" -ge 2 ]; then jq -cn --arg a "$2" '{area:$a}'; else printf '{}'; fi |
     escribir POST "/api/lineas/$(uri "$1")/ascender"
   ;;
-# abrir-flujo  ← {"nombre":"…","queEs":"…","categoria":"runtime|editorial|ciclo-de-vida|migracion",
-#                 "pasos":[{"etapa":"…","actor":"…","que":"…","pieza":"<slug del stack>","detalle":"…"}]}
+# abrir-flujo  ← {"nombre":"…","queEs":"…","categoria":"runtime|editorial|ciclo-de-vida|migracion","area":"<su casa>",
+#                 "pasos":[{"etapa":"…","actor":"…","que":"…","pieza":"<slug del stack>","area":"<otra área>","detalle":"…"}]}
 # Los PASOS son el flujo: `que` es la frase que se entiende sin ser técnico y `detalle` lo que
-# se abre debajo. La `etapa` agrupa los pasos seguidos que la comparten.
+# se abre debajo. La `etapa` agrupa los pasos seguidos que la comparten. `area` es la casa del
+# flujo, y la del paso, el área por la que pasa cuando sale de ella; sin la suya, pasa por la casa.
 abrir-flujo)
   vaciar_cola
   escribir POST "/api/flujos"
@@ -1743,7 +1754,7 @@ abrir-flujo)
 # Los pasos viajan con el `id` que trae `flujo <slug>`, y el que nace, sin él: el id es lo que
 # deja la pantalla de cada paso con él. El recorrido que cambió mientras se escribía contesta 409.
 editar-flujo)
-  exige 1 "editar-flujo <slug>   < {\"estado\":\"construido\"} · {\"sumarStack\":[\"algolia\"]} · {\"pasos\":[{\"id\":\"p1\",\"que\":\"…\"},{\"que\":\"el paso nuevo\"}]}" "$@"
+  exige 1 "editar-flujo <slug>   < {\"estado\":\"construido\"} · {\"area\":\"<su casa>\"} · {\"sumarStack\":[\"algolia\"]} · {\"pasos\":[{\"id\":\"p1\",\"que\":\"…\",\"area\":\"<otra área>\"},{\"que\":\"el paso nuevo\"}]}" "$@"
   vaciar_cola
   escribir PATCH "/api/flujos/$(uri "$1")"
   ;;
@@ -2284,7 +2295,8 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
   bitacora-api nota-skill <nombre>          {"paraQue":"…","cuando":"…","deja":"…","ojo":"…"}
         la skill contada para una persona: lo único del catálogo que se escribe
   bitacora-api sacar-skill <nombre>         (la que se retiró de verdad: sale del catálogo — dueño)
-  bitacora-api flujos                       · bitacora-api flujo <slug>
+  bitacora-api flujos [--area <slug>]       · bitacora-api flujo <slug>
+                                            (con --area, los que viven en ella y los que pasan por ahí)
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
   bitacora-api accesos                      (las direcciones de afuera, con qué se entra a cada una)
@@ -2505,9 +2517,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api ascender <sub-área> [<slug>] la sub-área que es un mundo aparte pasa a ser un área, con ella como su lugar
   bitacora-api abrir-subarea                {"slug":"…","nombre":"…","area":"…","brief":"…"}   (400 en el proyecto que ya adaptó)
   bitacora-api editar-subarea <slug>        {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"} · {"piso":true}   (= editar-hilo)
-  bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime",
-                                             "pasos":[{"etapa":"…","actor":"…","que":"…","pieza":"algolia","detalle":"…"}]}
-  bitacora-api editar-flujo <slug>          {"estado":"construido"} · {"sumarStack":[…]} · {"sumarGlosario":[…]}
+  bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime","area":"<su casa>",
+                                             "pasos":[{"etapa":"…","actor":"…","que":"…","pieza":"algolia","area":"<otra área>","detalle":"…"}]}
+  bitacora-api editar-flujo <slug>          {"estado":"construido"} · {"area":"<su casa>"} · {"sumarStack":[…]} · {"sumarGlosario":[…]}
                                             · {"pasos":[…]} reemplaza el recorrido entero (un paso no se parchea solo):
                                             cada paso viaja con el `id` que trae `flujo <slug>`, y el nuevo sin él;
                                             el recorrido que cambió mientras se escribía contesta 409 flujoCambiado

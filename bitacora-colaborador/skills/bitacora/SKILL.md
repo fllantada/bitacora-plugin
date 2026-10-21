@@ -1712,7 +1712,8 @@ account, the limit that bites) — fill them in when you have them at hand.
 **A flow IS its steps.** Each one carries `que` (what happens, in a sentence anyone
 understands without knowing how it is built — the only required field), `etapa` (the stage
 that groups consecutive steps), `actor` (who triggers it), `pieza` (the stack slug that
-acts) and `detalle` (the technical detail, folded away). The sentence is for the client and
+acts), `area` (the area it passes through when the run leaves the flow's home) and `detalle`
+(the technical detail, folded away). The sentence is for the client and
 the detail is for whoever builds it; both in the same row is what keeps a journey from
 having to pick one of the two readers. The flow's page opens its run with a map drawn from
 those steps —one box per step carrying its sentence up to the first pause, grouped by stage
@@ -1734,6 +1735,24 @@ of that layer already carries answers 400 `pasoRepetido`: send that layer with e
 named by its id. And an edit that finds the run changed while it was being written —a
 capture stored its steps' ids, or another edit rewrote it at that moment— answers 409
 `flujoCambiado`: read the flow again and send the run over today's.
+
+**A flow lives in an area and crosses the ones its steps name.** Its home (`area`) is the
+area where it happens —the business owner's app, or the engine—, and a step that leaves it
+names its own; a step without one passes through the home. The areas it crosses are derived
+from its steps, and the flow reads from each of them. Name the home and each step's area by
+the area's slug, the slug of one of its sub-areas or SEO's other name; a name that is not a
+live area answers 404 `areaInexistente` with the ones there are, and a retired area, 400
+`areaRetirada`. The step's area is read from the original layer, by the step's `id`.
+
+```bash
+$API flujos --area busqueda     # the flows that live in that area and the ones with a step passing through it
+$API editar-flujo flujo-pagina-catalogo <<< '{"area":"engine"}'   # the flow's home
+$API editar-flujo flujo-pagina-catalogo <<< '{"pasos":[{"id":"p1","que":"…"},{"id":"p2","que":"…","area":"busqueda"}]}'
+```
+
+`$API flujo <slug>` brings its home (`casa`) and the live areas it touches (`areas`, home
+first), each with its name and link; the flow's page says in its header where it lives and
+what it passes through, and a step that leaves the home names its area beside its sentence.
 
 **And each step keeps its SCREEN**, one per device —`celular` and `escritorio`—: the current
 capture of that moment of the run, with its date and what it was taken on. When you walk a
