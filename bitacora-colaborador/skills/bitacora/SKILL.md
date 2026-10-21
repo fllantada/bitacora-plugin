@@ -417,7 +417,10 @@ area's world**, from the broadest to the most specific, and the server requires 
 in this order: `# What it is` (what that world is, who uses it and what it does today, in two
 to four sentences, without code), the
 sixth section when the area carries one (below), and `# The map` (a `d2` drawing of the
-pieces with their state, with its legend underneath). **A snapshot that brings `# What
+pieces with their state, with its legend underneath; a box that names one of the area's flows
+carries `link:` to it seen from the area, `https://bitacora.dev-fran.com/<tenant>/flujo/<slug>?area=<area>`,
+and on the page it opens the flow's card on hover —its name, what it is about, its maturity and
+its first screens— and the flow on click). **A snapshot that brings `# What
 changed` pays it after the map**: what changed in the area since the previous snapshot, told
 by the session that takes it in the words of whoever uses the system and without code —
 empty or «None» answers 400 `estadoIncompleto`—, and underneath it the page lists by itself
