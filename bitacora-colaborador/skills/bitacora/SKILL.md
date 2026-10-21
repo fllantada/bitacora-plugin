@@ -364,7 +364,8 @@ most recent and a link to its page (`/<project>/area/<slug>/<type>`), its attach
 their count and a link to their page, its decisions, its ten latest timeline events with a link to the whole timeline, and
 its access. The left menu reads like the phone navigator: the goals first, then the areas —each
 one opens its page and unfolds its open bugs, the critical one on top and the «someday» ones at
-the foot— and last the lasting analyses grouped by area; a piece's route reads Home › Area. An area with
+the foot— and last the lasting analyses grouped by area, with Harness at the
+foot of the centre's menu; a piece's route reads Home › Area. An area with
 more than one place belongs to a project whose `sin-subareas` adaptation is pending: it is
 read with its sub-areas, and the owner folds each one into its area
 (`fusionar <sub-area> <area>`: its pieces keep the sub-area's name and brief as their
@@ -376,7 +377,9 @@ their name and their existence fixed (renaming or deleting one answers 400 `area
 keeps it as its Commercial, and both names lead there), **QA** (`qa`: what is tested and how) and **Harness**
 (`harness`: the tooling the project works with, one harness for every account —each
 account's Harness area keeps its reports, and the centre, the owner's `bitacora` tenant, keeps
-the analysis, the snapshot and the plans that improve it—). Whoever arrives at any project knows
+the analysis, the snapshot and the plans that improve it—). Harness is read from the centre:
+the project's menu, phone navigator, home and by-type axis leave it out, and its page opens by
+its address. Whoever arrives at any project knows
 without asking where selling, testing and the tooling go. **SEO** (`seo`, or `posicionamiento`
 in the project that already worked there) is the area of the project that works on how it
 gets found on Google, on Bing and in the AI assistants that answer by citing: it is called
