@@ -489,7 +489,7 @@ book** gathers what settled among the pieces seen from its places, its decisions
 entries written there; **a goal's book**, what settled among the pieces that name it —from
 any area—, the decisions that name it and the entries that name it: **an entry takes `objetivo`** like any piece (§The
 Goal). Whoever reads its page reads it, and a guest sees the lines seen from their places.
-The menu's **Book** tag on the area's row, next to **Status**, leads there; so do the link in
+The menu's **Book** tag on the area's row, next to **About**, leads there; so do the link in
 the area's summary and, on a goal's page, the one at its foot.
 
 ```bash
