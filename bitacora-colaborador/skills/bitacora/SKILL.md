@@ -1717,6 +1717,10 @@ the detail is for whoever builds it; both in the same row is what keeps a journe
 having to pick one of the two readers. The flow's page opens its run with a map drawn from
 those steps —one box per step carrying its sentence up to the first pause, grouped by stage
 when the run is long—, so a `que` whose first clause names the step reads well in the map.
+Below the map come the flow's screens when it has them (`capturar-paso`): the strip of the
+run with each step's screen in order, phone or desktop —a switch picks which when there are
+both—, and each step with a screen shows it small beside its sentence; tapping one opens it
+large, and the arrows move to the next step's screen.
 
 Each step also carries its `id` —`p1`, `p2`…, the same in every language layer—, which the
 bitácora sets when the step is born. `$API editar-flujo <slug>` replaces the whole run, so
