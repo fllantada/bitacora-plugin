@@ -1116,20 +1116,20 @@ bajar)
   esac
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · gestiones · client-reports · decisiones · simulaciones · consultas · consultas-cliente · chequeos · preguntas-jev · objetivos
+# LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · gestiones · client-reports · decisiones · simulaciones · consultas · consultas-cliente · chequeos · objetivos
 #
 # Una sub-área es el lugar y adentro cuelgan cosas de tipo distinto. El tipo se nombra
 # en plural y en la misma palabra que se lee en la app, así lo que se escribe y lo
 # que se navega dicen igual.
 # ─────────────────────────────────────────────────────────────────────────────
 tipo)
-  exige 1 "tipo <analisis|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|preguntas-jev|objetivos> [estado]" "$@"
+  exige 1 "tipo <analisis|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|objetivos> [estado]" "$@"
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
   # Con la palabra de prioridad deja solo esas: `abiertos bugs critico` son los críticos sin cerrar,
   # y `abiertos planes algun-dia` lo que espera su momento en todas las áreas.
-  exige 1 "abiertos <analisis|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|preguntas-jev|objetivos> [prioridad]" "$@"
+  exige 1 "abiertos <analisis|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|objetivos> [prioridad]" "$@"
   leer "/api/items/$(uri "$1")?abiertos${2:+&prioridad=$(uri "${2:-}")}"
   ;;
 de-la-subarea | del-hilo)
@@ -1158,7 +1158,7 @@ objetivo)
   vaciar_cola
   escribir POST "/api/objetivos"
   ;;
-analisis | plan | bug | gestion | client-report | simulacion | consulta | consulta-cliente | chequeo | pregunta-jev)
+analisis | plan | bug | gestion | client-report | simulacion | consulta | consulta-cliente | chequeo)
   exige 1 "$comando <subarea>   < JSON" "$@"
   # Un id donde va la sub-área es la lectura confundida con el alta: se nombra la lectura.
   if [ -t 0 ] && [[ "$1" =~ ^[0-9a-f]{24}$ ]]; then
@@ -1180,7 +1180,6 @@ analisis | plan | bug | gestion | client-report | simulacion | consulta | consul
     consulta) ruta_tipo=consultas ;;
     consulta-cliente) ruta_tipo=consultas-cliente ;;
     chequeo) ruta_tipo=chequeos ;;
-    pregunta-jev) ruta_tipo=preguntas-jev ;;
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
   ;;
@@ -1193,8 +1192,8 @@ a-gestion)
   escribir POST "/api/items/planes/$(uri "$1")/gestion"
   ;;
 # Lo que dejaron las reviews. Sin nada, las clases de FIX: cada una con sus reviews, el
-# peldaño que debió frenarla, qué pasó con sus FIX, si se repite (`seRepite`) y las
-# preguntas de Jev que la reemplazan; con una clase, esa entera. Con --bandeja, lo que junta
+# peldaño que debió frenarla, qué pasó con sus FIX y si se repite (`seRepite`); con una
+# clase, esa entera. Con --bandeja, lo que junta
 # un acumulador —nit o harness—, cada hallazgo con su id; --review lo acota a una review.
 hallazgos)
   bandeja="" review_de=""
@@ -1217,8 +1216,7 @@ hallazgos)
   fi
   ;;
 # El reporte de harness de este proyecto: los hallazgos de la bandeja harness, las filas
-# abiertas del área harness, las preguntas de Jev con su precisión y las clases de FIX, cada
-# cosa con su enlace. --desde trae lo que llegó o se movió después de esa fecha; --version,
+# abiertas del área harness y las clases de FIX, cada cosa con su enlace. --desde trae lo que llegó o se movió después de esa fecha; --version,
 # los hallazgos y las filas escritos con esa versión del plugin o una posterior; --cuentas
 # (más arriba) recorre todas las llaves de la máquina.
 harness)
@@ -1246,30 +1244,6 @@ hallazgo)
   else
     leer "/api/hallazgos/$(uri "$1")"
   fi
-  ;;
-# Las corridas reales de Jev, como las manda el motor de /jev al commit: una o una tanda,
-# cada una con la clave de su pregunta.
-jev-corrida)
-  vaciar_cola
-  escribir POST "/api/jev/corridas"
-  ;;
-jev-corridas)
-  consulta=""
-  for arg in "$@"; do
-    case "$arg" in
-    --por-juzgar) consulta="${consulta:+$consulta&}porJuzgar=1" ;;
-    rojo | verde) consulta="${consulta:+$consulta&}resultado=$arg" ;;
-    *) consulta="${consulta:+$consulta&}clave=$(uri "$arg")" ;;
-    esac
-  done
-  leer "/api/jev/corridas${consulta:+?$consulta}"
-  ;;
-# El veredicto de quien firma sobre un rojo: el archivo estaba mal, o la pregunta está mal calibrada.
-jev-veredicto)
-  exige 2 "jev-veredicto <corrida> archivo|pregunta [nota]" "$@"
-  vaciar_cola
-  jq -cn --arg j "$2" --arg n "${3:-}" '{juicio:$j} + (if $n == "" then {} else {nota:$n} end)' |
-    escribir PATCH "/api/jev/corridas/$(uri "$1")"
   ;;
 mover)
   exige 2 "mover <tipo> <id>   < JSON" "$@"
@@ -2342,7 +2316,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api abiertos <tipo> [prioridad]  (los que quedaron sin cerrar; el análisis y la decisión no tienen;
                                              el bug crítico va primero, y `abiertos bugs critico` deja solo esos;
                                              `abiertos planes algun-dia` y `abiertos bugs algun-dia`, lo que espera su momento en todas las áreas)
-        tipo = analisis | planes | bugs | gestiones | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos | preguntas-jev | objetivos
+        tipo = analisis | planes | bugs | gestiones | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos | objetivos
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
   bitacora-api capturar [--reemplazar] <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una: la nombra el paso de un chequeo, y el texto de un punto la muestra con ![pie](/adjunto/<ruta>);
@@ -2589,7 +2563,7 @@ Escritura (el cuerpo JSON entra por stdin):
         con --traduccion la otra capa nace sellada en el mismo acto; con --commit, el commit que revisó la última vuelta
         queda en su ficha, y la ronda siguiente revisa desde él; con --hallazgos viaja lo que encontró, cada uno con su suerte:
         [{"tipo":"fix","accion":"1","clase":"<kebab, la misma en cada review>","titulo":"<el título corto de su encabezado>","rule":"…","archivo":"…",
-          "peldano":"encargo|bien-de-entrada|mecanico|jev|review","grosero":false,"suerte":"aplicado","commit":"<sha>"},
+          "peldano":"encargo|bien-de-entrada|mecanico|review","grosero":false,"suerte":"aplicado","commit":"<sha>"},
          {"tipo":"ask","accion":"4","titulo":"…","contexto":"…","opciones":[{"nombre":"…","implica":"…"},{"nombre":"…","implica":"…"}],
           "recomiendo":0,"porque":"…","suerte":"diferido"}]
         suertes: aplicado (+commit: el FIX de la PR propia, va a harness) · diferido (el ASK de la PR propia, va a nit)
@@ -2599,25 +2573,19 @@ Escritura (el cuerpo JSON entra por stdin):
         el ASK trae qué hacer y su contexto; sus opciones y su posición son opcionales y ayudan a quien lo lee en nit
         cada FIX y cada ASK del plan de acción trae su suerte (400 hallazgosSinSuerte)
         la respuesta cuenta cuántos cayeron en cada acumulador (hallazgos.porBandeja); la repetición de una clase se lee en `hallazgos`
-  bitacora-api hallazgos [clase]            las clases de FIX a lo largo de las reviews: sus reviews, sus peldaños, sus suertes, si se repite (seRepite) y sus preguntas de Jev
+  bitacora-api hallazgos [clase]            las clases de FIX a lo largo de las reviews: sus reviews, sus peldaños, sus suertes y si se repite (seRepite)
   bitacora-api hallazgos --bandeja <nit|harness> [--review <slug>]
         lo que junta cada acumulador, con su id: nit (lo que puede esperar: cada ASK) · harness (todo lo que el proceso aprendió: cada FIX)
         los procesa la sesión que abre /nit o /harness
   bitacora-api harness [--cuentas] [--desde <fecha>] [--version <plugin>@<x.y.z>]
-        el reporte de harness: la bandeja harness, las filas abiertas del área Harness, las preguntas de Jev
-        con su precisión y las clases de FIX, cada cosa con su enlace · --cuentas: un reporte por llave de la
+        el reporte de harness: la bandeja harness, las filas abiertas del área Harness y las clases de FIX,
+        cada cosa con su enlace · --cuentas: un reporte por llave de la
         máquina, cada uno con su `cuenta` (la llave que no contesta va a stderr, y sin ninguna que conteste sale
         con 1) · --desde 2026-10-07: lo que llegó o se movió después, el cursor con que el centro lee lo nuevo ·
         --version bitacora@4.122.0: los hallazgos y las filas escritos con esa versión del plugin o una posterior
   bitacora-api hallazgo <id> ['{"suerte":"…"}']   uno entero con su historia; con el JSON le da su suerte:
         {"suerte":"plan","plan":"<id>"} · {"suerte":"diferido"} · {"suerte":"no-se-sostiene","porque":"…"} · {"suerte":"descartado","porque":"…"}
         · {"suerte":"aplicado","commit":"<sha>"} (el FIX que se hizo en la rama)
-  bitacora-api pregunta-jev <subarea>       {"titulo":"…","queEs":"…","clave":"<id en la rule del repo>","pregunta":"<the question>","clase":"…","cuerpo":"…"}
-        su banco entra con corregir pregunta-jev <id> {"banco":{"rojo":[…],"verde":[…],"aprobado":[…],"barrera":0.5}};
-        su escritorio: propuesta · en-banco · informando · frena · retirada
-  bitacora-api jev-corrida                  {"clave":"…","archivo":"…","commit":"…","pr":"…","probabilidad":0.12,"resultado":"rojo"}  (o una lista)
-  bitacora-api jev-corridas [clave] [rojo|verde] [--por-juzgar]
-  bitacora-api jev-veredicto <corrida> archivo|pregunta [nota]   el rojo acertó, o la pregunta está mal calibrada
   bitacora-api review <archivo.md> --pr <owner/repo#n> [--titulo «…»] [--publicar [--contrasena <…>]] [--escrito-en <idioma>]
                                              (el documento de /review tal cual; --publicar lo pone afuera y contesta
                                               publica.paraMandar: el enlace y su contraseña, lo que se manda)

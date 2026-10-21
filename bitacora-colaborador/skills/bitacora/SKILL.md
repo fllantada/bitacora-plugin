@@ -162,7 +162,7 @@ $API -p <project> corregir analisis <id> <<< '{"cuerpo":{"en":"…"},"diagramas"
 $API -p <project> mover analisis <id> <<< '{"estado":"descartado","nota":"why it stopped holding"}'
 ```
 
-## An area holds TWELVE TYPES, each with its own door
+## An area holds ELEVEN TYPES, each with its own door
 
 An **area** is a world of the project — search, the engine's infrastructure, the contract —
 and the PLACE where its work lives: what hangs from it has a type. A topic of a few weeks is
@@ -180,7 +180,6 @@ colour:
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
 | **Consultation** · **Client Question** | something that holds something up: the OPEN decision, with who decides it —the person, the client or the session—; several gather in a BATCH the person answers in one go ON THE WEB, and the batch that is a client question gathers what the client decides (§The Consultation) | the batch, its title and its `queEs` —what it holds up and what happens with what is decided—; each decision, its whole frame and its `decide` | the batch's, read from its decisions: abierta · contestada · aplicada · descartada; the client's, por-preguntar · preguntada · respondida · aplicada · descartada |
 | **Visual Check** | what gets approved by LOOKING: the run of screens a session produced; the person approves each step ON THE WEB, comparing the before with the after | its `queEs`, the run it verifies, and its steps: each with the capture under judgement, how you get there, what to look at and the recommendation | abierto · contestado · aplicado · descartado |
-| **Jev Question** | a semantic judgement that runs at commit, with its evidence: the bench over the red, the green and the approved, and its real runs with the signer's verdict on each red | its body, its `queEs`, its `clave` —the id in the repo's rule— and the `pregunta` | propuesta · en-banco · informando · frena · retirada |
 | **Goal** | what several pieces pursue TOGETHER —the back end, the web and the app of one feature—: it belongs to the project and is born with no place; each plan, bug or analysis names it in its `objetivo` field, and its page lists what pursues it with the progress (§The Goal) | its body with three sections, no code and within the ceiling of «What changes»: What we're after, Why and When it's achieved | abierto · logrado · descartado — closing it takes its `nota` |
 
 ```bash
@@ -351,7 +350,7 @@ blank screen.
 
 An **area** is a world of the project — search, the engine's infrastructure, the contract,
 the commercial side — and the place where its work lives: it is still there once today's
-work is done. Its dimensions: its **pieces** (the twelve types above), the **decision book**
+work is done. Its dimensions: its **pieces** (the eleven types above), the **decision book**
 (what was decided, one point at a time), the **chronology** (dated entries: what
 happened, when, why in that order), its **state** (where it stands today) and its **book**
 (what was decided and done there, newest first). A topic of a few weeks is a **piece** of its area.
@@ -396,7 +395,7 @@ opens the owner's /harness or /nit** —nit in the account, harness in the centr
 every account. A review of another author's PR asks that author for
 what breaks —each FIX with its Blocking row (a bug, a broken contract, security, data
 integrity) and its ASKs, `al-autor`—; its style FIX is born `para-harness`, lands in Harness
-and nowhere else, and harness turns it into a lint or a Jev question.
+and nowhere else, and harness turns it into a lint.
 
 **And every area carries its state**: a snapshot of where that world stands today, read in
 full on top of the area's page —its date, its milestone, the big picture, what happened since
@@ -1208,27 +1207,6 @@ produced them. The
 decision belongs to the person and enters through the web, same as the consultation: a step
 already decided is never rewritten, and the one that asked for more context is the
 deliberate exception, because recapturing it is how the request is answered.
-
-## The Jev Question — a semantic judgement, with its evidence
-
-When a project runs Jev questions at commit, **each question is a piece** of the `harness`
-area: its `clave` —the id the repo's rule gives it, unique in the project—, the `pregunta`
-Jev is asked, the FIX `clase` it comes to replace, and its `banco`: Jev's probability on
-each red, green and approved sample. Its desk is the path of every question —`propuesta`,
-`en-banco`, `informando`, `frena`, `retirada`— and what moves it from reporting to blocking
-comes from its real runs: the page reads the bench, the precision over the reds the signer
-judged, and whether its class kept reaching the review.
-
-```bash
-$API -p <project> pregunta-jev harness <<'JSON'
-{"titulo":"…","queEs":"what class of fault it catches, and on which files","clave":"<id in the repo's rule>",
- "pregunta":"<the question>","clase":"<the FIX class it replaces>","cuerpo":"<its scope in code and its criteria>"}
-JSON
-$API -p <project> corregir pregunta-jev <id> <<< '{"banco":{"rojo":[0.08],"verde":[0.91],"aprobado":[0.93]}}'
-$API -p <project> jev-corrida <<< '{"clave":"…","archivo":"src/x.ts","commit":"<sha>","probabilidad":0.12,"resultado":"rojo"}'
-$API -p <project> jev-veredicto <run> archivo      # the file was wrong: the question was right
-$API -p <project> jev-veredicto <run> pregunta     # the question is miscalibrated
-```
 
 ## Manual steps — what a person does by hand
 
