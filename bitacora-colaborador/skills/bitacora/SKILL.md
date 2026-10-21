@@ -121,7 +121,7 @@ $API -p <project> nota-skill <name>   # tell it for a person: {"paraQue":"…","
                                 #   write it right after reading that skill's text — the catalogue lists it uncounted until someone does
 $API -p <project> tablero       # the board: every area with its pieces, and the goals apart
 $API -p <project> areas         # the project's areas
-$API -p <project> area <slug>   # ONE area: its name, its place, its `estado` —its definition: what that world is today—, its `vigentes` (the lasting analyses: id, titulo, enlace) and its `objetivos`, the open goals that cross it, each with its `avance`
+$API -p <project> area <slug>   # ONE area: its name, its place, its `estado` —its definition: what that world is today—, its `vigentes` (the lasting analyses: id, titulo, enlace), its `objetivos`, the open goals that cross it, each with its `avance`, and its `flujos`, the ones living there first: `vive`, the `casa` of one passing through, its `madurez` and the `enlace` that opens it seen from the area
 $API -p <project> subarea <place> # the area's place: its pieces, entries, decisions and documents
 $API -p <project> estado <slug> # the area's definition in full: the current snapshot with its sections, its milestone and its chain of earlier ones
 $API -p <project> libro <slug>  # the area's book: what was decided and done there, newest first · `libro objetivo <id>`, a goal's
@@ -355,13 +355,17 @@ work is done. Its dimensions: its **pieces** (the eleven types above), the **dec
 happened, when, why in that order), its **definition** (what it is today) and its **book**
 (what was decided and done there, newest first). A topic of a few weeks is a **piece** of its area.
 
-**The area's page is where the work is read**: its definition, and under it the area's world in
-three derived sections of five rows each —«What we know», its newest lasting analyses;
-«What's broken», its open bugs with the critical one first; and «The goals that cross it»,
-each with its progress bar—, then an index of its pieces, one row per type with its three
-most recent and a link to its page (`/<project>/area/<slug>/<type>`), its attachments with
-their count and a link to their page, its decisions, its ten latest timeline events with a link to the whole timeline, and
-its access. The left menu reads like the phone navigator: the goals first, then the areas —each
+**The area's page reads as the world it is**: its definition, and under it the area's world in
+three derived sections of five rows each —«The goals that cross it», each with its progress
+bar; «The flows», one row per flow that touches it, the ones living there first and then the
+ones passing through with the dot of their home, each with its maturity, its open cuts and the
+short strip of the screens of its stretch, opening the flow seen from the area; and «What we
+know», its newest lasting analyses—, then its sources. Plans and bugs are read from the flow
+they touch, from their goal and on their pages: at the foot, «The work» counts one row per
+type with its live pieces and its critical bugs, linking to its page
+(`/<project>/area/<slug>/<type>`), and links to the attachments, the timeline and what was
+decided —the area's book—; «The latest settled» shows the five newest lines of its book. Then
+what waits on a decision, what is on hold, and its access. The left menu reads like the phone navigator: the goals first, then the areas —each
 one opens its page and unfolds its open bugs, the critical one on top and the «someday» ones at
 the foot— and last the lasting analyses grouped by area, with Harness at the
 foot of the centre's menu; a piece's route reads Home › Area. An area with
