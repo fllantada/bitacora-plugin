@@ -93,7 +93,7 @@ a real trade-off gets settled. You are the project's memory speaking.
 
 | The user says | What you do |
 |---|---|
-| `/bitacora <area>` · `/bitacora area <name>` | Read that area: `$API area <slug>` (its state and its place) and `$API subarea <place>` (its pending plans, latest entries, decisions and documents). The argument may be an alias — `marketing` reaches Commercial, `posicionamiento` SEO. |
+| `/bitacora <area>` · `/bitacora area <name>` | Read that area: `$API area <slug>` (its definition and its place) and `$API subarea <place>` (its pending plans, latest entries, decisions and documents). The argument may be an alias — `marketing` reaches Commercial, `posicionamiento` SEO. |
 | `/bitacora <area> <something that happened>` | Write the dated entry (see *Writing entries* below). |
 | `/bitacora <area> decision <what was decided>` | Record the point — ALREADY made — in the area's decision book, with its full frame and its verdict, or the server rejects it. What still waits on someone is a consultation (see *The Consultation*). |
 | `/bitacora <area> we need to <something to do>` | Open the plan: how it gets solved and where it closes. |
@@ -121,9 +121,9 @@ $API -p <project> nota-skill <name>   # tell it for a person: {"paraQue":"…","
                                 #   write it right after reading that skill's text — the catalogue lists it uncounted until someone does
 $API -p <project> tablero       # the board: every area with its pieces, and the goals apart
 $API -p <project> areas         # the project's areas
-$API -p <project> area <slug>   # ONE area: its name, its place, its `estado` —where that world stands today—, its `vigentes` (the lasting analyses: id, titulo, enlace) and its `objetivos`, the open goals that cross it, each with its `avance`
+$API -p <project> area <slug>   # ONE area: its name, its place, its `estado` —its definition: what that world is today—, its `vigentes` (the lasting analyses: id, titulo, enlace) and its `objetivos`, the open goals that cross it, each with its `avance`
 $API -p <project> subarea <place> # the area's place: its pieces, entries, decisions and documents
-$API -p <project> estado <slug> # the area's state in full: the current snapshot with its sections, its milestone and its chain of earlier ones
+$API -p <project> estado <slug> # the area's definition in full: the current snapshot with its sections, its milestone and its chain of earlier ones
 $API -p <project> libro <slug>  # the area's book: what was decided and done there, newest first · `libro objetivo <id>`, a goal's
 $API -p <project> buscar "x"    # search across everything you can see
 $API -p <project> documento linea <place> <doc>   # a document's raw markdown
@@ -211,7 +211,7 @@ $API -p <project> mover planes <id> <<< '{"tambienEn":["mobile"]}'   # also visi
 
 **A PIECE CAN BE SEEN FROM MORE THAN ONE AREA.** It is one single element: it lives in the
 area where it is written —its address, its number, its screenshots— and `tambienEn` names
-the other areas it is also seen from. The menu, each area's page, timeline and state show
+the other areas it is also seen from. The menu, each area's page, timeline and definition show
 it as their own. The test is the reader's question: does whoever opens that area need to
 see this piece? A pricing plan that changes the whole app lives in Commercial and is also
 seen from Mobile. Declare it in the same act you choose the area (`"tambienEn":["mobile"]`
@@ -352,10 +352,10 @@ An **area** is a world of the project — search, the engine's infrastructure, t
 the commercial side — and the place where its work lives: it is still there once today's
 work is done. Its dimensions: its **pieces** (the eleven types above), the **decision book**
 (what was decided, one point at a time), the **chronology** (dated entries: what
-happened, when, why in that order), its **state** (where it stands today) and its **book**
+happened, when, why in that order), its **definition** (what it is today) and its **book**
 (what was decided and done there, newest first). A topic of a few weeks is a **piece** of its area.
 
-**The area's page is where the work is read**: its state, and under it the area's world in
+**The area's page is where the work is read**: its definition, and under it the area's world in
 three derived sections of five rows each —«What we know», its newest lasting analyses;
 «What's broken», its open bugs with the critical one first; and «The goals that cross it»,
 each with its progress bar—, then an index of its pieces, one row per type with its three
@@ -397,18 +397,21 @@ what breaks —each FIX with its Blocking row (a bug, a broken contract, securit
 integrity) and its ASKs, `al-autor`—; its style FIX is born `para-harness`, lands in Harness
 and nowhere else, and harness turns it into a lint.
 
-**And every area carries its state**: a snapshot of where that world stands today, read in
-full on top of the area's page —its date, its milestone, the big picture, what happened since
-and its sections, with «← Previous» to the earlier one— and with its history at
-`/<project>/area/<slug>/estado`. It is a series of
-snapshots and the latest one is read; each carries the milestone that produced it —a
-relevant plan signed, a client decision, a source that moved the ground—, the `plan` whose
+**And every area carries its definition**: a snapshot of what that world is today —who uses
+it and what it does—, read in full on top of the area's page —its date, its milestone, its
+`# What it is`, what happened since and its sections, with «← Previous» to the earlier one—
+and with its history at `/<project>/area/<slug>/estado`; the address and the commands keep
+the earlier name, `estado`. What is in motion is told by the goals that cross the area, on
+the same page. It is a series of
+snapshots and the latest one is read; each carries the milestone that produced it —an
+achieved goal that changed that world, a client source that redefined it—, the `plan` whose
 sign-off was that milestone and the achieved `objetivo` (goal) that prompted it, each by its id
 when there was one and both together when the plan's sign-off achieved the goal (an id that is
 not a goal of the project answers 400 `objetivoDesconocido`), and the earlier
 ones are the history, walked one step back at a time with "Previous". **The body tells the
 area's world**, from the broadest to the most specific, and the server requires its sections
-in this order: `# Where we stand` (the big picture in a few sentences, without code), the
+in this order: `# What it is` (what that world is, who uses it and what it does today, in two
+to four sentences, without code), the
 sixth section when the area carries one (below), and `# The map` (a `d2` drawing of the
 pieces with their state, with its legend underneath). **A snapshot that brings `# What
 changed` pays it after the map**: what changed in the area since the previous snapshot, told
@@ -416,7 +419,12 @@ by the session that takes it in the words of whoever uses the system and without
 empty or «None» answers 400 `estadoIncompleto`—, and underneath it the page lists by itself
 what was signed, decided and achieved in the area between the two snapshots. Once the project
 closes its `estado-actual` adaptation, every snapshot with a previous one pays it, except
-Harness's. **The path of each piece of work lives
+Harness's, until the project closes `definicion`: from then on only the snapshot that brings
+it pays it. **A snapshot written with `# Where we stand` is the earlier one**: while the
+project's `definicion` adaptation is pending, a snapshot that brings it and no `# What it is`
+pays that entry, with the same cap; once the project closes `definicion`, every snapshot
+opens with `# What it is`, and one that brings `# Where we stand` —alone or next to
+`# What it is`— answers 400 `entradaDeAntes`, naming the new section. **The path of each piece of work lives
 in its goal** (§The Goal): the order of its plans in the goal's own `# The map`, and what is in
 flight and what waits on others, derived on its page. **Snapshots written in the earlier
 shape** carry `# In flight`, `# What's next` and `# Waiting on others` after the world, and
@@ -426,7 +434,7 @@ plans or manual steps in the area, `# What's next` is their order, as in a goal,
 `desde.planes` lists the ones it does not name yet, each with its `tipo`—. Once the project closes `caminos`, a snapshot that brings
 any of the three answers 400 `caminoEnElArea`, naming each one.
 **A snapshot is read whole every time it is written**, because a person reads it end to
-end: each section fits its cap in visible characters —`# Where we stand` 500, `# The map`
+end: each section fits its cap in visible characters —`# What it is` 500, `# The map`
 400 (its legend; the drawing does not count), the sixth section and `# What changed` 1200 each, and in the earlier
 shape `# In flight`, `# What's next` and `# Waiting on others` 600 each, `# What's next`
 with open plans or manual steps 300 without its checklist items— and the whole snapshot fits the sum of its
@@ -441,7 +449,7 @@ skill and `sincronizada`); one that cannot be refreshed today —the Figma quota
 access— is declared in the body with its reason in one line,
 `"sinRefrescar":[{"fuente":"<slug>","porque":"<why>"}]`, and stays on the snapshot
 (declaring one that is up to date answers 400 `sinRefrescarDeMas`).
-**QA's snapshot carries a sixth, fixed section right after `# Where we stand`:
+**QA's snapshot carries a sixth, fixed section right after `# What it is`:
 `# How we test`** — what is tested, where each test lives, how it runs and what each layer
 isolates, with its `d2` drawing —, required once the project closes its `areas`
 adaptation; read it before testing a change. Harness carries its own sixth in the same
@@ -449,17 +457,17 @@ spot, `# How we work`, and SEO carries `# How we get found` —each surface wher
 has to show up (Google, Bing and the AI assistants that answer by citing), what each reads
 from the site, what it understands of the project and how showing up is measured, with its
 `d2` drawing—, in the project that has its SEO area and required once it closes its `seo`
-adaptation. Read it with `$API estado <slug>`; a new snapshot is taken at the close of an important
-change (`$API escribir-estado <slug>`). **Each area's milestone is the achieved goal that
-changed it**: once a goal is achieved, `areasPorRenovar` names the areas waiting for their
-snapshot (§The Goal), and the session that achieved it takes each one with
-`"objetivo":"<id>"` as its milestone and its `# What changed`. So an area's series of
-snapshots is the series of goals that changed it. A signed-off plan that pursues no goal and
-changes its world's big picture is a milestone too, and the session that signs it off takes
-the snapshot with that `plan`; either session tells the person in one line.
+adaptation. Read it with `$API estado <slug>`; a new snapshot is written when an achieved
+goal changed that world or one of its sources changed (`$API escribir-estado <slug>`).
+**Each area's milestone is the achieved goal that changed it**: once a goal is achieved,
+`areasPorRenovar` names the areas waiting for their definition (§The Goal), and the session
+that achieved it rewrites each one with `"objetivo":"<id>"` as its milestone —and its
+`# What changed` while the project has not closed `definicion`—. So an area's series of
+snapshots is the series of goals that changed it, and the session tells the person in one
+line.
 
-**The state says where a world stands today; its book, what was decided and done to get
-there.** Every area and every goal has one, on its page next to the state
+**The definition says what a world is today; its book, what was decided and done to get
+there.** Every area and every goal has one, on its page next to the definition
 —`/<project>/area/<slug>/libro` and `/<project>/objetivo/<id>/libro`—, and it builds itself
 from what settled and what was noted, month by month and newest first:
 
@@ -475,7 +483,7 @@ from what settled and what was noted, month by month and newest first:
 
 Each line carries the date it settled: the one of the history move that took it in there
 —for a decision, when it was decided, even if it was applied later—, and the writing date
-for an analysis and an entry. What is open reads in the state and
+for an analysis and an entry. What is open reads in the goals that cross the area and
 the menu, what was dropped in its list, and a superseded entry leaves the book. **The area's
 book** gathers what settled among the pieces seen from its places, its decisions and the
 entries written there; **a goal's book**, what settled among the pieces that name it —from
@@ -1462,7 +1470,7 @@ $API -p <project> item objetivos <id> | jq '{dependeDe, destraba}'
 ```
 
 **A goal is born naming the areas it changes, in `areas`**. Every goal changes one or more
-worlds, and each area's snapshot tells where its world stands: **before opening it, read the
+worlds, and each area's snapshot tells what its world is: **before opening it, read the
 snapshot of every area it touches** (`$API -p <project> estado <area>`), and declare them when it
 opens. The field names worlds —the `objetivos` collection and the `objetivos` adaptation are
 other things—: each name is the slug of a live area, or of one of its sub-areas, which leads
@@ -1475,18 +1483,18 @@ its `nombre`, its link and its current snapshot —`numero`, `fecha`, `hito` and
 whether that snapshot carries this goal as its milestone—; an area with no snapshot yet travels
 without `foto`. Its page lists them inside, in «The areas it touches».
 
-**Once achieved, the response names the areas waiting for their snapshot**, in
+**Once achieved, the response names the areas waiting for their definition**, in
 `areasPorRenovar`: every area of the goal whose current snapshot does not carry it as its
 milestone yet, with its `area`, its `nombre`, its `foto` when it has one and the `comando` that
 takes the new one, `bitacora-api escribir-estado <area>`. The session that achieves it runs
 each `comando` with `-p <project>` and the snapshot's body on stdin —its sections in `cuerpo`,
 its `hito`, `"objetivo":"<id>"` as its milestone and the compiled `diagramas`—, with its
-`# What changed`; Harness stays out, because its snapshot belongs to the owner, and the field
+`# What changed` while the project has not closed `definicion`; Harness stays out, because its snapshot belongs to the owner, and the field
 is missing when none waits.
 
 ```bash
 $API -p <project> mover objetivos <id> <<< '{"estado":"logrado","nota":"what was achieved"}' | jq -r '.areasPorRenovar[]? | .area'
-$API -p <project> escribir-estado <area> < snapshot.json   # {"escritoEn":"en","cuerpo":{"en":"# Where we stand\n…\n\n# The map\n…\n\n# What changed\n…"},"hito":{"en":"…"},"objetivo":"<id>","diagramas":[…]}
+$API -p <project> escribir-estado <area> < snapshot.json   # {"escritoEn":"en","cuerpo":{"en":"# What it is\n…\n\n# The map\n…\n\n# What changed\n…"},"hito":{"en":"…"},"objetivo":"<id>","diagramas":[…]}
 $API -p <project> corregir objetivos <id> <<< '{"areas":["<area>","<area>"]}'   # the whole list, in its order
 $API -p <project> corregir objetivos <id> <<< '{"areas":[]}'                    # and removes it
 $API -p <project> item objetivos <id> | jq '.areas'
