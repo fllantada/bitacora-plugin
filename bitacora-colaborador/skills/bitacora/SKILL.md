@@ -370,14 +370,17 @@ read with its sub-areas, and the owner folds each one into its area
 (`fusionar <sub-area> <area>`: its pieces keep the sub-area's name and brief as their
 topic) or raises it to an area of its own (`ascender <sub-area>`).
 
-**Four areas exist in every project**, even empty, called the same in all of them, with
+**Three areas exist in every project**, even empty, called the same in all of them, with
 their name and their existence fixed (renaming or deleting one answers 400 `areaObligada`):
 **Commercial** (`comercial`, alias `marketing` — a project that already had `marketing`
-keeps it as its Commercial, and both names lead there), **QA** (`qa`: what is tested and how), **SEO** (`seo`, alias `posicionamiento`: how the project gets found on Google, on Bing and in the AI assistants that answer by citing) and **Harness**
+keeps it as its Commercial, and both names lead there), **QA** (`qa`: what is tested and how) and **Harness**
 (`harness`: the tooling the project works with, one harness for every account —each
 account's Harness area keeps its reports, and the centre, the owner's `bitacora` tenant, keeps
 the analysis, the snapshot and the plans that improve it—). Whoever arrives at any project knows
-without asking where selling, testing, being found and the tooling go. **What waits for its
+without asking where selling, testing and the tooling go. **SEO** (`seo`, or `posicionamiento`
+in the project that already worked there) is the area of the project that works on how it
+gets found on Google, on Bing and in the AI assistants that answer by citing: it is called
+«SEO» and carries its sixth section wherever it exists. **What waits for its
 moment lives in the area of its topic with the priority `algun-dia`** («someday», the last
 word of the plan and of the bug): it hangs at the foot of its list and the area's count leaves
 it out. Nice To Have was retired: its place is read while it holds something open, and writing
@@ -443,7 +446,8 @@ adaptation; read it before testing a change. Harness carries its own sixth in th
 spot, `# How we work`, and SEO carries `# How we get found` —each surface where the project
 has to show up (Google, Bing and the AI assistants that answer by citing), what each reads
 from the site, what it understands of the project and how showing up is measured, with its
-`d2` drawing—, required once the project closes its `seo` adaptation. Read it with `$API estado <slug>`; a new snapshot is taken at the close of an important
+`d2` drawing—, in the project that has its SEO area and required once it closes its `seo`
+adaptation. Read it with `$API estado <slug>`; a new snapshot is taken at the close of an important
 change (`$API escribir-estado <slug>`). **Each area's milestone is the achieved goal that
 changed it**: once a goal is achieved, `areasPorRenovar` names the areas waiting for their
 snapshot (§The Goal), and the session that achieved it takes each one with

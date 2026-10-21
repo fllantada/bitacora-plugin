@@ -2456,7 +2456,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado, el vigente también)
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
   Cada pieza va a un ÁREA: `plan <area>`, `analisis <area>`… cae en su lugar, y el servidor lo crea si falta.
-  Todo proyecto trae Comercial (`comercial`, alias `marketing`), QA (`qa`), SEO (`seo`, alias `posicionamiento`) y Harness.
+  Todo proyecto trae Comercial (`comercial`, alias `marketing`), QA (`qa`) y Harness; SEO (`seo`, alias `posicionamiento`) la abre quien la trabaja.
   Lo que espera su momento va al área de su tema con "prioridad":"algun-dia"; Nice To Have se retiró y se lee mientras tenga algo.
   bitacora-api abrir-area                   {"nombre":"El contrato"}   (nace vacía; se llena nombrándola al escribir)
   bitacora-api editar-area <slug>           {"nombre":"…"} (renombra) · {"orden":2} (su lugar en el menú)
