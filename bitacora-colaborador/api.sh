@@ -795,6 +795,17 @@ flujo)
   exige 1 "flujo <slug>" "$@"
   leer "/api/flujos/$(uri "$1")"
   ;;
+# La bandeja de QA: los flujos cuyas pantallas esperan —por renovar primero, después los
+# incompletos y los que no tienen ninguna—, cada uno con sus `pantallas` como las dice la lista.
+cobertura)
+  [ $# -eq 0 ] || { echo "uso: bitacora-api cobertura" >&2; exit 1; }
+  salida_cobertura="$(leer "/api/flujos")" || exit 1
+  printf '%s' "$salida_cobertura" | jq '
+    ["por-renovar", "incompleto", "sin-pantallas"] as $orden
+    | [.[] | select(.pantallas.estado != "al-dia")]
+    | sort_by(.pantallas.estado as $e | $orden | index($e))
+    | map({slug, nombre, url, pantallas})'
+  ;;
 stack) leer "/api/stack${1:+?flujos=1}" ;;
 # ── LAS FUENTES: lo que el cliente entregó, con de cuándo es cada cosa ────────
 #
@@ -1738,9 +1749,10 @@ editar-flujo)
   escribir PATCH "/api/flujos/$(uri "$1")"
   ;;
 # La pantalla vigente de un paso: sube la captura a la puerta del paso, que la guarda con un
-# nombre nuevo en la carpeta del flujo y la deja vigente en ese dispositivo.
+# nombre nuevo en la carpeta del flujo y la deja vigente en ese dispositivo. `--plan` nombra el
+# plan del que sale la pantalla —el después que QA captura al cerrarlo—: su firma la deja al día.
 capturar-paso)
-  uso_paso='capturar-paso <flujo> <paso> <archivo> --dispositivo <celular|escritorio> [--sobre "<rama, PR o versión>"]'
+  uso_paso='capturar-paso <flujo> <paso> <archivo> --dispositivo <celular|escritorio> [--sobre "<rama, PR o versión>"] [--plan <id>]'
   exige 3 "$uso_paso" "$@"
   flujo_paso="$1"
   id_paso="$2"
@@ -1751,6 +1763,7 @@ capturar-paso)
     case "$1" in
     --dispositivo) campos_paso+=("dispositivo=${2:?Falta el dispositivo después de --dispositivo}") && shift 2 ;;
     --sobre) campos_paso+=("sobre=${2:?Falta la rama, la PR o la versión después de --sobre}") && shift 2 ;;
+    --plan) campos_paso+=("plan=${2:?Falta el id del plan después de --plan}") && shift 2 ;;
     *) echo "«$1» no es una opción de capturar-paso — uso: bitacora-api $uso_paso" >&2 && exit 1 ;;
     esac
   done
@@ -2278,7 +2291,9 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
         la skill contada para una persona: lo único del catálogo que se escribe
   bitacora-api sacar-skill <nombre>         (la que se retiró de verdad: sale del catálogo — dueño)
   bitacora-api flujos [--area <slug>]       · bitacora-api flujo <slug>
-                                            (con --area, los que viven en ella y los que pasan por ahí)
+                                            (con --area, los que viven en ella y los que pasan por ahí;
+                                             cada flujo trae sus `pantallas`: al-dia, por-renovar, incompleto o sin-pantallas)
+  bitacora-api cobertura                    (la bandeja de QA: los flujos cuyas pantallas esperan, por renovar primero)
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
   bitacora-api accesos                      (las direcciones de afuera, con qué se entra a cada una)
@@ -2510,8 +2525,9 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · {"pasos":[…]} reemplaza el recorrido entero (un paso no se parchea solo):
                                             cada paso viaja con el `id` que trae `flujo <slug>`, y el nuevo sin él;
                                             el recorrido que cambió mientras se escribía contesta 409 flujoCambiado
-  bitacora-api capturar-paso <flujo> <paso> <archivo> --dispositivo <celular|escritorio> [--sobre "<rama, PR o versión>"]
-                                            (la pantalla vigente de ese paso en ese dispositivo: el paso por su id, y la anterior queda guardada)
+  bitacora-api capturar-paso <flujo> <paso> <archivo> --dispositivo <celular|escritorio> [--sobre "<rama, PR o versión>"] [--plan <id>]
+                                            (la pantalla vigente de ese paso en ese dispositivo: el paso por su id, y la anterior queda guardada;
+                                             --plan, el plan del que sale: su firma la deja al día)
   bitacora-api anotar-pieza                 {"nombre":"…","responsabilidad":"…","nivel":"contenedor","tecnologia":"Node · GraphQL · Fargate",
                                              "donde":"…","documentacion":"https://…","notas":"…"}
         nivel = sistema | contenedor | componente | libreria   (sin declararlo, contenedor)

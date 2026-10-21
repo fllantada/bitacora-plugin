@@ -1783,6 +1783,33 @@ flow does not have answers 404 `pasoInexistente`, a file that is not an image, 4
 uploading, 409 `flujoCambiado`: the capture is not kept, and you run it again with the step
 that `$API flujo <slug>` brings.
 
+**Each screen says whether it is up to date.** It is **to renew** when a plan that names the
+flow in its `flujos` was signed off (`hecho`), or a bug that names it was fixed (`arreglado`),
+after the screen was taken: the run changed and the screen shows the old one. The plan the
+screen came from keeps it up to date even when it is signed off later, because its after
+captures already show its change: that is the `plan` that `capturar-paso --plan <id>` declares.
+With that, each flow is **up to date** (every step has an up-to-date screen on some device),
+**to renew** (some screen fell behind), **incomplete** (none fell behind and steps are missing)
+or **without screens**. The strip, each step's thumbnail and the short strip on its row in the
+area page carry the mark, and the QA area's page gathers it in "The coverage": one row per
+flow in the project, the waiting ones on top. `$API flujos` brings each flow's `pantallas`, and
+`$API cobertura` is QA's tray, the ones waiting, to renew first:
+
+```bash
+$API cobertura
+# → [{"slug","nombre","url","pantallas":{"estado":"por-renovar","pasos":{"con":4,"de":6},
+#     "cuenta":{"celular":{"con":4,"de":6}},"masVieja":"<date>",
+#     "dejaronAtras":[{"tipo":"plan","id","titulo","url","fecha"}]}}, …]
+$API capturar-paso read-a-plan p3 p3.png --dispositivo celular --sobre "PR #42" --plan <plan-id>
+# --plan: the plan the screen comes from; an id the project does not have is 404 planInexistente
+```
+
+When you close the request of a plan with `visual: captura` that names flows, leave the after
+captures as the screens of those flows' steps too, with `--plan <plan-id>`: its sign-off keeps
+them up to date. `dejaronAtras` names each plan or bug that left a screen behind, with the date
+it settled; that date carries `inferido` when the item does not keep the move that settled it
+and its last write is taken instead.
+
 ### The people responsible — who does each manual step
 
 A manual step is what a person does by hand so the work can carry on —creating a key in
