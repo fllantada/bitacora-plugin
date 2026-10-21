@@ -1715,6 +1715,41 @@ having to pick one of the two readers. The flow's page opens its run with a map 
 those steps —one box per step carrying its sentence up to the first pause, grouped by stage
 when the run is long—, so a `que` whose first clause names the step reads well in the map.
 
+Each step also carries its `id` —`p1`, `p2`…, the same in every language layer—, which the
+bitácora sets when the step is born. `$API editar-flujo <slug>` replaces the whole run, so
+**send each step with the `id` that `$API flujo <slug>` brings, and the new one without
+it**: the id is what keeps a step's screen with it when another step is inserted in the
+middle. A step without an id in another language layer takes the id of the original's step
+in the same position. The original layer arriving with no id at all, in a flow that already
+stores them, answers 400 `pasosSinId`, and an id the flow does not have, 400
+`pasoDesconocido`. In another layer, the id a step takes by its position that another step
+of that layer already carries answers 400 `pasoRepetido`: send that layer with each step
+named by its id. And an edit that finds the run changed while it was being written —a
+capture stored its steps' ids, or another edit rewrote it at that moment— answers 409
+`flujoCambiado`: read the flow again and send the run over today's.
+
+**And each step keeps its SCREEN**, one per device —`celular` and `escritorio`—: the current
+capture of that moment of the run, with its date and what it was taken on. When you walk a
+flow on the device —verifying a PR, or bringing the flow up to date—, leave the screen of
+each step you passed, naming it by its id:
+
+```bash
+$API flujo read-a-plan | jq '.pasos[] | {id, que}'    # each step's id
+$API capturar-paso read-a-plan p3 p3.png --dispositivo celular --sobre "PR #42"
+# → {"flujo","paso","dispositivo","ruta":"flujos/read-a-plan/p3-celular-<date>.png","url","fecha","sobre"}
+```
+
+Every capture is stored under a new name in the flow's folder, so the previous one stays
+saved and the new one becomes current. `$API flujo <slug>` brings the current ones in
+`capturas`, by step id and by device, each with its `ruta`, `url`, `fecha`, `sobre` and
+`autor`; `$API adjuntos --flujo <slug>` lists every capture of the flow, current and earlier,
+each with its path. The screen is one in every language, so rewriting the steps' text leaves
+it in place; removing a step from the original layer takes its capture with it. A step the
+flow does not have answers 404 `pasoInexistente`, a file that is not an image, 400
+`noEsImagen`, and a flow that an edit changed, or that was deleted, while the capture was
+uploading, 409 `flujoCambiado`: the capture is not kept, and you run it again with the step
+that `$API flujo <slug>` brings.
+
 ### The people responsible — who does each manual step
 
 A manual step is what a person does by hand so the work can carry on —creating a key in

@@ -390,20 +390,26 @@ leer_cuerpo() {
 # Lo que viaja en la URL: un slug con espacios o un texto de búsqueda.
 uri() { jq -rn --arg v "$1" '$v|@uri'; }
 
-# Sube un archivo. No pasa por la cola: un binario no entra en una línea de JSONL, y
+# Sube un archivo a la puerta de los adjuntos.
+subir() {
+  subir_a "/api/adjuntos" "$@"
+}
+
+# Sube un archivo a una puerta que lo recibe como multipart: la de los adjuntos o la de la
+# captura de un paso. No pasa por la cola: un binario no entra en una línea de JSONL, y
 # reintentar una subida a ciegas es peor que volver a escribir el comando.
 #
 # La subida que el servidor rechaza imprime lo que el servidor DIJO, igual que `leer`: el 400
 # de la puerta trae la razón adentro, y el rechazo de la plataforma por tamaño trae el suyo.
-subir() {
-  local archivo="$1" respuesta codigo salida
-  shift
+subir_a() {
+  local puerta="$1" archivo="$2" respuesta codigo salida
+  shift 2
   # El archivo se busca antes de mandarlo: con rutas relativas, la carpeta suele ser la causa.
   { [ -f "$archivo" ] && [ -r "$archivo" ]; } || { echo "No se puede leer $archivo (buscado desde $PWD); revisá la ruta." >&2; return 1; }
   local campos=()
   for par in "$@"; do campos+=(-F "$par"); done
   respuesta="$(curl -sS --max-time 120 -H "Authorization: Bearer $TOKEN" \
-    -F "archivo=@$archivo" "${campos[@]}" -w $'\n%{http_code}' "$BASE/api/adjuntos" \
+    -F "archivo=@$archivo" ${campos[@]+"${campos[@]}"} -w $'\n%{http_code}' "$BASE$puerta" \
     2>/dev/null || printf '\n000')"
   codigo="${respuesta##*$'\n'}"
   salida="${respuesta%$'\n'*}"
@@ -1050,7 +1056,16 @@ publicar-estado | privado-estado)
     '{estado: $e, publico: $a} + (if $w == "" then {} else {contrasena:$w} end)
      + (if $i == "" then {} else {idioma:$i} end)' | escribir PUT "/api/publicacion"
   ;;
-adjuntos) leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}" ;;
+# Los adjuntos del proyecto, o los de un área; con `--flujo <slug>`, las capturas de los pasos
+# de ese flujo: la vigente de cada paso y las anteriores.
+adjuntos)
+  if [ "${1:-}" = "--flujo" ]; then
+    exige 2 "adjuntos --flujo <slug>" "$@"
+    leer "/api/adjuntos?flujo=$(uri "$2")"
+  else
+    leer "/api/adjuntos${1:+?linea=$(uri "${1:-}")}"
+  fi
+  ;;
 # Baja un adjunto con la llave del proyecto: la maqueta que un plan sigue, el «antes» de un
 # pedido. Toma la `ruta` que contestan `adjuntos`, `capturar` y `pedido`, o su `url`
 # (`/adjunto/…`, ya codificada); sin destino queda con su nombre en la carpeta actual, y un
@@ -1725,10 +1740,35 @@ abrir-flujo)
   vaciar_cola
   escribir POST "/api/flujos"
   ;;
+# Los pasos viajan con el `id` que trae `flujo <slug>`, y el que nace, sin él: el id es lo que
+# deja la pantalla de cada paso con él. El recorrido que cambió mientras se escribía contesta 409.
 editar-flujo)
-  exige 1 "editar-flujo <slug>   < {\"estado\":\"construido\"} · {\"sumarStack\":[\"algolia\"]} · {\"pasos\":[{\"que\":\"…\"}]}" "$@"
+  exige 1 "editar-flujo <slug>   < {\"estado\":\"construido\"} · {\"sumarStack\":[\"algolia\"]} · {\"pasos\":[{\"id\":\"p1\",\"que\":\"…\"},{\"que\":\"el paso nuevo\"}]}" "$@"
   vaciar_cola
   escribir PATCH "/api/flujos/$(uri "$1")"
+  ;;
+# La pantalla vigente de un paso: sube la captura a la puerta del paso, que la guarda con un
+# nombre nuevo en la carpeta del flujo y la deja vigente en ese dispositivo.
+capturar-paso)
+  uso_paso='capturar-paso <flujo> <paso> <archivo> --dispositivo <celular|escritorio> [--sobre "<rama, PR o versión>"]'
+  exige 3 "$uso_paso" "$@"
+  flujo_paso="$1"
+  id_paso="$2"
+  archivo_paso="$3"
+  shift 3
+  campos_paso=()
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --dispositivo) campos_paso+=("dispositivo=${2:?Falta el dispositivo después de --dispositivo}") && shift 2 ;;
+    --sobre) campos_paso+=("sobre=${2:?Falta la rama, la PR o la versión después de --sobre}") && shift 2 ;;
+    *) echo "«$1» no es una opción de capturar-paso — uso: bitacora-api $uso_paso" >&2 && exit 1 ;;
+    esac
+  done
+  case " ${campos_paso[*]-} " in
+  *" dispositivo="*) ;;
+  *) echo "Falta --dispositivo — uso: bitacora-api $uso_paso" >&2 && exit 1 ;;
+  esac
+  subir_a "/api/flujos/$(uri "$flujo_paso")/pasos/$(uri "$id_paso")/captura" "$archivo_paso" "${campos_paso[@]}"
   ;;
 # anotar-pieza  ← {"nombre":"…","responsabilidad":"…","donde":"…","comoSeEntra":"…"}
 # Anota una fuente, o corrige la ficha de la que ya estaba. Upsert por slug, como el stack:
@@ -2277,7 +2317,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
                                              el análisis escrito— y sus entradas, lo más reciente arriba; `libro objetivo <id>`, el de un objetivo)
   bitacora-api buscar <texto>
   bitacora-api documento <linea|seccion|flujo> <contenedor> <slug>
-  bitacora-api secciones · bitacora-api horas (dueño) · bitacora-api adjuntos [linea] · bitacora-api reviews
+  bitacora-api secciones · bitacora-api horas (dueño) · bitacora-api adjuntos [linea | --flujo <slug>] · bitacora-api reviews
   bitacora-api publicados                   (lo que está afuera hoy, con el enlace, la contraseña y el idioma de cada uno)
   bitacora-api de-la-subarea <subarea> <tipo>  (= del-hilo: lo que cuelga de una sub-área, de un tipo)
   bitacora-api tipo <tipo> [estado]         (todos los del proyecto, cruzando sub-áreas)
@@ -2468,7 +2508,11 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime",
                                              "pasos":[{"etapa":"…","actor":"…","que":"…","pieza":"algolia","detalle":"…"}]}
   bitacora-api editar-flujo <slug>          {"estado":"construido"} · {"sumarStack":[…]} · {"sumarGlosario":[…]}
-                                            · {"pasos":[…]} reemplaza el recorrido entero (un paso no se parchea solo)
+                                            · {"pasos":[…]} reemplaza el recorrido entero (un paso no se parchea solo):
+                                            cada paso viaja con el `id` que trae `flujo <slug>`, y el nuevo sin él;
+                                            el recorrido que cambió mientras se escribía contesta 409 flujoCambiado
+  bitacora-api capturar-paso <flujo> <paso> <archivo> --dispositivo <celular|escritorio> [--sobre "<rama, PR o versión>"]
+                                            (la pantalla vigente de ese paso en ese dispositivo: el paso por su id, y la anterior queda guardada)
   bitacora-api anotar-pieza                 {"nombre":"…","responsabilidad":"…","nivel":"contenedor","tecnologia":"Node · GraphQL · Fargate",
                                              "donde":"…","documentacion":"https://…","notas":"…"}
         nivel = sistema | contenedor | componente | libreria   (sin declararlo, contenedor)
