@@ -1510,7 +1510,10 @@ aplicar-cliente)
 #      cuando estrena), qué mirar (`queCuenta`), la recomendación y su porqué. Y de qué
 #      RECORRIDO es cada pantalla: `flujos` arriba, o el `flujo` de cada paso. De qué
 #      DISPOSITIVO son las capturas (`dispositivo`: escritorio | celular) lo deduce la
-#      página de la imagen; se declara cuando la de escritorio es a página entera.
+#      página de la imagen; se declara cuando la de escritorio es a página entera. El paso
+#      que nombra el paso de su flujo (`pasoDelFlujo`, con su `dispositivo`) recibe su
+#      `antes` solo, de la pantalla vigente de ese paso, y la firma del plan deja vigente
+#      su `despues` aprobado.
 #   3. La persona ACEPTA, RECHAZA o PIDE MÁS CONTEXTO cada paso EN LA WEB, comparando el
 #      antes con el después: lado a lado las de celular, y las de escritorio en el mismo
 #      lugar con los botones «Antes» y «Después». Con la última decisión el chequeo pasa
@@ -1544,10 +1547,12 @@ capturar)
   ;;
 # Lo que la persona dijo de cada paso: aceptó o rechazó lo que vio, o pidió más contexto
 # (`decision: "pide-contexto"`, con qué le faltó en `comentario`). `pedidos` son los que ese
-# paso ya recibió y la sesión atendió recapturándolo.
+# paso ya recibió y la sesión atendió recapturándolo. Cada paso trae el paso del flujo que
+# muestra (`pasoDelFlujo`) y la ruta de cada pantalla: el `antes` bajo `flujos/<slug>/` es la
+# vigente de ese paso, que llegó sola.
 visto)
   exige 1 "visto <id>" "$@"
-  leer "/api/items/chequeos/$(uri "$1")" | jq '{estado, hilo, titulo, flujos, respuestas, faltan, pidenContexto, cambiosPedidos: (.cambiosPedidos // []), pasos: [.pasos[] | {id, titulo, flujo, estrena, entrada, gesto, queCuenta, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
+  leer "/api/items/chequeos/$(uri "$1")" | jq '{estado, hilo, titulo, flujos, respuestas, faltan, pidenContexto, cambiosPedidos: (.cambiosPedidos // []), pasos: [.pasos[] | {id, titulo, flujo, pasoDelFlujo, dispositivo, estrena, despues: .despues.ruta, antes: (.antes.ruta // null), origen: (.origen.ruta // null), entrada, gesto, queCuenta, recomendacion: .propuesta, porque, decision: (.respuesta.decision // null), comentario: (.respuesta.texto // null), por: (.respuesta.autor // null), pedidos: [(.pedidos // [])[] | .texto // ""]}]}'
   ;;
 # Corregir o agregar pasos mientras el chequeo está abierto: por id el que se corrige, sin
 # id el que nace entero. Es cómo se atiende un pedido de contexto —el paso recapturado
@@ -2442,12 +2447,16 @@ Escritura (el cuerpo JSON entra por stdin):
                                                        "origen":"<ruta de la pantalla desde la que se viene>","gesto":"qué se tocó para llegar acá",
                                                        "entrada":"<la dirección directa por la que se abre la pantalla — en lugar de origen y gesto>",
                                                        "flujo":"<slug — cuando el chequeo cruza más de un recorrido>",
+                                                       "pasoDelFlujo":"<id del paso del flujo que muestra la pantalla — p1, p2…, los de `flujo <slug>`>",
+                                                       "dispositivo":"escritorio | celular — va con pasoDelFlujo",
                                                        "propuesta":"la recomendación","porque":"su porqué, en una frase"}]}
         lo que se aprueba MIRANDO: las capturas suben antes con `capturar` y el paso las nombra por su ruta, que la puerta verifica;
         desde el segundo paso va cómo se llega —`entrada`, o `origen` con su `gesto`—, y la persona aprueba cada uno EN LA WEB
         comparando el antes con el después; aceptar con una línea escrita es un cambio pedido, que `visto` y `decidido` listan en `cambiosPedidos`;
         "plan":"<id>" es obligatorio y dice qué plan revisa —el que declara `visual: chequeo`—: el plan lo lista en su tira, y firmar ese plan cierra el chequeo —el contestado pasa a `aplicado`,
-        el abierto a `descartado` con «firmado sin mirar»—
+        el abierto a `descartado` con «firmado sin mirar»—;
+        el paso con `pasoDelFlujo` y sin `antes` lo recibe de la pantalla vigente de ese paso en su dispositivo (sin ella, estrena o trae el suyo),
+        y la firma del plan deja vigente en el flujo cada `despues` aprobado tal como se vio —el aceptado a secas, o el que cerró el OK de la sesión—
   bitacora-api decidir <id> "<veredicto>"   → decidida: la sesión decide la consulta que es suya (`decide: sesion`)
   bitacora-api aplicar-decision <id> "<nota>"  → aplicada: la sesión hizo lo decidido; la abierta, 400
   bitacora-api aplicar <tanda> [nota]       → la tanda entera: cada decidida pasa a aplicada con la nota; con alguna abierta, 400
@@ -2479,7 +2488,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                              ## Evidencia · ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir · ## Pendientes fuera de alcance —
                                              Cómo quedó y las tres últimas van siempre y dicen «Ninguna» cuando no hubo, porque ausente o vacía rebota;
                                              la review publicada en la bitácora va en ficha.review)
-  bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada
+  bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada. Cierra sus chequeos y deja vigente en su flujo cada `despues` aprobado
+                                            con `pasoDelFlujo`: la respuesta los nombra en `pantallas.vigentes`, en `pantallas.salteadas` el que no pasó, con su `porque`, y en `pantallas.repetidas` el que otro paso más nuevo de la misma firma dejó vigente
   bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con sus ocho secciones y su ## Ronda N>"},"nota":"…"} → encargado
                                             (entrar a encargado cobra las ocho secciones del cuerpo y el queEs; sin cuerpo, imprime la forma)
   bitacora-api sacar <tipo> <id>            (el que se abrió por error y el duplicado — dueño)

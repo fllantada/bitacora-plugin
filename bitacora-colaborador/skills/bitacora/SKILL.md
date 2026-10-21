@@ -1064,14 +1064,15 @@ judgeable.
 |---|---|
 | `titulo` | the screen or the moment, in a few words |
 | `despues` | **the capture under judgement**: the screen as it ends up with the change. Always there |
-| `antes` | that same screen on the base branch. **Always there when the screen already existed**, also when the check approves what ships in a release: without it the page marks the screen «New screen». **Empty only when the step DEBUTS the screen**, which turns the question from «did it improve» into «is it right as it is» |
+| `antes` | that same screen on the base branch. **It arrives on its own when the step names its `pasoDelFlujo`** and that step of the run has a screen on its `dispositivo`: it is the current one, and the page says it comes from that step's saved screens. Correcting the step's `pasoDelFlujo`, `dispositivo` or `flujo` renews that «before» with the screen of what it names now. Otherwise it is **always there when the screen already existed**, also when the check approves what ships in a release: without it the page marks the screen «New screen». **Empty only when the step DEBUTS the screen**, which turns the question from «did it improve» into «is it right as it is» |
 | `origen` | the screen you come from, with the control you tap marked on it |
 | `gesto` | what you tapped to go from `origen` to `despues` — «tap Discount» |
 | `entrada` | **the direct address the screen opens at**, instead of `origen` and `gesto`: for the step you reach by its URL —a state prepared in the database, a page that opens on its own—, so it says how you really get there |
 | `queCuenta` | **what to look at, from the seat of the user who uses that screen**: their situation, what the screen shows them, what changed for them and the question the approver decides (how to write it, below) |
 | `propuesta` + `porque` | the session's recommendation and its reason, in one phrase |
 | `flujo` | the slug of the run that moment belongs to |
-| `dispositivo` | `escritorio` or `celular`: which device the captures come from, because it decides HOW the page compares them — side by side for phone captures, and for desktop ones stacked in the same place, with a Before and an After button to pick which one shows. The page infers it from the image when absent (landscape means desktop); **declare it when a desktop capture is full-page**, taller than wide, which would otherwise read as a phone |
+| `pasoDelFlujo` | **the step of the run the screen shows**, by its id (`p1`, `p2`…, the ones `$API flujo <slug>` returns; the check's own steps are also called `p1…`, and this field names the run's). It goes with its `dispositivo`. With it, `antes` arrives on its own from that step's current screen, and the plan's sign-off makes the approved `despues` current. An id the run does not have is a 400 `pasoDelFlujoInexistente`, and without `dispositivo`, `pasoDelFlujoSinDispositivo` |
+| `dispositivo` | `escritorio` or `celular`: which device the captures come from, because it decides HOW the page compares them. **Always there with `pasoDelFlujo`**, since the run keeps one screen per device — side by side for phone captures, and for desktop ones stacked in the same place, with a Before and an After button to pick which one shows. The page infers it from the image when absent (landscape means desktop); **declare it when a desktop capture is full-page**, taller than wide, which would otherwise read as a phone |
 
 **Captures go up first and the step names them by their path.** Each one enters through the
 attachments door —one request per file, so a long check has no size ceiling— and `capturar`
@@ -1137,11 +1138,13 @@ The same step, written from the user:
 PLACE="$($API -p <project> item planes <plan-id> | jq -r .hilo)"
 
 # 1. The captures go up and return their path: that is what the step names them by.
-$API -p <project> capturar "$PLACE" step1-origin.png step1-before.png step1-after.png
+$API -p <project> capturar "$PLACE" step1-after.png step2-before.png step2-after.png
 $API -p <project> capturar --reemplazar "$PLACE" step1-after.png   # a name already taken in the place returns 409 adjuntoTomado; the same capture redone goes up with --reemplazar
-# → {"step1-origin.png":"<place>/step1-origin.png", …}
+# → {"step1-after.png":"<place>/step1-after.png", …}
 
-# 2. The check, with its run, the plan it reviews, and its steps.
+# 2. The check, with its run, the plan it reviews, and its steps. The first one names step p3
+#    of the run (`$API -p <project> flujo <run-slug>` lists each step with its id): its
+#    `antes` arrives on its own from p3's current screen on a phone.
 $API -p <project> chequeo "$PLACE" <<'JSON'
 {"titulo":"The prizes step of the wizard, on a Galaxy S21",
  "queEs":"PR #212 rebuilds the prizes step of the sign-up wizard. Nine screens of the run, on an S21: what changed is the order of the fields and the summary at the foot.",
@@ -1151,7 +1154,8 @@ $API -p <project> chequeo "$PLACE" <<'JSON'
    {"titulo":"The wizard, on the data step",
     "queCuenta":"You are signing up your tour and just finished the data: from here you go on to prizes. The Continue button is now pinned to the foot, so you see it with the keyboard open. Can you find it without scrolling?",
     "despues":"<place>/step1-after.png",
-    "antes":"<place>/step1-before.png",
+    "pasoDelFlujo":"p3",
+    "dispositivo":"celular",
     "propuesta":"Keep it pinned to the foot.",
     "porque":"On an S21 the button fell below the fold with the keyboard open."},
    {"titulo":"Prizes, with the new summary",
@@ -1180,7 +1184,12 @@ $API -p <project> aplicar-chequeo <id> --en-la-sesion "go ahead, it looks right"
 that is what ties it to the PR it approves, and the door asks that plan to exist, to have
 asked for `visual: chequeo` and to be still unsigned. The plan lists it in its access strip
 as «Check», its page links it from the request that opened it, and signing off the plan
-closes it. **Before sending the link, the session verifies it**: a subagent compares each
+closes it. **And the sign-off renews the screens of the runs**, because that is when the
+change ships: each step with `pasoDelFlujo` approved as it was seen —accepted with no text,
+or unanswered in a check already `aplicado` with the session's OK— copies its `despues` into
+the run's folder as that step's current screen, with the sign-off's date, the plan and the
+check it came from. A step accepted with a change request, a rejected one, one that asked
+for context and a check closed «firmado sin mirar» leave the previous screen. **Before sending the link, the session verifies it**: a subagent compares each
 pair —the before and the after are the same screen at the same size, what the step asks to
 approve is in sight, no defect shows, the captures come from committed code— and whatever
 fails is recaptured through `pasos`. **A step accepted with a text is a change request**:
