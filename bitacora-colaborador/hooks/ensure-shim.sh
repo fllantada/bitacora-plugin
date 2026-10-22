@@ -14,10 +14,16 @@
 # Los de /coding, /thinking y /harness los trae solo el plugin del dueño: el colaborador
 # comparte este hook y enlaza lo que encuentra. Corre en SessionStart y es silencioso: su stdout entraría al
 # contexto de la sesión.
+#
+# El harness puede ser Claude Code (CLAUDE_PLUGIN_ROOT) o Kimi Code (KIMI_PLUGIN_ROOT,
+# declarado en kimi.plugin.json). Además de los shims mantiene el enlace estable
+# ~/.local/share/bitacora/plugin, del que Kimi lee las skills y los agentes en vivo
+# (extra_skill_dirs / extra_agent_dirs de ~/.kimi-code/config.toml).
 set -euo pipefail
 
-[ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || exit 0
-mkdir -p "$HOME/.local/bin"
+RAIZ="${CLAUDE_PLUGIN_ROOT:-${KIMI_PLUGIN_ROOT:-}}"
+[ -n "$RAIZ" ] || exit 0
+mkdir -p "$HOME/.local/bin" "$HOME/.local/share/bitacora"
 
 # La versión de un directorio instalado del plugin, leída de su manifiesto.
 version_de() {
@@ -42,15 +48,16 @@ mayor_o_igual() {
 actual="$(readlink "$HOME/.local/bin/bitacora-api" 2>/dev/null || true)"
 actual="${actual%/api.sh}"
 if [ -n "$actual" ] && [ -f "$actual/api.sh" ] && [ -f "$actual/.claude-plugin/plugin.json" ]; then
-  nueva="$(version_de "$CLAUDE_PLUGIN_ROOT")"; vieja="$(version_de "$actual")"
+  nueva="$(version_de "$RAIZ")"; vieja="$(version_de "$actual")"
   if [ -n "$nueva" ] && [ -n "$vieja" ] && ! mayor_o_igual "$nueva" "$vieja"; then
     exit 0
   fi
 fi
 
-ln -sfn "$CLAUDE_PLUGIN_ROOT/api.sh" "$HOME/.local/bin/bitacora-api"
+ln -sfn "$RAIZ/api.sh" "$HOME/.local/bin/bitacora-api"
+ln -sfn "$RAIZ" "$HOME/.local/share/bitacora/plugin"
 for par in "skills/coding/scripts/consumo.py bitacora-consumo" "skills/thinking/scripts/frentes.sh bitacora-frentes" "skills/harness/medir.sh bitacora-medir" "diagramas.mjs bitacora-diagramas"; do
-  SCRIPT="$CLAUDE_PLUGIN_ROOT/${par% *}"
+  SCRIPT="$RAIZ/${par% *}"
   if [ -f "$SCRIPT" ]; then
     chmod +x "$SCRIPT" 2>/dev/null || true
     ln -sfn "$SCRIPT" "$HOME/.local/bin/${par#* }"
