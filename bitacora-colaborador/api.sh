@@ -1127,20 +1127,20 @@ bajar)
   esac
   ;;
 # ─────────────────────────────────────────────────────────────────────────────
-# LOS TIPOS DE UNA SUB-ÁREA — analisis · planes · bugs · gestiones · client-reports · decisiones · simulaciones · consultas · consultas-cliente · chequeos · objetivos
+# LOS TIPOS DE UNA SUB-ÁREA — analisis · ideas · planes · bugs · gestiones · client-reports · decisiones · simulaciones · consultas · consultas-cliente · chequeos · objetivos
 #
 # Una sub-área es el lugar y adentro cuelgan cosas de tipo distinto. El tipo se nombra
 # en plural y en la misma palabra que se lee en la app, así lo que se escribe y lo
 # que se navega dicen igual.
 # ─────────────────────────────────────────────────────────────────────────────
 tipo)
-  exige 1 "tipo <analisis|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|objetivos> [estado]" "$@"
+  exige 1 "tipo <analisis|ideas|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|objetivos> [estado]" "$@"
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
   # Con la palabra de prioridad deja solo esas: `abiertos bugs critico` son los críticos sin cerrar,
   # y `abiertos planes algun-dia` lo que espera su momento en todas las áreas.
-  exige 1 "abiertos <analisis|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|objetivos> [prioridad]" "$@"
+  exige 1 "abiertos <analisis|ideas|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|objetivos> [prioridad]" "$@"
   leer "/api/items/$(uri "$1")?abiertos${2:+&prioridad=$(uri "${2:-}")}"
   ;;
 de-la-subarea | del-hilo)
@@ -1169,7 +1169,7 @@ objetivo)
   vaciar_cola
   escribir POST "/api/objetivos"
   ;;
-analisis | plan | bug | gestion | client-report | simulacion | consulta | consulta-cliente | chequeo)
+analisis | idea | plan | bug | gestion | client-report | simulacion | consulta | consulta-cliente | chequeo)
   exige 1 "$comando <subarea>   < JSON" "$@"
   # Un id donde va la sub-área es la lectura confundida con el alta: se nombra la lectura.
   if [ -t 0 ] && [[ "$1" =~ ^[0-9a-f]{24}$ ]]; then
@@ -1183,6 +1183,7 @@ analisis | plan | bug | gestion | client-report | simulacion | consulta | consul
   vaciar_cola
   case "$comando" in
     analisis) ruta_tipo=analisis ;;
+    idea) ruta_tipo=ideas ;;
     plan) ruta_tipo=planes ;;
     bug) ruta_tipo=bugs ;;
     gestion) ruta_tipo=gestiones ;;
@@ -1260,6 +1261,14 @@ mover)
   exige 2 "mover <tipo> <id>   < JSON" "$@"
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
+  ;;
+# La firma de una propuesta de una idea: las palabras de la persona sobre la propuesta n,
+# con la fecha que estampa el servidor. Es el HITL del paso 0 creativo — la idea pasa a
+# hecho cuando no falta ninguna.
+resolver)
+  exige 3 "resolver ideas <id> <n-de-propuesta>   < {\"resolucion\":\"…\"}" "$@"
+  vaciar_cola
+  escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")/propuestas/$(uri "$3")"
   ;;
 # Suma campos a la ficha de una pieza: el servidor la funde con la que tenía, así se agrega
 # la review o el entregable sin reescribir lo demás. Los campos van como tercer argumento o
@@ -2334,7 +2343,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api abiertos <tipo> [prioridad]  (los que quedaron sin cerrar; el análisis y la decisión no tienen;
                                              el bug crítico va primero, y `abiertos bugs critico` deja solo esos;
                                              `abiertos planes algun-dia` y `abiertos bugs algun-dia`, lo que espera su momento en todas las áreas)
-        tipo = analisis | planes | bugs | gestiones | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos | objetivos
+        tipo = analisis | ideas | planes | bugs | gestiones | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos | objetivos
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
   bitacora-api capturar [--reemplazar] <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una: la nombra el paso de un chequeo, y el texto de un punto la muestra con ![pie](/adjunto/<ruta>);
@@ -2343,6 +2352,8 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api pedidos [--rol qa] [--estado …]  (los pedidos entre sesiones del proyecto, cruzando planes: la bandeja del frente que los toma; sin estado, los vivos)
   bitacora-api pedido <plan-id> <n>         (uno, con su vuelta: la nota, los adjuntos por su dirección, el chequeo)
   bitacora-api visto <id>                   (lo que la persona dijo de cada paso del chequeo)
+  bitacora-api resolver ideas <id> <n>      < {"resolucion":"…"}  (la firma de la persona sobre la propuesta n de una idea: con todas
+                                             firmadas, la idea puede pasar a hecho con su nota — es la puerta del paso 0 creativo)
   bitacora-api pasos <id>                   < {"pasos":[{"id":"p2","despues":"<ruta>","queCuenta":"…"},{"titulo":"…","queCuenta":"…","despues":"<ruta>","origen":"<ruta>","gesto":"…","propuesta":"…","porque":"…"}]}
                                             (con id se corrige ese paso; sin id nace entero, con la forma del paso de `chequeo <subarea>`)
   bitacora-api aplicar-chequeo <id> [nota]  (la sesión tomó lo aprobado: el chequeo cierra)
@@ -2358,6 +2369,10 @@ Escritura (el cuerpo JSON entra por stdin):
         se lee en la página de análisis de su área y en el menú mientras está vivo, del más nuevo al más viejo;
         "vigente":true es el que explica algo que dura y le sirve a quien abra el área dentro de unos meses: sigue a la vista hasta que se descarta;
         sin la marca es material de trabajo: el que lleva semanas sin tocarse sale de la lista viva a «Lo anterior», y reescribirlo lo trae arriba
+  bitacora-api idea <subarea>                  {"titulo":"…","queEs":"…","idea":{"subtitulo":"la escena en una frase","momento":[{"texto":"…","imagen":"<ruta de adjunto>"}],"pilares":[{"nombre":"Parar","texto":"…"}],"hooks":[{"letra":"A","frase":"…","mecanismo":"…","evidencia":"…"}],"estructura":[{"tramo":"0–5 s · Hook","que":"…","tecnica":"…"}],"propuestas":[{"decision":"…","propuesta":"…","tipo":"propuesta"}],"audiencia":"…","canal":"…","formato":"…","recursos":[{"k":"…","v":"…"}],"restricciones":[{"k":"…","v":"…"}]},"objetivo":"<id>"}
+        el paso 0 del proceso creativo: la idea pre-armada por la sesión, que la persona firma propuesta por propuesta
+        ANTES de pensar el cómo; la `resolucion` no viaja con el cuerpo — se firma con `resolver ideas <id> <n>` — y
+        con todas firmadas pasa a hecho con su nota; se lee en su página propia, y en el mapa del objetivo como su primera etapa
   bitacora-api plan <subarea>                  {"titulo":"…","cierraEn":"…","prioridad":"alta","modelo":"opus","esfuerzo":"high","cuerpo":{"es":"# …"},"flujos":["…"]}
         "modelo": opus · sonnet · fable · haiku y "esfuerzo": low · medium · high · xhigh · max — con qué se construye, el alias y el nivel
         con que el envío abre la sesión del frente; van siempre, y sin alguno de los dos el alta contesta 400 construccionIncompleta (la que nace encargado, encargoIncompleto);
