@@ -3,8 +3,8 @@
 # El directorio instalado del plugin cambia con cada versión; los shims de
 # ~/.local/bin son los paths estables que ven los consumidores:
 #   bitacora-api      → api.sh, el cliente de la bitácora
-#   bitacora-consumo  → skills/coding/scripts/consumo.py, los tokens y el costo de la
-#                       sesión
+#   bitacora-consumo  → skills/coding/scripts/consumo.py, los tokens y el costo del
+#                       plan
 #   bitacora-frentes  → skills/thinking/scripts/frentes.sh, el mapa de los frentes de tmux
 #                       y el gesto de escribirles un comando de la CLI
 #   bitacora-medir    → skills/harness/medir.sh, lo que carga una sesión y los olores del
