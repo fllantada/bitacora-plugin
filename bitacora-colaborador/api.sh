@@ -1310,6 +1310,23 @@ entregar)
   vaciar_cola
   jq -c '. + {estado:"entregado"}' | escribir PATCH "/api/items/planes/$(uri "$1")"
   ;;
+# Retira una tanda del consumo de un plan: la lista crece por entrega y este es su único camino
+# de salida. El número cuenta desde 1, en el orden en que se declararon (la lectura del plan las
+# lista); el servidor contesta 400 con el rango cuando no nombra ninguna, y deja el movimiento en
+# la historia con qué tanda salió y el porqué.
+quitar-tanda)
+  exige 3 "quitar-tanda <tipo> <id> <n> [porqué]   (la tanda n del consumo, contada desde 1)" "$@"
+  case "$3" in
+  '' | *[!0-9]* | 0)
+    echo "El número de tanda es un entero desde 1 — uso: bitacora-api [-p <proyecto>] quitar-tanda <tipo> <id> <n> [porqué]" >&2
+    exit 1
+    ;;
+  esac
+  vaciar_cola
+  jq -cn --argjson n "$3" --arg porque "${4:-}" \
+    '{quitarTanda:$n} + (if $porque == "" then {} else {nota:$porque} end)' |
+    escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
+  ;;
 firmar)
   exige 1 "firmar <id> [nota: la PR mergeada]" "$@"
   vaciar_cola
@@ -2495,6 +2512,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                              ## Evidencia · ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir · ## Pendientes fuera de alcance —
                                              Cómo quedó y las tres últimas van siempre y dicen «Ninguna» cuando no hubo, porque ausente o vacía rebota;
                                              la review publicada en la bitácora va en ficha.review)
+  bitacora-api quitar-tanda <tipo> <id> <n> [porqué]   retira la tanda n del consumo (desde 1, en el orden en que se declararon); la historia deja
+                                            constancia de cuál salió y el porqué, y un número fuera de rango contesta 400 con el rango que hay
   bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada. Cierra sus chequeos y deja vigente en su flujo cada `despues` aprobado
                                             con `pasoDelFlujo`: la respuesta los nombra en `pantallas.vigentes`, en `pantallas.salteadas` el que no pasó, con su `porque`, y en `pantallas.repetidas` el que otro paso más nuevo de la misma firma dejó vigente
   bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con sus ocho secciones y su ## Ronda N>"},"nota":"…"} → encargado
