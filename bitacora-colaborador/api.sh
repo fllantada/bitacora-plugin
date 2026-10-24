@@ -2415,9 +2415,10 @@ Escritura (el cuerpo JSON entra por stdin):
         con que el envío abre la sesión del frente; van siempre, y sin alguno de los dos el alta contesta 400 construccionIncompleta (la que nace encargado, encargoIncompleto);
         "prioridad": alta · media · baja · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es media;
         algun-dia es el plan que espera su momento en el área de su tema: cuelga al pie y la cifra del área no lo cuenta
-        "dependeDe":["<id>"] son las gestiones que espera para empezar, del proyecto (404 dependenciaInexistente); `item planes <id>` las trae
-        con su escritorio y su responsable, `item gestiones <id>` trae en `destraba` los planes que la esperan, y encargarlo con una abierta
-        contesta su `aviso` y lo deja encargado; mientras una sigue abierta, su caja en el mapa del objetivo lo dice al pie
+        "dependeDe":["<id>"] son las gestiones que espera hechas y el guion que espera firmado, del proyecto (404 dependenciaInexistente);
+        `item planes <id>` los trae con tipo y escritorio, y la gestión con su responsable; `item gestiones|guiones <id>` trae en `destraba`
+        los planes que los esperan; una gestión abierta avisa al encargar sin frenar, y un guion que no está hecho contesta 400 guionSinFirmar
+        al entrar a en-curso, también en el alta directa; la caja distingue las dos esperas al pie del mapa
         con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;
         el servidor exige ocho secciones en el cuerpo —# Qué cambia (el TL;DR para la persona: de dos a cuatro oraciones, sin código) · # Tarea · # La idea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance—, el queEs, la bajada en una línea,
         y "visual": qué se mira de lo que entrega — ninguna (nada cambia en pantalla) · captura (algo en pantalla cambia y lo correcto ya está escrito:
@@ -2559,8 +2560,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · {"modelo":"sonnet","esfuerzo":"medium"} (un plan: con qué se construye, en cualquier escritorio)
                                             · {"vigente":true} · {"vigente":false} (un análisis: si explica algo que dura; marcar deja quieto
                                               su reloj, así desmarcar uno viejo lo saca de la vista en el acto)
-                                            · {"dependeDe":["<id>"]} (un plan: las gestiones que espera para empezar, la lista entera en su orden;
-                                              {"dependeDe":[]} la saca)
+                                            · {"dependeDe":["<id>"]} (un plan: las gestiones que espera hechas y el guion que espera firmado,
+                                              la lista entera en su orden; {"dependeDe":[]} la saca)
   bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado, el vigente también)
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
   Cada pieza va a un ÁREA: `plan <area>`, `analisis <area>`… cae en su lugar, y el servidor lo crea si falta.
