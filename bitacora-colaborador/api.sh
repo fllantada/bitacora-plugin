@@ -1331,6 +1331,55 @@ quitar-tanda)
     '{quitarTanda:$n} + (if $porque == "" then {} else {nota:$porque} end)' |
     escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
+# Los entregables intermedios del objetivo creativo: material, revisión secuencial y HITL.
+# Aprobar registra las palabras de Fran, no produce nada ni autoriza motores o gastos.
+entregable)
+  exige 1 "entregable <id>" "$@"
+  leer "/api/entregables/$(uri "$1")"
+  ;;
+aprobar-entregable)
+  exige 2 'aprobar-entregable <id> "<palabras de Fran>" [elemento] [--resto]' "$@"
+  id_entregable="$1"
+  palabras_entregable="$2"
+  shift 2
+  alcance_entregable="todo"
+  elemento_entregable=""
+  if [ "${1:-}" = "--resto" ]; then
+    alcance_entregable="resto"
+    shift
+  elif [ $# -gt 0 ]; then
+    elemento_entregable="$1"
+    shift
+  fi
+  [ "${1:-}" != "--resto" ] || alcance_entregable="resto"
+  jq -cn --arg palabras "$palabras_entregable" --arg alcance "$alcance_entregable" --arg elemento "$elemento_entregable" \
+    '{accion:"aprobar",palabras:$palabras,alcance:$alcance,via:"conversacion"} + (if $elemento == "" then {} else {elemento:$elemento} end)' |
+    escribir POST "/api/entregables/$(uri "$id_entregable")"
+  ;;
+feedback-entregable)
+  exige 3 'feedback-entregable <id> <elemento> "<el cambio, con las palabras de Fran>"' "$@"
+  jq -cn --arg elemento "$2" --arg texto "$3" '{accion:"feedback",elemento:$elemento,texto:$texto}' |
+    escribir POST "/api/entregables/$(uri "$1")"
+  ;;
+corregir-entregable)
+  exige 3 'corregir-entregable <id> <elemento> "<respuesta>"   < {"cambios":{...}}' "$@"
+  id_entregable="$1"
+  elemento_entregable="$2"
+  respuesta_entregable="$3"
+  cambios_entregable="$(cat)"
+  printf '%s' "$cambios_entregable" | jq -ce '.cambios and (.cambios | type == "object")' >/dev/null || {
+    echo 'Se espera {"cambios":{...}} con el material corregido; el servidor guarda la versión y deja el antes.' >&2
+    exit 1
+  }
+  printf '%s' "$cambios_entregable" | jq -c --arg elemento "$elemento_entregable" --arg respuesta "$respuesta_entregable" \
+    '. + {accion:"corregir",elemento:$elemento,respuesta:$respuesta}' |
+    escribir POST "/api/entregables/$(uri "$id_entregable")"
+  ;;
+material-entregable)
+  exige 1 'material-entregable <id>   < {"estado":"en-preparacion","elementos":[...]}' "$@"
+  vaciar_cola
+  jq -ce '. + {accion:"material"}' | escribir POST "/api/entregables/$(uri "$1")"
+  ;;
 firmar)
   # Un solo verbo para las dos firmas: con «guiones» como primer argumento es la firma del
   # guion —su propia puerta, con el veredicto y los hooks por stdin—; sin él, la del plan.
@@ -2562,6 +2611,14 @@ Escritura (el cuerpo JSON entra por stdin):
                                               su reloj, así desmarcar uno viejo lo saca de la vista en el acto)
                                             · {"dependeDe":["<id>"]} (un plan: las gestiones que espera hechas y el guion que espera firmado,
                                               la lista entera en su orden; {"dependeDe":[]} la saca)
+  bitacora-api entregable <id>             (el entregable creativo con material, estados y si su revisión está habilitada)
+  bitacora-api aprobar-entregable <id> "<palabras>" [elemento] [--resto]
+                                            (registra la aprobación de Fran: solo lo pendiente de este entregable; habilita el siguiente,
+                                            nunca posteriores ni gastos. Con un elemento es el «ahora sí» de ese punto; --resto deja el feedback abierto)
+  bitacora-api feedback-entregable <id> <elemento> "<cambio>"   (reabre solo esa escena, audio o variante y conserva las demás aprobaciones)
+  bitacora-api corregir-entregable <id> <elemento> "<respuesta>"   < {"cambios":{…}}
+                                            (guarda la respuesta y una versión nueva, con el antes para comparar; Fran la cierra con «ahora sí»)
+  bitacora-api material-entregable <id>    < {"estado":"espera-revision","elementos":[…]}   (prepara material aunque su revisión venga después)
   bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado, el vigente también)
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
   Cada pieza va a un ÁREA: `plan <area>`, `analisis <area>`… cae en su lugar, y el servidor lo crea si falta.
