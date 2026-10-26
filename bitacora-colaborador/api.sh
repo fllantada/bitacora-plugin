@@ -1383,11 +1383,12 @@ material-entregable)
 previo-entregable)
   exige 1 'previo-entregable <id>   < {"video":"…"|"audio":"…","resumen":"…","cortes":[{"id":"hook","inicio":0,"fin":5}],"variantes":[{"id":"hook-b","de":"hook"}]}' "$@"
   vaciar_cola
-  jq -ce '.video or .audio' >/dev/null || {
+  previo_entregable="$(cat)"
+  printf '%s' "$previo_entregable" | jq -ce '.video or .audio' >/dev/null || {
     echo 'El master completo es un video o un audio continuo: {"video":"…"} o {"audio":"…"}, con "cortes" si los elementos se reapuntan (y "variantes" para los que suenan fuera del master).' >&2
     exit 1
   }
-  jq -ce '. + {accion:"previo"}' | escribir POST "/api/entregables/$(uri "$1")"
+  printf '%s' "$previo_entregable" | jq -ce '. + {accion:"previo"}' | escribir POST "/api/entregables/$(uri "$1")"
   ;;
 firmar)
   # Un solo verbo para las dos firmas: con «guiones» como primer argumento es la firma del
