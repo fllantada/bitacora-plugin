@@ -1380,6 +1380,15 @@ material-entregable)
   vaciar_cola
   jq -ce '. + {accion:"material"}' | escribir POST "/api/entregables/$(uri "$1")"
   ;;
+previo-entregable)
+  exige 1 'previo-entregable <id>   < {"video":"…"|"audio":"…","resumen":"…","cortes":[{"id":"hook","inicio":0,"fin":5}]}' "$@"
+  vaciar_cola
+  jq -ce '.video or .audio' >/dev/null || {
+    echo 'El master completo es un video o un audio continuo: {"video":"…"} o {"audio":"…"}, con "cortes" si los elementos se reapuntan.' >&2
+    exit 1
+  }
+  jq -ce '. + {accion:"previo"}' | escribir POST "/api/entregables/$(uri "$1")"
+  ;;
 firmar)
   # Un solo verbo para las dos firmas: con «guiones» como primer argumento es la firma del
   # guion —su propia puerta, con el veredicto y los hooks por stdin—; sin él, la del plan.
@@ -2619,6 +2628,10 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api corregir-entregable <id> <elemento> "<respuesta>"   < {"cambios":{…}}
                                             (guarda la respuesta y una versión nueva, con el antes para comparar; Fran la cierra con «ahora sí»)
   bitacora-api material-entregable <id>    < {"estado":"espera-revision","elementos":[…]}   (prepara material aunque su revisión venga después)
+  bitacora-api previo-entregable <id>      < {"video":"…"|"audio":"…","resumen":"…","pendientes":[…],"cortes":[{"id","inicio","fin"}]}
+                                            (el master continuo de arriba: archiva el anterior y sube la ronda; con "cortes" TODOS los elementos
+                                            quedan apuntando a ese mismo master en una sola escritura —nunca una mezcla—; "tecnica":true es
+                                            el reemplazo idéntico, sin ronda ni historia; nunca cierra feedback, aprueba ni habilita la etapa siguiente)
   bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado, el vigente también)
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
   Cada pieza va a un ÁREA: `plan <area>`, `analisis <area>`… cae en su lugar, y el servidor lo crea si falta.
