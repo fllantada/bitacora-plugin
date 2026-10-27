@@ -1338,27 +1338,158 @@ entregable)
   leer "/api/entregables/$(uri "$1")"
   ;;
 aprobar-entregable)
-  exige 2 'aprobar-entregable <id> "<palabras de Fran>" [elemento] [--resto]' "$@"
+  exige 2 'aprobar-entregable <id> "<palabras de Fran>" [elemento] [--resto] [--ronda <n>]' "$@"
   id_entregable="$1"
   palabras_entregable="$2"
   shift 2
   alcance_entregable="todo"
   elemento_entregable=""
-  if [ "${1:-}" = "--resto" ]; then
-    alcance_entregable="resto"
-    shift
-  elif [ $# -gt 0 ]; then
-    elemento_entregable="$1"
-    shift
-  fi
-  [ "${1:-}" != "--resto" ] || alcance_entregable="resto"
-  jq -cn --arg palabras "$palabras_entregable" --arg alcance "$alcance_entregable" --arg elemento "$elemento_entregable" \
-    '{accion:"aprobar",palabras:$palabras,alcance:$alcance,via:"conversacion"} + (if $elemento == "" then {} else {elemento:$elemento} end)' |
+  ronda_aprobacion=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --resto) alcance_entregable="resto"; shift ;;
+      --ronda)
+        ronda_aprobacion="${2:-}"
+        [[ "$ronda_aprobacion" =~ ^[1-9][0-9]*$ ]] || { echo "La ronda es el número del master que Fran aprobó mirando: --ronda 4" >&2; exit 1; }
+        shift 2
+        ;;
+      --*) echo "aprobar-entregable conoce --resto y --ronda; «$1» no es suyo." >&2; exit 1 ;;
+      *)
+        [ -z "$elemento_entregable" ] || { echo "aprobar-entregable aprueba un elemento por vez." >&2; exit 1; }
+        elemento_entregable="$1"
+        shift
+        ;;
+    esac
+  done
+  jq -cn --arg palabras "$palabras_entregable" --arg alcance "$alcance_entregable" --arg elemento "$elemento_entregable" --arg ronda "$ronda_aprobacion" \
+    '{accion:"aprobar",palabras:$palabras,alcance:$alcance,via:"conversacion"}
+      + (if $elemento == "" then {} else {elemento:$elemento} end)
+      + (if $ronda == "" then {} else {ronda:($ronda|tonumber)} end)' |
     escribir POST "/api/entregables/$(uri "$id_entregable")"
   ;;
 feedback-entregable)
-  exige 3 'feedback-entregable <id> <elemento> "<el cambio, con las palabras de Fran>"' "$@"
-  jq -cn --arg elemento "$2" --arg texto "$3" '{accion:"feedback",elemento:$elemento,texto:$texto}' |
+  # El feedback de Fran: en un elemento, en un segundo del master vigente (el corte sale de su
+  # rango), sobre el master entero, o como su respuesta en el hilo de un comentario. --ronda
+  # dice qué master miraba Fran cuando la sesión ya cargó otro: la puerta frena con rondaCambiada.
+  exige 3 'feedback-entregable <id> <elemento|--segundo <s>|--todo|--comentario <fN>> "<el cambio, con las palabras de Fran>" [--ronda <n>]' "$@"
+  id_entregable="$1"
+  shift
+  libres=0
+  libre_1=""
+  libre_2=""
+  segundo_feedback=""
+  comentario_feedback=""
+  ronda_feedback=""
+  todo_feedback=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --segundo)
+        [ -z "$segundo_feedback" ] || { echo "--segundo va una sola vez." >&2; exit 1; }
+        segundo_feedback="${2:-}"
+        [[ "$segundo_feedback" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "El segundo es un momento del master, en segundos: --segundo 7.3" >&2; exit 1; }
+        shift 2
+        ;;
+      --comentario)
+        [ -z "$comentario_feedback" ] || { echo "--comentario va una sola vez." >&2; exit 1; }
+        comentario_feedback="${2:-}"
+        [ -n "$comentario_feedback" ] || { echo "Falta el comentario después de --comentario: --comentario f12" >&2; exit 1; }
+        shift 2
+        ;;
+      --ronda)
+        [ -z "$ronda_feedback" ] || { echo "--ronda va una sola vez." >&2; exit 1; }
+        ronda_feedback="${2:-}"
+        [[ "$ronda_feedback" =~ ^[1-9][0-9]*$ ]] || { echo "La ronda es el número del master que Fran miraba: --ronda 4" >&2; exit 1; }
+        shift 2
+        ;;
+      --todo)
+        todo_feedback="sí"
+        shift
+        ;;
+      --*)
+        echo "feedback-entregable conoce --segundo, --todo, --comentario y --ronda; «$1» no es suyo." >&2
+        exit 1
+        ;;
+      *)
+        libres=$((libres + 1))
+        case "$libres" in
+          1) libre_1="$1" ;;
+          2) libre_2="$1" ;;
+          *) echo "El texto de Fran va entre comillas, en un solo argumento." >&2; exit 1 ;;
+        esac
+        shift
+        ;;
+    esac
+  done
+  # Con un solo argumento libre es el texto; con dos, el elemento y el texto, por su posición.
+  elemento_feedback=""
+  texto_feedback="$libre_1"
+  if [ "$libres" -eq 2 ]; then
+    elemento_feedback="$libre_1"
+    texto_feedback="$libre_2"
+  fi
+  [ -n "$texto_feedback" ] || { echo "Falta el texto de Fran — uso: bitacora-api feedback-entregable <id> <elemento|--segundo <s>|--todo|--comentario <fN>> \"<el cambio>\"" >&2; exit 1; }
+  [ -n "$elemento_feedback$segundo_feedback$comentario_feedback$todo_feedback" ] || { echo "Falta dónde va: un elemento, --segundo <s>, --todo o --comentario <fN>." >&2; exit 1; }
+  [ -z "$todo_feedback" ] || [ -z "$elemento_feedback$segundo_feedback$comentario_feedback" ] || { echo "--todo va solo: sobre el master entero, sin elemento, segundo ni comentario." >&2; exit 1; }
+  [ -z "$comentario_feedback" ] || [ -z "$elemento_feedback" ] || { echo "La respuesta en un hilo va sin elemento: --comentario <fN> \"<texto>\"." >&2; exit 1; }
+  feedback_entregable="$(jq -cn --arg texto "$texto_feedback" --arg elemento "$elemento_feedback" --arg segundo "$segundo_feedback" \
+    --arg comentario "$comentario_feedback" --arg ronda "$ronda_feedback" \
+    '{accion:"feedback",texto:$texto}
+      + (if $elemento == "" then {} else {elemento:$elemento} end)
+      + (if $segundo == "" then {} else {segundo:($segundo|tonumber)} end)
+      + (if $comentario == "" then {} else {comentario:$comentario} end)
+      + (if $ronda == "" then {} else {ronda:($ronda|tonumber)} end)')"
+  printf '%s' "$feedback_entregable" | escribir POST "/api/entregables/$(uri "$id_entregable")"
+  ;;
+responder-comentario)
+  # La respuesta de quien produce en el hilo de un comentario, con el segundo del master
+  # vigente donde se mira lo corregido. Lo deja en corrección; solo Fran lo cierra.
+  exige 3 'responder-comentario <id> <fN> "<qué se corrigió>" [--segundo <s>] [--ronda <n>]' "$@"
+  id_entregable="$1"
+  comentario_entregable="$2"
+  shift 2
+  texto_comentario=""
+  segundo_comentario=""
+  ronda_comentario=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --segundo)
+        segundo_comentario="${2:-}"
+        [[ "$segundo_comentario" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "El segundo es un momento del master vigente, en segundos: --segundo 7.9" >&2; exit 1; }
+        shift 2
+        ;;
+      --ronda)
+        ronda_comentario="${2:-}"
+        [[ "$ronda_comentario" =~ ^[1-9][0-9]*$ ]] || { echo "La ronda es el número del master donde se mira lo corregido: --ronda 5" >&2; exit 1; }
+        shift 2
+        ;;
+      --*)
+        echo "responder-comentario conoce --segundo y --ronda; «$1» no es suyo." >&2
+        exit 1
+        ;;
+      *)
+        [ -z "$texto_comentario" ] || { echo "El texto de la respuesta va entre comillas, en un solo argumento." >&2; exit 1; }
+        texto_comentario="$1"
+        shift
+        ;;
+    esac
+  done
+  [ -n "$texto_comentario" ] || { echo "Falta el texto de la respuesta — uso: bitacora-api responder-comentario <id> <fN> \"<qué se corrigió>\" [--segundo <s>]" >&2; exit 1; }
+  jq -cn --arg comentario "$comentario_entregable" --arg texto "$texto_comentario" --arg segundo "$segundo_comentario" --arg ronda "$ronda_comentario" \
+    '{accion:"responder",comentario:$comentario,texto:$texto}
+      + (if $segundo == "" then {} else {segundo:($segundo|tonumber)} end)
+      + (if $ronda == "" then {} else {ronda:($ronda|tonumber)} end)' |
+    escribir POST "/api/entregables/$(uri "$id_entregable")"
+  ;;
+cerrar-comentario)
+  # El «ahora sí» de Fran sobre un comentario, con sus palabras: lo cierra y no aprueba el corte.
+  exige 3 'cerrar-comentario <id> <fN> "<palabras de Fran>" [--ronda <n>]' "$@"
+  ronda_cierre=""
+  if [ "$#" -gt 3 ]; then
+    [ "$4" = "--ronda" ] && [[ "${5:-}" =~ ^[1-9][0-9]*$ ]] && [ "$#" -eq 5 ] || { echo "Después de las palabras va, si hace falta, --ronda <n>: el master que Fran miraba." >&2; exit 1; }
+    ronda_cierre="$5"
+  fi
+  jq -cn --arg comentario "$2" --arg palabras "$3" --arg ronda "$ronda_cierre" \
+    '{accion:"cerrar",comentario:$comentario,palabras:$palabras} + (if $ronda == "" then {} else {ronda:($ronda|tonumber)} end)' |
     escribir POST "/api/entregables/$(uri "$1")"
   ;;
 corregir-entregable)
@@ -2626,15 +2757,25 @@ Escritura (el cuerpo JSON entra por stdin):
                                             (registra la aprobación de Fran: solo lo pendiente de este entregable; habilita el siguiente,
                                             nunca posteriores ni gastos. Con un elemento es el «ahora sí» de ese punto; --resto deja el feedback abierto)
   bitacora-api feedback-entregable <id> <elemento> "<cambio>"   (reabre solo esa escena, audio o variante y conserva las demás aprobaciones)
+  bitacora-api feedback-entregable <id> --segundo <s> "<cambio>"   (en ese segundo del master vigente: cae en el corte de su rango, con la ronda)
+  bitacora-api feedback-entregable <id> --todo "<cambio>"   (sobre el master entero, sin segundo)
+  bitacora-api feedback-entregable <id> --comentario <fN> "<respuesta de Fran>"   (en el hilo de ese comentario: lo reabre sin cerrarlo)
+  bitacora-api responder-comentario <id> <fN> "<qué se corrigió>" [--segundo <s>]
+                                            (la respuesta de quien produce en ese hilo, con el segundo del master vigente donde se mira;
+                                            lo deja en corrección, sin tocar medios ni versiones)
+  bitacora-api cerrar-comentario <id> <fN> "<palabras de Fran>" [--ronda <n>]   (su «ahora sí» sobre ese comentario: lo cierra; aprobar es otro gesto)
+                                            (--ronda en feedback-entregable, responder-comentario, cerrar-comentario y aprobar-entregable:
+                                            el master que Fran miraba; si la sesión ya cargó otro, la puerta frena con rondaCambiada)
   bitacora-api corregir-entregable <id> <elemento> "<respuesta>"   < {"cambios":{…}}
-                                            (guarda la respuesta y una versión nueva, con el antes para comparar; Fran la cierra con «ahora sí»)
+                                            (guarda la respuesta en el hilo y una versión nueva, con el antes para comparar; Fran la cierra con «ahora sí»)
   bitacora-api material-entregable <id>    < {"estado":"espera-revision","elementos":[…]}   (prepara material aunque su revisión venga después)
-  bitacora-api previo-entregable <id>      < {"video":"…"|"audio":"…","resumen":"…","pendientes":[…],"cortes":[{"id","inicio","fin"}],"variantes":[{"id","de","video"|"audio","inicio","fin"}]}
+  bitacora-api previo-entregable <id>      < {"video":"…"|"audio":"…","resumen":"…","pendientes":[…],"tramosPendientes":[{"inicio","fin","va"}],"cortes":[{"id","inicio","fin"}],"variantes":[{"id","de","video"|"audio","inicio","fin"}]}
                                             (el master continuo de arriba: archiva el anterior y sube la ronda; con "cortes" los elementos
                                             quedan apuntando a ese mismo master en una sola escritura —nunca una mezcla—, y "variantes" declara
                                             los que suenan EN LUGAR de un corte con su medio propio («de» nombra ese corte; con "video"/"audio"
                                             estrenan medio, sin ellos conservan el suyo): entre cortes y variantes, cada elemento una vez;
-                                            "tecnica":true es el reemplazo idéntico, sin ronda ni historia; nunca cierra feedback, aprueba ni habilita la etapa siguiente)
+                                            "tecnica":true es el reemplazo idéntico, sin ronda ni historia; "tramosPendientes" reserva en el
+                                            master el tramo del video generativo, con qué va; nunca cierra feedback, aprueba ni habilita la etapa siguiente)
   bitacora-api mover analisis <id>          {"estado":"descartado","nota":"por qué dejó de sostenerse"}   (sale de la vista y queda guardado, el vigente también)
   bitacora-api cerrar <id>                  {"veredicto":"qué se decidió"} — la salida del punto HEREDADO que quedó abierto
   Cada pieza va a un ÁREA: `plan <area>`, `analisis <area>`… cae en su lugar, y el servidor lo crea si falta.
