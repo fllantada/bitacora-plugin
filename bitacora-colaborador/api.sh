@@ -1521,7 +1521,7 @@ material-entregable)
   ;;
 ensayo-entregable)
   # La preproducción de El ensayo general: keyframes, pedido de gasto y las partes del sonido que el master ya integra.
-  exige 1 'ensayo-entregable <id>   < {"keyframes":[{"id","nombre","imagen","va","inicio","fin"}]} | {"gasto":{"motor","genera","costo"}} | {"sonido":["subtitulos","musica","efectos"]}' "$@"
+  exige 1 'ensayo-entregable <id>   < {"keyframes":[{"id","nombre","imagen","va","inicio","fin"}]} | {"gasto":{"motor","genera","costo"}} | {"sonido":["subtitulos","musica","efectos"],"sonidoCerrado":true}' "$@"
   vaciar_cola
   jq -ce '. + {accion:"ensayo"}' | escribir POST "/api/entregables/$(uri "$1")"
   ;;
@@ -2790,10 +2790,11 @@ Escritura (el cuerpo JSON entra por stdin):
                                             (registra la aprobación de Fran: solo lo pendiente de este entregable; habilita el siguiente.
                                             Aprobar El ensayo general habilita la producción y la entrega. Con un elemento es el «ahora sí»
                                             de ese punto; --resto deja el feedback abierto)
-  bitacora-api ensayo-entregable <id>      < {"keyframes":[{"id","nombre","imagen","va","inicio","fin"}]} | {"gasto":{"motor","genera","costo"}} | {"sonido":[…]}
+  bitacora-api ensayo-entregable <id>      < {"keyframes":[{"id","nombre","imagen","va","inicio","fin"}]} | {"gasto":{"motor","genera","costo"}} | {"sonido":[…],"sonidoCerrado":true}
                                             (la preproducción de El ensayo general: keyframes y pedido de gasto distintos abren una ronda
                                             que espera el gesto de Fran; "sonido" es la lista entera de lo que integra el master vigente,
-                                            y cada master nuevo lo pide de nuevo. El ensayo aprobado queda cerrado: la preproducción, el
+                                            y cada master nuevo lo pide de nuevo. Cierra el paso con las tres partes, o con "sonidoCerrado"
+                                            cuando la lista es todo lo que el master integra. El ensayo aprobado queda cerrado: la preproducción, el
                                             material, un master nuevo y las puertas frenan con ensayoAprobado)
   bitacora-api puerta-entregable <id> keyframes|gasto "<palabras de Fran>" [--cambios] [--ronda <n>]
                                             (el visto de Fran a los keyframes o su OK al gasto, sobre la ronda vigente; --cambios registra
