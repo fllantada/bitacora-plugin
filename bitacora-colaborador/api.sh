@@ -1492,6 +1492,13 @@ cerrar-comentario)
     '{accion:"cerrar",comentario:$comentario,palabras:$palabras} + (if $ronda == "" then {} else {ronda:($ronda|tonumber)} end)' |
     escribir POST "/api/entregables/$(uri "$1")"
   ;;
+borrar-comentario)
+  # Fran borra un comentario suyo que nadie respondió: sale de su corte sin dejar hilo. Solo a pedido de Fran.
+  exige 2 'borrar-comentario <id> <fN>' "$@"
+  [ "$#" -eq 2 ] || { echo "borrar-comentario lleva el entregable y el comentario, nada más." >&2; exit 1; }
+  jq -cn --arg comentario "$2" '{accion:"borrar",comentario:$comentario}' |
+    escribir POST "/api/entregables/$(uri "$1")"
+  ;;
 corregir-entregable)
   exige 3 'corregir-entregable <id> <elemento> "<respuesta>"   < {"cambios":{...}}' "$@"
   id_entregable="$1"
@@ -2764,6 +2771,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                             (la respuesta de quien produce en ese hilo, con el segundo del master vigente donde se mira;
                                             lo deja en corrección, sin tocar medios ni versiones)
   bitacora-api cerrar-comentario <id> <fN> "<palabras de Fran>" [--ronda <n>]   (su «ahora sí» sobre ese comentario: lo cierra; aprobar es otro gesto)
+  bitacora-api borrar-comentario <id> <fN>   (solo a pedido de Fran: borra su comentario mientras nadie lo respondió;
+                                            con la corrección en el hilo frena con comentarioConRespuesta, y se cierra con cerrar-comentario)
                                             (--ronda en feedback-entregable, responder-comentario, cerrar-comentario y aprobar-entregable:
                                             el master que Fran miraba; si la sesión ya cargó otro, la puerta frena con rondaCambiada)
   bitacora-api corregir-entregable <id> <elemento> "<respuesta>"   < {"cambios":{…}}
