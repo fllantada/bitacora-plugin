@@ -479,6 +479,12 @@ escribir() {
     exit 1
   fi
   cuerpo="$(cat)"
+  # El cuerpo viaja como JSON: el que llega roto —un heredoc mal formado, que `jq` dejó vacío—
+  # sale acá, antes de un pedido que el servidor rechazaría o que la cola guardaría sin cuerpo.
+  jq -e . >/dev/null 2>&1 <<<"$cuerpo" || {
+    echo "El cuerpo de \`$comando\` no es JSON: revisá el heredoc o lo que canalizaste." >&2
+    exit 1
+  }
 
   respuesta="$(pedir "$metodo" "$TOKEN" "$ruta" "$cuerpo")"
   codigo="${respuesta##*$'\n'}"
@@ -1332,7 +1338,7 @@ quitar-tanda)
     escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")"
   ;;
 # Los entregables intermedios del objetivo creativo: material, revisión secuencial y HITL.
-# Aprobar registra las palabras de Fran, no produce nada ni autoriza motores o gastos.
+# Aprobar registra las palabras de Fran; el gasto lo autoriza la puerta del ensayo, y aprobar el ensayo habilita la producción.
 entregable)
   exige 1 "entregable <id>" "$@"
   leer "/api/entregables/$(uri "$1")"
@@ -1504,12 +1510,7 @@ corregir-entregable)
   id_entregable="$1"
   elemento_entregable="$2"
   respuesta_entregable="$3"
-  cambios_entregable="$(cat)"
-  printf '%s' "$cambios_entregable" | jq -ce '.cambios and (.cambios | type == "object")' >/dev/null || {
-    echo 'Se espera {"cambios":{...}} con el material corregido; el servidor guarda la versión y deja el antes.' >&2
-    exit 1
-  }
-  printf '%s' "$cambios_entregable" | jq -c --arg elemento "$elemento_entregable" --arg respuesta "$respuesta_entregable" \
+  jq -c --arg elemento "$elemento_entregable" --arg respuesta "$respuesta_entregable" \
     '. + {accion:"corregir",elemento:$elemento,respuesta:$respuesta}' |
     escribir POST "/api/entregables/$(uri "$id_entregable")"
   ;;
@@ -1518,15 +1519,38 @@ material-entregable)
   vaciar_cola
   jq -ce '. + {accion:"material"}' | escribir POST "/api/entregables/$(uri "$1")"
   ;;
+ensayo-entregable)
+  # La preproducción de El ensayo general: keyframes, pedido de gasto y las partes del sonido que el master ya integra.
+  exige 1 'ensayo-entregable <id>   < {"keyframes":[{"id","nombre","imagen","va","inicio","fin"}]} | {"gasto":{"motor","genera","costo"}} | {"sonido":["subtitulos","musica","efectos"]}' "$@"
+  vaciar_cola
+  jq -ce '. + {accion:"ensayo"}' | escribir POST "/api/entregables/$(uri "$1")"
+  ;;
+puerta-entregable)
+  # Las puertas de El ensayo general, con las palabras de Fran: su visto de los keyframes y su OK al gasto.
+  exige 3 'puerta-entregable <id> keyframes|gasto "<palabras de Fran>" [--cambios] [--ronda <n>]' "$@"
+  id_entregable="$1"
+  paso_puerta="$2"
+  palabras_puerta="$3"
+  shift 3
+  veredicto_puerta="ok"
+  ronda_puerta=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --cambios) veredicto_puerta="cambios"; shift ;;
+      --ronda)
+        [[ "${2:-}" =~ ^[1-9][0-9]*$ ]] || { echo "--ronda lleva la ronda que Fran miró: un entero desde 1." >&2; exit 1; }
+        ronda_puerta="$2"; shift 2 ;;
+      *) echo "puerta-entregable conoce --cambios y --ronda; «$1» no es suyo." >&2; exit 1 ;;
+    esac
+  done
+  jq -cn --arg paso "$paso_puerta" --arg palabras "$palabras_puerta" --arg veredicto "$veredicto_puerta" --arg ronda "$ronda_puerta" \
+    '{accion:"puerta",paso:$paso,veredicto:$veredicto,palabras:$palabras} + (if $ronda == "" then {} else {ronda:($ronda|tonumber)} end)' |
+    escribir POST "/api/entregables/$(uri "$id_entregable")"
+  ;;
 previo-entregable)
   exige 1 'previo-entregable <id>   < {"video":"…"|"audio":"…","resumen":"…","cortes":[{"id":"hook","inicio":0,"fin":5}],"variantes":[{"id":"hook-b","de":"hook"}]}' "$@"
   vaciar_cola
-  previo_entregable="$(cat)"
-  printf '%s' "$previo_entregable" | jq -ce '.video or .audio' >/dev/null || {
-    echo 'El master completo es un video o un audio continuo: {"video":"…"} o {"audio":"…"}, con "cortes" si los elementos se reapuntan (y "variantes" para los que suenan fuera del master).' >&2
-    exit 1
-  }
-  printf '%s' "$previo_entregable" | jq -ce '. + {accion:"previo"}' | escribir POST "/api/entregables/$(uri "$1")"
+  jq -ce '. + {accion:"previo"}' | escribir POST "/api/entregables/$(uri "$1")"
   ;;
 firmar)
   # Un solo verbo para las dos firmas: con «guiones» como primer argumento es la firma del
@@ -2759,10 +2783,21 @@ Escritura (el cuerpo JSON entra por stdin):
                                               su reloj, así desmarcar uno viejo lo saca de la vista en el acto)
                                             · {"dependeDe":["<id>"]} (un plan: las gestiones que espera hechas y el guion que espera firmado,
                                               la lista entera en su orden; {"dependeDe":[]} la saca)
-  bitacora-api entregable <id>             (el entregable creativo con material, estados y si su revisión está habilitada)
+  bitacora-api entregable <id>             (el entregable creativo con material, estados y si su revisión está habilitada; trae las
+                                            restricciones del objetivo, gastoAutorizado —qué cubre el OK vigente—, gastosAutorizados y
+                                            produccionAutorizada, y en El ensayo general sus pasos)
   bitacora-api aprobar-entregable <id> "<palabras>" [elemento] [--resto]
-                                            (registra la aprobación de Fran: solo lo pendiente de este entregable; habilita el siguiente,
-                                            nunca posteriores ni gastos. Con un elemento es el «ahora sí» de ese punto; --resto deja el feedback abierto)
+                                            (registra la aprobación de Fran: solo lo pendiente de este entregable; habilita el siguiente.
+                                            Aprobar El ensayo general habilita la producción y la entrega. Con un elemento es el «ahora sí»
+                                            de ese punto; --resto deja el feedback abierto)
+  bitacora-api ensayo-entregable <id>      < {"keyframes":[{"id","nombre","imagen","va","inicio","fin"}]} | {"gasto":{"motor","genera","costo"}} | {"sonido":[…]}
+                                            (la preproducción de El ensayo general: keyframes y pedido de gasto distintos abren una ronda
+                                            que espera el gesto de Fran; "sonido" es la lista entera de lo que integra el master vigente,
+                                            y cada master nuevo lo pide de nuevo. El ensayo aprobado queda cerrado: la preproducción, el
+                                            material, un master nuevo y las puertas frenan con ensayoAprobado)
+  bitacora-api puerta-entregable <id> keyframes|gasto "<palabras de Fran>" [--cambios] [--ronda <n>]
+                                            (el visto de Fran a los keyframes o su OK al gasto, sobre la ronda vigente; --cambios registra
+                                            el cambio que pide. El OK del gasto va después del visto, y recién con él se generan los clips)
   bitacora-api feedback-entregable <id> <elemento> "<cambio>"   (reabre solo esa escena, audio o variante y conserva las demás aprobaciones)
   bitacora-api feedback-entregable <id> --segundo <s> "<cambio>"   (en ese segundo del master vigente: cae en el corte de su rango, con la ronda)
   bitacora-api feedback-entregable <id> --todo "<cambio>"   (sobre el master entero, sin segundo)
