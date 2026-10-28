@@ -2739,7 +2739,8 @@ Escritura (el cuerpo JSON entra por stdin):
         cuerpo la trae— la puerta cobra su dibujo de etapas y cada plan o gestión por su enlace en su checklist, en 300 sin los ítems; si no,
         va libre en 600
         (400 caminoIncompleto · seccionSinDibujo · seccionLarga · planesSinNombrar, que los lista listos para pegar)
-  bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"}}
+  bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"},"lleva":[{"tipo":"decision","id":"…"}]}
+                                             —cada pieza marcada para reportar; 404 piezaInexistente · 400 piezaSinMarcar · piezaYaEnOtraEntrega · entregaSellada
   bitacora-api simulacion <subarea>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
                                              "brazos":[{"clave":"A","nombre":"…","comoCorre":"…"},{"clave":"B","nombre":"…"}],
                                              "muestra":[{"clave":"i1","nombre":"…","queEs":"…"}],
