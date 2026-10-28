@@ -1138,6 +1138,28 @@ bajar)
     ;;
   esac
   ;;
+# La pieza en papel: pide a la API su documento de imprenta y lo imprime el Chrome de la
+# máquina (plugin/pdf.mjs), con el diseño de la app y los adjuntos incrustados. El idioma es
+# el de `-i` —sin él, la capa de afuera de hoy—; sin --salida queda en la carpeta actual.
+pdf)
+  exige 2 "pdf <tipo> <id> [--salida <carpeta>] [--abrir]   (el tipo en plural, como en la app: pdf analisis <id>)" "$@"
+  tipo_pdf="$1"
+  id_pdf="$2"
+  shift 2
+  # El directorio del plugin, resuelto desde el shim: un symlink relativo se resolvería
+  # contra el cwd, así que se sigue entero (el mismo camino que `sincronizar-skills`).
+  PLUGIN_SH="${BASH_SOURCE[0]}"
+  while [ -L "$PLUGIN_SH" ]; do
+    destino="$(readlink "$PLUGIN_SH")"
+    case "$destino" in
+    /*) PLUGIN_SH="$destino" ;;
+    *) PLUGIN_SH="$(dirname "$PLUGIN_SH")/$destino" ;;
+    esac
+  done
+  PLUGIN_DIR="$(cd "$(dirname "$PLUGIN_SH")" && pwd)"
+  BITACORA_BASE="$BASE" BITACORA_TOKEN="$TOKEN" BITACORA_IDIOMA="$IDIOMA" \
+    node "$PLUGIN_DIR/pdf.mjs" "$tipo_pdf" "$id_pdf" "$@"
+  ;;
 # ─────────────────────────────────────────────────────────────────────────────
 # LOS TIPOS DE UNA SUB-ÁREA — analisis · ideas · guiones · planes · bugs · gestiones · client-reports · decisiones · simulaciones · consultas · consultas-cliente · chequeos · objetivos
 #
