@@ -1941,6 +1941,22 @@ cerrar)
   vaciar_cola
   jq -c '. + {estado:"resuelta"}' | escribir PATCH "/api/decisiones/$(uri "$1")"
   ;;
+# La marca de lo que se le cuenta al cliente: el texto la pone o corrige el suyo, y `--quitar`
+# la saca. Toda pieza la lleva por su puerta genérica; la decisión, por la suya.
+reportar)
+  exige 3 "reportar <tipo> <id> \"<cómo se le cuenta al cliente>\"   ·   reportar <tipo> <id> --quitar" "$@"
+  vaciar_cola
+  if [ "$3" = "--quitar" ]; then
+    marca='{"paraReportar":null}'
+  else
+    marca="$(jq -cn --arg texto "$3" '{paraReportar:{texto:$texto}}')"
+  fi
+  case "$1" in
+  decision | decisiones) ruta="/api/decisiones/$(uri "$2")" ;;
+  *) ruta="/api/items/$(uri "$1")/$(uri "$2")" ;;
+  esac
+  printf '%s' "$marca" | escribir PATCH "$ruta"
+  ;;
 diferir)
   exige 1 "diferir <id>   (cerrado: lo que espera su momento es un plan)" "$@"
   echo "Diferir era del modelo anterior. Lo que espera su momento es un PLAN," >&2
@@ -2774,6 +2790,10 @@ Escritura (el cuerpo JSON entra por stdin):
         "urgencia" y "para":"AAAA-MM-DD", escrita después de revisar las fuentes: `fuentes <área>` y un subagente por fuente) · sesion (la decide la sesión);
         "tanda":"<id>" la suma a una tanda. Lo que se decide MIRANDO lleva sus "capturas", que `capturar` sube antes
   bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}   (una decisión)
+  bitacora-api reportar <tipo> <id> "<texto>"   la marca «Para reportar»: el texto con que se le cuenta al cliente la pone
+                                            o lo corrige, y conserva el día en que se marcó; el tipo es el de la pieza (planes, analisis,
+                                            bugs, decision…), y la decisión va por su puerta
+  bitacora-api reportar <tipo> <id> --quitar   la saca, cuando deja de hacer falta contarlo
   bitacora-api corregir <tipo> <id>         {"cuerpo":{…},"diagramas":[…]} · {"titulo":"…"} · {"queEs":"…"}   (cualquier otra pieza;
                                               el cuerpo de un objetivo va entero, con su «El mapa»)
                                             · {"prioridad":"alta"} (su orden entre los de su escritorio, en cualquier escritorio:
@@ -2781,6 +2801,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · {"modelo":"sonnet","esfuerzo":"medium"} (un plan: con qué se construye, en cualquier escritorio)
                                             · {"vigente":true} · {"vigente":false} (un análisis: si explica algo que dura; marcar deja quieto
                                               su reloj, así desmarcar uno viejo lo saca de la vista en el acto)
+                                            · {"paraReportar":{"texto":"…"}} · {"paraReportar":null} (toda pieza: lo que se le cuenta al
+                                              cliente; marcar deja quieto su reloj — `reportar` lo escribe por vos)
                                             · {"dependeDe":["<id>"]} (un plan: las gestiones que espera hechas y el guion que espera firmado,
                                               la lista entera en su orden; {"dependeDe":[]} la saca)
   bitacora-api entregable <id>             (el entregable creativo con material, estados y si su revisión está habilitada; trae las
