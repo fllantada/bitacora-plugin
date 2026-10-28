@@ -2644,8 +2644,13 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
                                              cada lista con su puerta de vuelta — el estado vuelve por editar-estado con `traduccion`)
 
 Escritura (el cuerpo JSON entra por stdin):
-  bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"},"vigente":true}
+  bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"},"vigente":true,"areas":["<área>"]}
         se lee en la página de análisis de su área y en el menú mientras está vivo, del más nuevo al más viejo;
+        "areas" son las OTRAS áreas que toca, por su slug o el de una de sus sub-áreas: se lee también adentro de cada una —su página,
+        lo que sabemos, su libro, su cronología—; el área de su lugar y las de su tambienEn van solas y primeras, y la respuesta trae
+        `areas` como quedaron; un área retirada es 400 areaRetirada, la que no existe 404 areaInexistente; `corregir analisis <id>`
+        {"areas":["<área>","<área>"]} reemplaza la lista entera con las de sus lugares primeras, y mudarlo ({"hilo":…}) o cambiar
+        su tambienEn cambia las de sus lugares y conserva las nombradas;
         "vigente":true es el que explica algo que dura y le sirve a quien abra el área dentro de unos meses: sigue a la vista hasta que se descarta;
         sin la marca es material de trabajo: el que lleva semanas sin tocarse sale de la lista viva a «Lo anterior», y reescribirlo lo trae arriba
   bitacora-api idea <subarea>                  {"titulo":"…","queEs":"…","idea":{"subtitulo":"la escena en una frase","momento":[{"texto":"…","imagen":"<ruta de adjunto>"}],"pilares":[{"nombre":"Parar","texto":"…"}],"hooks":[{"letra":"A","frase":"…","mecanismo":"…","evidencia":"…"}],"estructura":[{"tramo":"0–5 s · Hook","que":"…","tecnica":"…"}],"propuestas":[{"decision":"…","propuesta":"…","tipo":"propuesta"}],"audiencia":"…","canal":"…","formato":"…","recursos":[{"k":"…","v":"…"}],"restricciones":[{"k":"…","v":"…"}]},"objetivo":"<id>"}

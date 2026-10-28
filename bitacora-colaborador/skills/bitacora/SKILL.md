@@ -217,6 +217,27 @@ see this piece? A pricing plan that changes the whole app lives in Commercial an
 seen from Mobile. Declare it in the same act you choose the area (`"tambienEn":["mobile"]`
 when opening it), with the same names a route takes —slug or alias—.
 
+**AN ANALYSIS CARRIES THE AREAS IT TOUCHES AS TAGS.** It lives in the area where it is
+written, and `areas` names the other areas it talks about: it is read inside each of them too
+—its page, «What we know», its book and its timeline—, and «The analyses» in the navigation
+lists it with its areas in the margin. The area of its place and those of its `tambienEn` go
+in on their own and first, so you name the others, when writing it or later, with the whole
+list:
+
+```bash
+$API -p <project> analisis <area> <<'JSON'
+{"titulo":"…","queEs":"what the reader will find","cuerpo":{"en":"# …"},"areas":["infra","seo"]}
+JSON
+$API -p <project> corregir analisis <id> <<< '{"areas":["infra","seo"]}'   # the whole list; its places' areas come back first on their own
+```
+
+Each name is the slug of a live area, or of one of its sub-areas, which leads to its area: a
+retired one answers 400 `areaRetirada` and one that doesn't exist 404 `areaInexistente`. The
+answer and the reading of the analysis bring `areas` as they were saved. `tambienEn` shows a
+piece in another sub-area, and `areas` takes an analysis to a whole area. Moving it
+(`{"hilo":"<area>"}`) or changing its `tambienEn` carries its tags along: the areas of its new
+places come in, those of the places it left go out, and the named ones stay.
+
 **AN AREA'S LIST SHOWS WHAT IS ALIVE, NEWEST ANALYSIS ON TOP.** What stays in view is decided
 by one rule each type declares in the registry (`retira`), derived from its desk and the
 clock: **the fixed bug** and **the working analysis untouched for more than
