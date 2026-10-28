@@ -219,7 +219,8 @@ when opening it), with the same names a route takes —slug or alias—.
 
 **AN ANALYSIS CARRIES THE AREAS IT TOUCHES AS TAGS.** It lives in the area where it is
 written, and `areas` names the other areas it talks about: it is read inside each of them too
-—its page, «What we know», its book and its timeline—, and «The analyses» in the navigation
+—its page, the page of each of its places (`subarea`), «What we know», its book and its
+timeline—, and «The analyses» in the navigation
 lists it with its areas in the margin. The area of its place and those of its `tambienEn` go
 in on their own and first, so you name the others, when writing it or later, with the whole
 list:
@@ -237,6 +238,17 @@ answer and the reading of the analysis bring `areas` as they were saved. `tambie
 piece in another sub-area, and `areas` takes an analysis to a whole area. Moving it
 (`{"hilo":"<area>"}`) or changing its `tambienEn` carries its tags along: the areas of its new
 places come in, those of the places it left go out, and the named ones stay.
+
+**Each analysis reads at its project page, `/<project>/analisis/<id>`**: it is the address the
+API answers in its `enlace` and the one that goes to the chat, a report or the client, and it
+stays put when the analysis changes areas. The page shows it with its header, its diagrams, its
+flows and the route of the area where it lives; once published, it reads outside at
+`/publico/<project>/analisis/<id>` with its password. Its place address,
+`…/linea/<place>/<slug>`, leads to the new one, so the links already written keep working.
+
+```bash
+$API -p <project> item analisis <id> | jq -r .enlace   # → https://…/<project>/analisis/<id>
+```
 
 **AN AREA'S LIST SHOWS WHAT IS ALIVE, NEWEST ANALYSIS ON TOP.** What stays in view is decided
 by one rule each type declares in the registry (`retira`), derived from its desk and the
