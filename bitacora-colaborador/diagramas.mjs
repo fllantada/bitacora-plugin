@@ -120,8 +120,17 @@ const PREAMBULO = `classes: {
 const FONDO_RAIZ = /^(style\.fill\b|style:\s*\{)/m;
 const CLASES_RAIZ = /^classes:\s*\{/m;
 
-/** Las directivas de cabecera: `# caption: …` y `# layout: elk`. No llegan al compilador. */
-const DIRECTIVA = /^#[ \t]*(caption|layout):[ \t]*(.+?)[ \t]*$/i;
+/**
+ * Un dibujo por tableros —`steps`, `layers` o `scenarios`, que solo valen a nivel raíz—.
+ *
+ * Sin ritmo declarado, `d2` emite UN SVG por tablero y la bitácora guarda uno por bloque:
+ * el destino no aparece y el dibujo «falla sin mensaje». Con `# pasos:` los tableros se
+ * empaquetan en un solo SVG que avanza solo.
+ */
+const TABLEROS_RAIZ = /^(steps|layers|scenarios)\s*:/m;
+
+/** Las directivas de cabecera: `# caption: …`, `# layout: elk` y `# pasos: 1400`. No llegan al compilador. */
+const DIRECTIVA = /^#[ \t]*(caption|layout|pasos):[ \t]*(.+?)[ \t]*$/i;
 const LAYOUTS = new Set(["dagre", "elk"]);
 
 /**
@@ -151,11 +160,13 @@ function banderasDeLetra() {
  * Separa las directivas de cabecera del código que compila.
  *
  * @param {string} codigo
- * @returns {{ fuente: string; layout: string }}
+ * @returns {{ fuente: string; layout: string; pasos?: number }}
  */
 function separarDirectivas(codigo) {
   const renglones = codigo.split("\n");
   let layout = "dagre";
+  /** @type {number | undefined} */
+  let pasos;
   let i = 0;
   while (i < renglones.length) {
     const directiva = DIRECTIVA.exec(renglones[i]);
@@ -163,9 +174,13 @@ function separarDirectivas(codigo) {
     if (directiva[1].toLowerCase() === "layout" && LAYOUTS.has(directiva[2].toLowerCase())) {
       layout = directiva[2].toLowerCase();
     }
+    if (directiva[1].toLowerCase() === "pasos") {
+      const ritmo = Number(directiva[2]);
+      if (Number.isInteger(ritmo) && ritmo >= 400) pasos = ritmo;
+    }
     i++;
   }
-  return { fuente: renglones.slice(i).join("\n"), layout };
+  return { fuente: renglones.slice(i).join("\n"), layout, ...(pasos ? { pasos } : {}) };
 }
 
 /**
@@ -189,7 +204,13 @@ function errorLimpio(stderr) {
  * @returns {string}
  */
 function compilarBloque(codigo) {
-  const { fuente, layout } = separarDirectivas(codigo);
+  const { fuente, layout, pasos } = separarDirectivas(codigo);
+  if (TABLEROS_RAIZ.test(fuente) && !pasos) {
+    throw new Error(
+      "el dibujo por tableros (steps, layers, scenarios) viaja animado en un solo SVG: " +
+        "declará su ritmo con `# pasos: 1400` —los milisegundos entre tablero y tablero— en la cabecera del bloque",
+    );
+  }
   const conFondo = FONDO_RAIZ.test(fuente) ? fuente : `style.fill: transparent\n${fuente}`;
   const conClases = CLASES_RAIZ.test(conFondo) ? conFondo : PREAMBULO + conFondo;
 
@@ -200,7 +221,16 @@ function compilarBloque(codigo) {
     fs.writeFileSync(origen, conClases, "utf8");
     const corrida = spawnSync(
       "d2",
-      ["--sketch", "--theme=1", `--layout=${layout}`, "--pad=8", ...banderasDeLetra(), origen, destino],
+      [
+        "--sketch",
+        "--theme=1",
+        `--layout=${layout}`,
+        "--pad=8",
+        ...(pasos ? [`--animate-interval=${pasos}`] : []),
+        ...banderasDeLetra(),
+        origen,
+        destino,
+      ],
       { encoding: "utf8" },
     );
     if (corrida.status !== 0 || !fs.existsSync(destino)) {
