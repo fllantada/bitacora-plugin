@@ -221,9 +221,10 @@ when opening it), with the same names a route takes —slug or alias—.
 by one rule each type declares in the registry (`retira`), derived from its desk and the
 clock: **the fixed bug** and **the working analysis untouched for more than
 `DIAS_DE_SILENCIO` days** —the same silence that dims an area on the board— leave the live
-list, the menu and the phone navigator, and go with what was discarded to **«Earlier»**, the
-folded pile at the foot of the sub-area and goal pages, with its count; from the area they are
-read on the page of their type (`/<project>/area/<slug>/<type>`), which lists them all. Each one still
+list and go with what was discarded to **«Earlier»**; the fixed bug also leaves the menu and
+the phone navigator, and the analysis stays in «The analyses» of the menu and in the phone's
+Analyses axis. «Earlier» is the folded pile at the foot of the sub-area and goal pages, with
+its count; from the area they are read on the page of their type (`/<project>/area/<slug>/<type>`), which lists them all. Each one still
 opens at its address, search finds it, the per-type axis lists it and the API serves it as
 always. **A lasting analysis stays in view however quiet it gets**, and leaves only when it
 is discarded: it explains something of the world —how an engine works, the limits that were
@@ -367,8 +368,8 @@ type with its live pieces and its critical bugs, linking to its page
 decided —the area's book—; «The latest settled» shows the five newest lines of its book. Then
 what waits on a decision, what is on hold, and its access. The left menu reads like the phone navigator: the goals first, then the areas —each
 one opens its page and unfolds its open bugs, the critical one on top and the «someday» ones at
-the foot— and last the lasting analyses grouped by area, with Harness at the
-foot of the centre's menu; a piece's route reads Home › Area. An area with
+the foot— and last all the analyses, in one list from the newest to the oldest with each one's
+area and day in the margin, with Harness at the foot of the centre's areas; a piece's route reads Home › Area. An area with
 more than one place belongs to a project whose `sin-subareas` adaptation is pending: it is
 read with its sub-areas, and the owner folds each one into its area
 (`fusionar <sub-area> <area>`: its pieces keep the sub-area's name and brief as their
@@ -1550,7 +1551,7 @@ pieces are walked through. Open goals come first, by their priority —high, med
 someday— and within each from the most recent activity —its own or its pieces'— to the oldest,
 and achieved ones after them, dimmed; a dropped one leaves. At the foot, whoever sees the whole
 project gets **«No goal»**, with the live pieces that pursue none and each one's place in the
-margin, except the bugs and the lasting analyses, which read in their area and in «The
+margin, except the bugs, which read in their area, and the analyses, which read in «The
 analyses». Under each one's name goes **the bar of its standing**, filled up to its percentage,
 with the figure and the state in one word. The phone's Goals axis orders them the same way and
 carries the same bar in each group's head. The by-type axis (`/<project>/tipo/objetivos`) lists
