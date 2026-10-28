@@ -132,7 +132,8 @@ done
 # tiene) y encargados (esperan que alguien los tome), los chequeos que esperan unos ojos y
 # las consultas en la mano de la persona o del cliente. Es el vistazo del día entre todas
 # las sesiones, y sale de acá porque la llave de la API es de un tenant y el servidor no
-# cruza tenants. Una llave vencida o sin red se dice y se sigue con las demás.
+# cruza tenants. Cada proyecto con algo marcado para reportar suma un renglón con la cifra y
+# el enlace a su página Reportes. Una llave vencida o sin red se dice y se sigue con las demás.
 if [ "${1:-}" = "bandeja" ]; then
   BASE="${BITACORA_URL:-$(valor_de url || true)}"
   BASE="${BASE:-https://bitacora.dev-fran.com}"
@@ -163,6 +164,11 @@ if [ "${1:-}" = "bandeja" ]; then
       printf '%s' "$decisiones" | jq -c --arg p "$tenant" \
         '.items[] | select(.mano == "persona" or .mano == "cliente")
          | {proyecto: $p, tipo: "decision", mano, falta, estado, decide, hilo, area, titulo, id, tanda, para, diasEnElCliente}'
+      # Lo marcado para contarle al cliente: un renglón por proyecto, con la cifra y su página.
+      reportes="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
+        "$BASE/api/reportes" 2>/dev/null)" || continue
+      printf '%s' "$reportes" | jq -c --arg p "$tenant" --arg base "$BASE" \
+        'select(.total > 0) | {proyecto: $p, tipo: "reportes", mano: "persona", total, enlace: "\($base)/\($p)/reportes"}'
     done
   } | jq -s 'sort_by(if .mano == "cliente" then 4 elif .mano == "persona" then 0 elif .estado == "entregado" then 1 elif .estado == "en-curso" then 2 else 3 end)'
   exit 0
@@ -1957,6 +1963,9 @@ reportar)
   esac
   printf '%s' "$marca" | escribir PATCH "$ruta"
   ;;
+# Lo que está por reportar: cada pieza marcada, del marcado más nuevo al más viejo, con su
+# texto para el cliente; la misma lista que la página Reportes.
+reportes) leer "/api/reportes" ;;
 diferir)
   exige 1 "diferir <id>   (cerrado: lo que espera su momento es un plan)" "$@"
   echo "Diferir era del modelo anterior. Lo que espera su momento es un PLAN," >&2
@@ -2583,8 +2592,9 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api abrir [destino]              (el tablero en tu navegador, sin login: enlace fresco de un solo uso;
                                              con la ruta o el enlace de una pieza, abre esa página)
   bitacora-api tablero                      (las sub-áreas con su área y sus ítems, los objetivos del proyecto en su lista `objetivos` —cada uno con su `dependeDe`, su `destraba` y sus `areas` con su foto cuando los tiene—, las áreas, lo pendiente por escritorio, la tríada contada)
-  bitacora-api bandeja                      (sin -p: las consultas en tu mano o en la del cliente —con su `mano` y su `falta`—, los chequeos por mirar
-                                             y los planes entregados, en curso y encargados de TODOS los proyectos)
+  bitacora-api bandeja                      (sin -p: las consultas en tu mano o en la del cliente —con su `mano` y su `falta`—, los chequeos por mirar,
+                                             los planes entregados, en curso y encargados, y un renglón `reportes` con la cifra y el enlace
+                                             de cada proyecto que tiene algo por reportar — de TODOS los proyectos)
   bitacora-api encargados · en-curso · entregados   (el ciclo del encargo, por escritorio; cada plan con su sub-área y su área)
   bitacora-api subareas                     (= hilos = lineas: los tres nombres llegan al mismo lugar)
   bitacora-api subarea <slug|alias>         (= hilo = linea)
@@ -2794,6 +2804,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                             o lo corrige, y conserva el día en que se marcó; el tipo es el de la pieza (planes, analisis,
                                             bugs, decision…), y la decisión va por su puerta
   bitacora-api reportar <tipo> <id> --quitar   la saca, cuando deja de hacer falta contarlo
+  bitacora-api reportes                     lo que está por reportar: {"total":n,"reportes":[{"tipo","id","titulo","area":{"slug","nombre"}|null,
+                                            "url","enlace","texto","marcadoAt"}]}, del marcado más nuevo al más viejo; la página Reportes del proyecto
   bitacora-api corregir <tipo> <id>         {"cuerpo":{…},"diagramas":[…]} · {"titulo":"…"} · {"queEs":"…"}   (cualquier otra pieza;
                                               el cuerpo de un objetivo va entero, con su «El mapa»)
                                             · {"prioridad":"alta"} (su orden entre los de su escritorio, en cualquier escritorio:
