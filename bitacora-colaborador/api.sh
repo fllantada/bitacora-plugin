@@ -939,7 +939,8 @@ reviews) leer "/api/reviews" ;;
 # respuesta dice en cuál quedó (`idioma`).
 #
 # La pieza se nombra como se la lee: `<subarea> <slug>` para lo que cuelga de un hilo,
-# `objetivo <id>` para un objetivo, que se lee en su página del proyecto, y la sección sola
+# `objetivo <id>` para un objetivo y `analisis <id>` para un análisis, que se leen en su
+# página del proyecto, y la sección sola
 # para una review, que es una sección de un solo documento. Publicar abre también los
 # archivos que ese texto muestra —las capturas, el PDF que un client-report entregó— y
 # `privado` los cierra con ella. El objetivo abre además cada pieza que lo persigue, con su
@@ -949,7 +950,7 @@ reviews) leer "/api/reviews" ;;
 # Es del dueño del proyecto: la llave de un colaborador recibe un 403.
 # ─────────────────────────────────────────────────────────────────────────────
 publicar | privado)
-  exige 1 "$comando <subarea> <slug>   |   $comando objetivo <id>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>   [--contrasena <…>] [--idioma <…>]" "$@"
+  exige 1 "$comando <subarea> <slug>   |   $comando objetivo <id>   |   $comando analisis <id>   |   $comando <seccion>   |   $comando <linea|seccion|flujo> <contenedor> <slug>   [--contrasena <…>] [--idioma <…>]" "$@"
   vaciar_cola
   [ "$comando" = publicar ] && afuera=true || afuera=false
 
@@ -964,13 +965,14 @@ publicar | privado)
   done
   set -- ${nombrada[@]+"${nombrada[@]}"}
 
-  # Cuatro formas de nombrar la pieza: la elige la cantidad de argumentos y, con DOS, la
+  # Las formas de nombrar la pieza: la elige la cantidad de argumentos y, con DOS, la
   # primera palabra:
   #
   #   · con TRES, la explícita: el contenedor con su nombre, igual que `documento` y
   #     `mudar-documento`. Es la que sirve cuando la sección tiene varios documentos, o
   #     archivos propios, o cuando el texto vive en un flujo.
-  #   · con DOS, `objetivo` y su id: el objetivo, por el id que su dirección lleva.
+  #   · con DOS, `objetivo` y su id, o `analisis` y su id: la pieza del proyecto, por el id
+  #     que su dirección lleva.
   #   · con DOS, el hilo y el slug: la dirección de lo que cuelga de un ticket.
   #   · con UNO, la sección sola: la review, que es una sección de un solo documento.
   #
@@ -989,17 +991,21 @@ publicar | privado)
     echo "A «$comando $1 $2» le falta el slug de la pieza." >&2
     echo "  · $comando <subarea> <slug>" >&2
     echo "  · $comando objetivo <id>" >&2
+    echo "  · $comando analisis <id>" >&2
     echo "  · $comando <seccion>                                 (una review)" >&2
     echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
     exit 1
     ;;
-  2:objetivo | 2:objetivos) campo=objetivo contenedor="$2" pieza="" ;;
+  2:objetivo | 2:objetivos | 2:analisis) campo="$1" contenedor="$2" pieza=""
+    [ "$campo" = "objetivos" ] && campo=objetivo
+    ;;
   2:*) contenedor="$1" pieza="$2" ;;
   1:*) campo=seccion contenedor="$1" pieza="" ;;
   0:*)
-    echo "Falta nombrar la pieza. Las cuatro formas son:" >&2
+    echo "Falta nombrar la pieza. Las formas son:" >&2
     echo "  · $comando <subarea> <slug>" >&2
     echo "  · $comando objetivo <id>" >&2
+    echo "  · $comando analisis <id>" >&2
     echo "  · $comando <seccion>                                 (una review)" >&2
     echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
     exit 1
@@ -1008,19 +1014,20 @@ publicar | privado)
   # antes tapaba la forma de la sección sola. Sin esta rama, lo que se nombraba pasaba a
   # ser la palabra `linea` y el servidor contestaba sobre una sección que nadie nombró.
   *)
-    echo "Sobran argumentos. Las cuatro formas son:" >&2
+    echo "Sobran argumentos. Las formas son:" >&2
     echo "  · $comando <subarea> <slug>" >&2
     echo "  · $comando objetivo <id>" >&2
+    echo "  · $comando analisis <id>" >&2
     echo "  · $comando <seccion>                                 (una review)" >&2
     echo "  · $comando <linea|seccion|flujo> <contenedor> <slug>" >&2
     exit 1
     ;;
   esac
 
-  # El objetivo viaja como la API lo nombra: su tipo y su id.
+  # El tipo del proyecto viaja como la API lo nombra: su tipo y su id.
   jq -cn --argjson p "$afuera" --arg k "$campo" --arg c "$contenedor" --arg s "$pieza" --arg w "$contrasena" --arg i "$idioma" \
     '{publico:$p}
-     + (if $k == "objetivo" then {tipo:"objetivo", id:$c} else {($k): $c} end)
+     + (if $k == "objetivo" or $k == "analisis" then {tipo:$k, id:$c} else {($k): $c} end)
      + (if $s == "" then {} else {slug:$s} end) + (if $w == "" then {} else {contrasena:$w} end)
      + (if $i == "" then {} else {idioma:$i} end)' |
     escribir PUT "/api/publicacion"
@@ -1203,7 +1210,22 @@ objetivo)
   vaciar_cola
   escribir POST "/api/objetivos"
   ;;
-analisis | idea | guion | plan | bug | gestion | client-report | simulacion | consulta | consulta-cliente | chequeo)
+# El análisis es del proyecto y nace sin lugar, etiquetado con las áreas que traiga su JSON.
+# Con un área en el comando, el alta va por la puerta del lugar —alias de la suya— y esa área
+# queda primera entre sus etiquetas.
+analisis)
+  if [ -t 0 ] && [[ "${1:-}" =~ ^[0-9a-f]{24}$ ]]; then
+    echo "«$1» tiene forma de id, y \`analisis\` da de alta uno nuevo con su JSON por stdin: la lectura de ese análisis es \`bitacora-api item analisis $1\`." >&2
+    exit 1
+  fi
+  vaciar_cola
+  if [ "$#" -eq 0 ]; then
+    escribir POST "/api/analisis"
+  else
+    escribir POST "/api/hilos/$(uri "$1")/analisis"
+  fi
+  ;;
+idea | guion | plan | bug | gestion | client-report | simulacion | consulta | consulta-cliente | chequeo)
   exige 1 "$comando <subarea>   < JSON" "$@"
   # Un id donde va la sub-área es la lectura confundida con el alta: se nombra la lectura.
   if [ -t 0 ] && [[ "$1" =~ ^[0-9a-f]{24}$ ]]; then
@@ -1216,7 +1238,6 @@ analisis | idea | guion | plan | bug | gestion | client-report | simulacion | co
   esac
   vaciar_cola
   case "$comando" in
-    analisis) ruta_tipo=analisis ;;
     idea) ruta_tipo=ideas ;;
     guion) ruta_tipo=guiones ;;
     plan) ruta_tipo=planes ;;
@@ -2666,13 +2687,13 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
                                              cada lista con su puerta de vuelta — el estado vuelve por editar-estado con `traduccion`)
 
 Escritura (el cuerpo JSON entra por stdin):
-  bitacora-api analisis <subarea>              {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"},"vigente":true,"areas":["<área>"]}
-        se lee en la página de análisis de su área y en el menú mientras está vivo, del más nuevo al más viejo;
-        "areas" son las OTRAS áreas que toca, por su slug o el de una de sus sub-áreas: se lee también adentro de cada una —su página,
-        lo que sabemos, su libro, su cronología—; el área de su lugar y las de su tambienEn van solas y primeras, y la respuesta trae
-        `areas` como quedaron; un área retirada es 400 areaRetirada, la que no existe 404 areaInexistente; `corregir analisis <id>`
-        {"areas":["<área>","<área>"]} reemplaza la lista entera con las de sus lugares primeras, y mudarlo ({"hilo":…}) o cambiar
-        su tambienEn cambia las de sus lugares y conserva las nombradas;
+  bitacora-api analisis [<área>]               {"titulo":"…","queEs":"…","cuerpo":{"es":"# …"},"vigente":true,"areas":["<área>"]}
+        es del proyecto y nace sin lugar, en su página propia; con <área> en el comando el alta va por la puerta del
+        lugar —alias de la suya— y esa área queda primera entre sus etiquetas. "areas" son las áreas que toca, por su
+        slug o el de una de sus sub-áreas: se lee adentro de cada una —su página, lo que sabemos, su libro, su
+        cronología— y escribirlo toca el reloj de todas; un área retirada es 400 areaRetirada, la que no existe 404
+        areaInexistente; `corregir analisis <id>` {"areas":["<área>","<área>"]} reemplaza la lista entera — mudarlo de
+        lugar o darle tambienEn contesta 400 sinLugar, porque vive sin lugar —;
         "vigente":true es el que explica algo que dura y le sirve a quien abra el área dentro de unos meses: sigue a la vista hasta que se descarta;
         sin la marca es material de trabajo: el que lleva semanas sin tocarse sale de la lista viva a «Lo anterior», y reescribirlo lo trae arriba
   bitacora-api idea <subarea>                  {"titulo":"…","queEs":"…","idea":{"subtitulo":"la escena en una frase","momento":[{"texto":"…","imagen":"<ruta de adjunto>"}],"pilares":[{"nombre":"Parar","texto":"…"}],"hooks":[{"letra":"A","frase":"…","mecanismo":"…","evidencia":"…"}],"estructura":[{"tramo":"0–5 s · Hook","que":"…","tecnica":"…"}],"propuestas":[{"decision":"…","propuesta":"…","tipo":"propuesta"}],"audiencia":"…","canal":"…","formato":"…","recursos":[{"k":"…","v":"…"}],"restricciones":[{"k":"…","v":"…"}]},"objetivo":"<id>"}
@@ -3011,6 +3032,7 @@ Escritura (el cuerpo JSON entra por stdin):
 Poner una pieza afuera — se lee sin cuenta, con su contraseña, y nada más que esa pieza (dueño):
   bitacora-api publicar <subarea> <slug>       → devuelve `enlace`, `contrasena` y `paraMandar` (los dos juntos, para pegar)
   bitacora-api publicar objetivo <id>       (un objetivo: abre afuera en /publico/<proyecto>/objetivo/<id>)
+  bitacora-api publicar analisis <id>       (un análisis: abre afuera en /publico/<proyecto>/analisis/<id>)
   bitacora-api publicar <seccion>           (una review: es una sección de un solo documento)
   bitacora-api publicar … --contrasena <…>  (la que quieras, 6 caracteres o más; sin el flag conserva la suya o recibe la de la casa)
   bitacora-api publicar … --idioma <es|en>  (uno de los del proyecto: el enlace abre esa capa sola; sin el flag conserva

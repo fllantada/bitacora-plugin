@@ -217,33 +217,35 @@ see this piece? A pricing plan that changes the whole app lives in Commercial an
 seen from Mobile. Declare it in the same act you choose the area (`"tambienEn":["mobile"]`
 when opening it), with the same names a route takes —slug or alias—.
 
-**AN ANALYSIS CARRIES THE AREAS IT TOUCHES AS TAGS.** It lives in the area where it is
-written, and `areas` names the other areas it talks about: it is read inside each of them too
-—its page, the page of each of its places (`subarea`), «What we know», its book and its
-timeline—, and «The analyses» in the navigation
-lists it with its areas in the margin. The area of its place and those of its `tambienEn` go
-in on their own and first, so you name the others, when writing it or later, with the whole
-list:
+**AN ANALYSIS BELONGS TO THE PROJECT AND CARRIES THE AREAS IT TOUCHES AS TAGS.** It is born
+with no place —`$API -p <project> analisis` on its own, or with an area so it leads its tags,
+through the place's door, which is an alias of its own— and `areas` names the areas it talks
+about: it is read inside each of them —its page, the page of each of its places (`subarea`),
+«What we know», its book and its timeline—, «The analyses» in the navigation lists it with its
+areas in the margin, and writing it touches the clock of each one tagging it. Tag it when
+writing it or later, with the whole list:
 
 ```bash
+$API -p <project> analisis <<'JSON'
+{"titulo":"…","queEs":"what the reader will find","cuerpo":{"en":"# …"},"areas":["infra","seo"]}
+JSON
 $API -p <project> analisis <area> <<'JSON'
 {"titulo":"…","queEs":"what the reader will find","cuerpo":{"en":"# …"},"areas":["infra","seo"]}
 JSON
-$API -p <project> corregir analisis <id> <<< '{"areas":["infra","seo"]}'   # the whole list; its places' areas come back first on their own
+$API -p <project> corregir analisis <id> <<< '{"areas":["infra","seo"]}'   # the whole list
 ```
 
 Each name is the slug of a live area, or of one of its sub-areas, which leads to its area: a
 retired one answers 400 `areaRetirada` and one that doesn't exist 404 `areaInexistente`. The
-answer and the reading of the analysis bring `areas` as they were saved. `tambienEn` shows a
-piece in another sub-area, and `areas` takes an analysis to a whole area. Moving it
-(`{"hilo":"<area>"}`) or changing its `tambienEn` carries its tags along: the areas of its new
-places come in, those of the places it left go out, and the named ones stay.
+answer and the reading of the analysis bring `areas` as they were saved. It lives with no
+place: moving it (`{"hilo":…}`) or giving it `tambienEn` answers 400 `sinLugar` — its areas
+get corrected with `areas`.
 
 **Each analysis reads at its project page, `/<project>/analisis/<id>`**: it is the address the
 API answers in its `enlace` and the one that goes to the chat, a report or the client, and it
 stays put when the analysis changes areas. The page shows it with its header, its diagrams, its
-flows and the route of the area where it lives; once published, it reads outside at
-`/publico/<project>/analisis/<id>` with its password. Its place address,
+flows and the route of the floor of its first tag; once published, it reads outside at
+`/publico/<project>/analisis/<id>` with its password. The place address it had,
 `…/linea/<place>/<slug>`, leads to the new one, so the links already written keep working.
 
 ```bash
