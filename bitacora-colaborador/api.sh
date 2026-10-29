@@ -2832,8 +2832,12 @@ Escritura (el cuerpo JSON entra por stdin):
                                             o lo corrige, y conserva el día en que se marcó; el tipo es el de la pieza (planes, analisis,
                                             bugs, decision…), y la decisión va por su puerta
   bitacora-api reportar <tipo> <id> --quitar   la saca, cuando deja de hacer falta contarlo
-  bitacora-api reportes                     lo que está por reportar: {"total":n,"reportes":[{"tipo","id","titulo","area":{"slug","nombre"}|null,
-                                            "url","enlace","texto","marcadoAt"}]}, del marcado más nuevo al más viejo; la página Reportes del proyecto
+  bitacora-api reportes                     la página Reportes servida: {"total":n,"cambios":[{"que","titulo","lesDijimos","ahora"?,
+                                            "entrega"}]  (lo entregado que cambió, se descartó o se borró, y la marca que contradice),
+                                            "reportes":[{"tipo","id","titulo","area":{"slug","nombre"}|null,"url","enlace","texto",
+                                            "marcadoAt","cambia"?,"vaEn"?}]  (lo marcado, del más nuevo al más viejo),
+                                            "entregas":[…]  (cada una con su día, su archivo y lo que llevó)  y  "sabenHoy":[…]
+                                            (lo último entregado de cada pieza); el total suma lo marcado y los cambios
   bitacora-api corregir <tipo> <id>         {"cuerpo":{…},"diagramas":[…]} · {"titulo":"…"} · {"queEs":"…"}   (cualquier otra pieza;
                                               el cuerpo de un objetivo va entero, con su «El mapa»)
                                             · {"prioridad":"alta"} (su orden entre los de su escritorio, en cualquier escritorio:
@@ -2842,7 +2846,9 @@ Escritura (el cuerpo JSON entra por stdin):
                                             · {"vigente":true} · {"vigente":false} (un análisis: si explica algo que dura; marcar deja quieto
                                               su reloj, así desmarcar uno viejo lo saca de la vista en el acto)
                                             · {"paraReportar":{"texto":"…"}} · {"paraReportar":null} (toda pieza: lo que se le cuenta al
-                                              cliente; marcar deja quieto su reloj — `reportar` lo escribe por vos)
+                                              cliente; marcar deja quieto su reloj — `reportar` lo escribe por vos; con "cambia":"<id>"
+                                              declara qué pieza ya contada contradice —tiene que haber salido en una entrega— y
+                                              "cambia":null lo saca)
                                             · {"dependeDe":["<id>"]} (un plan: las gestiones que espera hechas y el guion que espera firmado,
                                               la lista entera en su orden; {"dependeDe":[]} la saca)
   bitacora-api entregable <id>             (el entregable creativo con material, estados y si su revisión está habilitada; trae las
