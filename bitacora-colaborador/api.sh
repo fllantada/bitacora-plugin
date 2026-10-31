@@ -697,14 +697,13 @@ buscar)
   leer "/api/buscar?q=$(uri "$1")"
   ;;
 # El sistema del proyecto en una llamada: el dominio, el stack, los flujos y las fuentes, MÁS las
-# instrucciones del ciclo en este tenant (el markdown crudo, o null).
-# Las skills NO viajan acá: la sesión ya tiene las suyas en el disco, y el catálogo es la
-# vista para el humano (se lee con `skills`). /thinking y /coding la hacen en su paso 0 y
+# instrucciones del ciclo en este tenant (el markdown crudo, o null). Las skills las trae el
+# plugin y viven en el disco de la sesión. /thinking y /coding la hacen en su paso 0 y
 # obedecen las instrucciones.
 contexto) leer "/api/contexto" ;;
 # Cómo se corre el ciclo acá, solas: dónde se para cada sesión, qué gatea un commit, cómo
-# sale la PR, dónde se publica la review, cómo se factura, las fuentes, los registros, las
-# skills. Es material del proyecto: la lee todo miembro. Sin cargar contesta 404.
+# sale la PR, dónde se publica la review, cómo se factura, las fuentes, los registros.
+# Es material del proyecto: la lee todo miembro. Sin cargar contesta 404.
 instrucciones) leer_cuerpo "/api/instrucciones" "${1:-}" ;;
 # De qué vive el cliente, con SUS palabras: a qué se dedica, qué vende, a quién llega y qué
 # lo distingue. Es la primera lectura del proyecto — el glosario es su vocabulario, no él.
@@ -749,43 +748,6 @@ escribir-tests)
   esac
   vaciar_cola
   jq -n --arg tests "$tests" '{tests: $tests}' | escribir PUT "/api/tests"
-  ;;
-# Las herramientas que esta sesión tiene a mano, con qué hace cada una: las propias del
-# repo, las compartidas del perfil y las del método del plugin. El catálogo lo mantiene
-# la skill /skills del plugin, a mano, con `sincronizar-skills`.
-skills) leer "/api/skills" ;;
-skill)
-  exige 1 "skill <nombre>   (cómo se la cuenta, con qué se encadena y su SKILL.md)" "$@"
-  leer "/api/skills/$(uri "${1#/}")"
-  ;;
-# LA NOTA: la skill contada para una persona, que es lo único del catálogo que se escribe.
-#
-# El resto se deriva del archivo y dice para qué la convocaría un harness; esto contesta la
-# pregunta de quien abre el catálogo: para qué me sirve, cuándo la llamo, qué me deja hecho.
-# Se escribe leyendo el SKILL.md, y el servidor la aparea con esa versión: cuando el archivo
-# cambie, la sincronización nombra la nota que quedó vieja.
-nota-skill)
-  exige 1 "nota-skill <nombre>   < {\"paraQue\":\"…\",\"cuando\":\"…\",\"deja\":\"…\",\"ojo\":\"…\"}" "$@"
-  vaciar_cola
-  nota_dicha="$(cat)"
-  if [ -z "$(printf '%s' "$nota_dicha" | jq -r '.paraQue // empty' 2>/dev/null)" ]; then
-    echo "nota-skill lleva los cuatro renglones con que se cuenta una skill:" >&2
-    echo '  {"paraQue":"qué resuelve, como se lo contarías a alguien que nunca la usó",' >&2
-    echo '   "cuando":"en qué momento se la invoca","deja":"qué queda hecho cuando termina",' >&2
-    echo '   "ojo":"lo que conviene saber antes (opcional)"}' >&2
-    echo "  Se escribe leyendo su texto: bitacora-api skill <nombre>" >&2
-    exit 1
-  fi
-  printf '%s' "$nota_dicha" | escribir PUT "/api/skills/$(uri "${1#/}")/nota"
-  ;;
-# La skill que se RETIRÓ: sale del catálogo con su texto y su nota.
-#
-# La que esta máquina dejó de ver se atenúa sola y espera, porque otro perfil puede tenerla;
-# esto es decir que ya no existe en ninguno. Del dueño, como todo borrado.
-sacar-skill)
-  exige 1 "sacar-skill <nombre>   (la que se retiró: sale del catálogo — dueño)" "$@"
-  curl -fsS --max-time 20 -X DELETE -H "Authorization: Bearer $TOKEN" \
-    "$BASE/api/skills/$(uri "${1#/}")"
   ;;
 glosario) leer "/api/glosario" ;;
 termino)
@@ -1154,7 +1116,7 @@ pdf)
   id_pdf="$2"
   shift 2
   # El directorio del plugin, resuelto desde el shim: un symlink relativo se resolvería
-  # contra el cwd, así que se sigue entero (el mismo camino que `sincronizar-skills`).
+  # contra el cwd, así que se sigue entero.
   PLUGIN_SH="${BASH_SOURCE[0]}"
   while [ -L "$PLUGIN_SH" ]; do
     destino="$(readlink "$PLUGIN_SH")"
@@ -2276,99 +2238,6 @@ seccion)
   vaciar_cola
   escribir POST "/api/secciones"
   ;;
-# ─────────────────────────────────────────────────────────────────────────────
-# EL CATÁLOGO DE SKILLS — se mantiene solo, con UNA llamada determinística.
-#
-# Recorre las carpetas de skills que esta sesión ve —las del repo, las del perfil y las
-# del plugin instalado—, manda el hash de cada SKILL.md, y sube el texto SOLO de las que
-# el servidor no conoce o que cambiaron. Depende únicamente de los archivos del disco: dos
-# sesiones paradas en el mismo proyecto mandan lo mismo.
-#
-# La corre la skill /skills del plugin, invocada a mano. Su última línea dice qué cambió,
-# y es su plan de trabajo: el texto crudo se actualiza solo, y lo editorial —contar la
-# nueva, reescribir la nota vieja, sacar la retirada— es lo que /skills hace después.
-sincronizar-skills)
-  vaciar_cola
-  # Las tres casas, en el orden en que el catálogo las agrupa. La del plugin sale del
-  # directorio de este mismo archivo, así la versión instalada se describe a sí misma.
-  # El directorio del plugin instalado, resuelto desde el shim: un symlink relativo se
-  # resolvería contra el cwd y saltearía esa casa en silencio, así que se sigue entero.
-  PLUGIN_SH="${BASH_SOURCE[0]}"
-  while [ -L "$PLUGIN_SH" ]; do
-    destino="$(readlink "$PLUGIN_SH")"
-    case "$destino" in
-    /*) PLUGIN_SH="$destino" ;;
-    *) PLUGIN_SH="$(dirname "$PLUGIN_SH")/$destino" ;;
-    esac
-  done
-  PLUGIN_DIR="$(cd "$(dirname "$PLUGIN_SH")" && pwd)"
-  HOME_CLAUDE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-  # Qué más hay en la carpeta además del instructivo: sus scripts, sus referencias, sus
-  # plantillas. Es meta información de consulta —el catálogo dice si una skill es un texto o
-  # un texto con herramientas colgando— y cuesta lo mismo que la lista que ya viaja.
-  #
-  # Solo el primer nivel, y el directorio se nombra con su barra: lo que se quiere saber es
-  # qué trae, y una skill que arrastra un `node_modules` o un sitio compilado contestaría
-  # esa pregunta con mil archivos que nadie va a leer.
-  archivos_de() {
-    (
-      cd "$1" 2>/dev/null || return 0
-      for entrada in *; do
-        [ -e "$entrada" ] || continue
-        [ "$entrada" = "SKILL.md" ] && continue
-        if [ -d "$entrada" ]; then printf '%s/\n' "$entrada"; else printf '%s\n' "$entrada"; fi
-      done | LC_ALL=C sort | head -24
-    ) | jq -R -s -c 'split("\n") | map(select(length > 0))'
-  }
-  # Las casas del inventario. La del repo es donde estás parado, y un tenant cuyo trabajo
-  # vive en varias carpetas suma las otras como argumentos: el catálogo es del proyecto de
-  # la bitácora, y un proyecto de la bitácora puede tener más de un repo en el disco.
-  casas=("repo:$PWD/.claude/skills")
-  for otro in "$@"; do casas+=("repo:${otro%/}/.claude/skills"); done
-  casas+=("perfil:$HOME_CLAUDE/skills" "plugin:$PLUGIN_DIR/skills")
-  inventario="$(
-    for casa in "${casas[@]}"; do
-      procedencia="${casa%%:*}"
-      raiz="${casa#*:}"
-      [ -d "$raiz" ] || continue
-      for md in "$raiz"/*/SKILL.md; do
-        [ -f "$md" ] || continue
-        jq -cn --arg n "$(basename "$(dirname "$md")")" --arg p "$procedencia" \
-          --arg r "$(printf '%s' "${md%/SKILL.md}" | sed "s#^$HOME#~#")" \
-          --arg h "$(shasum -a 1 "$md" | cut -c1-16)" \
-          --argjson a "$(archivos_de "${md%/SKILL.md}")" \
-          '{nombre:$n, procedencia:$p, ruta:$r, hash:$h, archivos:$a}'
-      done
-    done | jq -cs '
-      # Un nombre, una skill: la primera casa gana, que es el orden en que el harness la
-      # resuelve —la del proyecto le gana a la del root—. Sin esto, una skill con el mismo
-      # nombre en el repo y en el perfil se guardaría con el texto de la que NO se invoca.
-      reduce .[] as $s ({}; if has($s.nombre) then . else . + {($s.nombre): $s} end)
-      | {skills: [.[]]}
-    '
-  )"
-  respuesta="$(printf '%s' "$inventario" | escribir POST "/api/skills/sincronizar")" || exit 1
-  # Lo que el servidor pidió sube entero, una llamada por skill: son pocas y solo cuando
-  # cambian. La ruta que devolvió es la misma que se mandó, así que el archivo se reencuentra.
-  printf '%s' "$respuesta" | jq -c '.subir[]?' | while IFS= read -r pendiente; do
-    nombre="$(printf '%s' "$pendiente" | jq -r .nombre)"
-    procedencia="$(printf '%s' "$pendiente" | jq -r .procedencia)"
-    ruta="$(printf '%s' "$pendiente" | jq -r .ruta)"
-    archivo="$(printf '%s' "$ruta" | sed "s#^~#$HOME#")/SKILL.md"
-    [ -f "$archivo" ] || continue
-    jq -n --arg p "$procedencia" --arg r "$ruta" \
-      --arg h "$(shasum -a 1 "$archivo" | cut -c1-16)" --rawfile c "$archivo" \
-      --argjson a "$(archivos_de "$(dirname "$archivo")")" \
-      '{procedencia:$p, ruta:$r, hash:$h, cuerpo:$c, archivos:$a}' |
-      escribir PUT "/api/skills/$(uri "$nombre")" >/dev/null ||
-      # Una que el servidor rechaza no se lleva puesta la sincronización entera: se dice
-      # cuál fue y las demás siguen subiendo.
-      echo "  ✗ /$nombre quedó sin subir" >&2
-  done
-  # La línea que /coding pega en su reporte. La arma el servidor, así el cliente, la web y
-  # el reporte dicen lo mismo con las mismas palabras.
-  printf '%s' "$respuesta" | jq -r '"Skills (\(.vistas)): " + .resumen'
-  ;;
 # La foto nueva de la definición de un área, y la corrección de la vigente.
 #
 # `escribir-estado` toma una foto: el cuerpo con el mundo del área —# Qué es · la sexta
@@ -2422,7 +2291,7 @@ escribir-instrucciones)
     cuerpo_md="$(cat)"
     if [ -z "$(printf '%s' "$cuerpo_md" | tr -d '[:space:]')" ]; then
       echo "escribir-instrucciones lee el markdown entero por stdin:  bitacora-api escribir-instrucciones < instrucciones.md" >&2
-      echo "  Secciones que las skills esperan: Dónde se para cada sesión · La rama y la PR · Antes de commitear · La review · La facturación · Las fuentes · Los registros · Las skills" >&2
+      echo "  Secciones que las skills esperan: Dónde se para cada sesión · La rama y la PR · Antes de commitear · La review · La facturación · Las fuentes · Los registros" >&2
       exit 1
     fi
     printf '%s' "$cuerpo_md" | jq -Rs '{cuerpo: .}' | escribir PUT "/api/instrucciones"
@@ -2603,7 +2472,7 @@ Uso: bitacora-api [-p <proyecto>] <comando>
   bitacora-api alias [<carpeta> <tenant>]    (las raíces, los alias y los tenants con llave, sin mostrar ninguna llave; con dos argumentos agrega uno)
   bitacora-api version [<carpeta de la skill>]   (la doctrina que la sesión cargó, la instalada y la última publicada — lo primero de cada invocación)
 
-El sistema del proyecto — la tríada, las instrucciones y las skills. Primera lectura al llegar:
+El sistema del proyecto — la tríada y las instrucciones. Primera lectura al llegar:
   bitacora-api contexto                     (el dominio + el glosario + el stack + los flujos + las fuentes + las instrucciones, de una)
   bitacora-api dominio                      (de qué vive el cliente, con sus palabras, en markdown crudo; 404 si no está escrito)
   bitacora-api instrucciones                (cómo se corre el ciclo del encargo acá, en markdown crudo; 404 si no están cargadas)
@@ -2612,11 +2481,6 @@ El sistema del proyecto — la tríada, las instrucciones y las skills. Primera 
   bitacora-api escribir-responsables        < lista.json   (la reemplaza entera — dueño; [] la saca)
         [{"slug":"merch","nombre":{"es":"Merch","en":"Merch"},"tinta":"violeta","email":"merch@…"}] · tinta: turquesa · violeta · rosa · ambar · email opcional
   bitacora-api escribir-tests <sí|no>       (si el código se sostiene con tests — dueño; contexto lo lee en proyecto.tests, sí sin declarar)
-  bitacora-api skills                       (las herramientas a mano: las del repo, las del perfil y las del plugin, con qué hace cada una)
-  bitacora-api skill <nombre>               (una entera: cómo se la cuenta, con qué se encadena y su SKILL.md)
-  bitacora-api nota-skill <nombre>          {"paraQue":"…","cuando":"…","deja":"…","ojo":"…"}
-        la skill contada para una persona: lo único del catálogo que se escribe
-  bitacora-api sacar-skill <nombre>         (la que se retiró de verdad: sale del catálogo — dueño)
   bitacora-api flujos [--area <slug>]       · bitacora-api flujo <slug>
                                             (con --area, los que viven en ella y los que pasan por ahí;
                                              cada flujo trae sus `pantallas`: al-dia, por-renovar, incompleto o sin-pantallas)
@@ -2954,10 +2818,6 @@ Escritura (el cuerpo JSON entra por stdin):
                                             público (sin credencial: compartido por enlace); las demás, por su skill
   bitacora-api seccion                      {"tipo":"archivo","nombre":"…","nota":"…"}
   bitacora-api editar-seccion <slug>        {"resumen":"…"} · {"tipo":"fuente"}
-  bitacora-api sincronizar-skills [<repo>…] (UNA llamada: manda los hashes de los SKILL.md que ve y sube solo lo que cambió;
-                                             su última línea nombra lo nuevo, lo que cambió, las notas que quedaron viejas
-                                             y cuántas siguen sin contar; los <repo> extra son otras carpetas del mismo tenant)
-                                            la corre la skill /skills, a mano; su última línea dice qué cambió y es su plan de trabajo
   bitacora-api escribir-estado <area>       {"cuerpo":{"es":"# Qué es\n…\n# El mapa\n…"},
                                              "hito":"…","plan":"<id>","objetivo":"<id>","diagramas":[…],
                                              "sinRefrescar":[{"fuente":"<slug>","porque":"<qué lo impide, en una línea>"}]}
