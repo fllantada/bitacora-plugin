@@ -2078,7 +2078,9 @@ capturar-paso)
 #
 # `clase`: documento · hoja · canal · tablero · diseno · pagina
 # `procedencia`: google-sheets · google-docs · slack · jira · figma · miro · email · drive · mano
-# `lado`: cliente · equipo · nuestro · proveedor   ·   `vigencia`: viva · fechada
+#   · bitacora (la de un análisis del dueño, que nace con `llevar-a-fuentes`)
+# `lado`: cliente · equipo · nuestro · proveedor · dueno (solo con la llave del dueño, 403 `vozDelDueno`)
+#   ·   `vigencia`: viva · fechada
 anotar-fuente)
   vaciar_cola
   escribir POST "/api/fuentes"
@@ -2121,7 +2123,9 @@ sincronizada)
 # espejo, la copia está al día y se re-estampa la fecha; distinta, sube la copia con el
 # nombre del espejo anterior y la fecha de la fuente pasa a la de hoy. Las demás
 # procedencias las refresca la skill del perfil que tiene el acceso —/slack, /jira,
-# /figma— y el renglón la nombra; una fechada se refresca cuando su autor manda otra.
+# /figma— y el renglón la nombra; una fechada se refresca cuando su autor manda otra. La
+# fuente `bitacora` —un análisis del dueño llevado a Fuentes— se vuelve a llevar, y toma la
+# huella del análisis de hoy.
 #
 #   bitacora-api refrescar                     # las vivas que esperan refresco
 #   bitacora-api refrescar attribute-register  # esa, aunque esté al día
@@ -2155,6 +2159,14 @@ refrescar)
     google-docs)
       export_refresco="https://docs.google.com/document/d/$ref_refresco/export?format=txt"
       nombre_refresco="$slug_refresco.txt"
+      ;;
+    bitacora)
+      # La copia es el análisis mismo: volver a llevarlo estampa la huella de hoy, sin bajar nada.
+      if echo '{}' | escribir POST "/api/items/analisis/$(uri "$ref_refresco")/fuente" >/dev/null; then
+        cambiaron=$((cambiaron + 1))
+        echo "  ↻  $slug_refresco: el análisis cambió — la fuente lo sigue con su huella de hoy"
+      fi
+      continue
       ;;
     slack)
       por_su_skill=$((por_su_skill + 1))
@@ -2207,6 +2219,27 @@ refrescar)
   done < <(jq -c '.[]' <<<"$lista_refresco")
   rm -rf "$carpeta_refresco"
   echo "Fuentes: $al_dia al día · $cambiaron cambiaron · $sin_acceso sin acceso${sin_acceso_lista:+ (${sin_acceso_lista# })} · $por_su_skill por su skill o su autor"
+  ;;
+# Lleva un análisis del dueño a Fuentes, con la voz `dueno`: la fuente viva que nombra el
+# análisis, lo abre en su página y espera refresco cuando el análisis se reescribe. Es del
+# dueño (403 `vozDelDueno`), y una sesión la registra con el OK explícito de Fran. Sus tags,
+# sin --tags, son los que ya tenía o las áreas del análisis. Volver a llevarlo la pone al día.
+#
+#   bitacora-api llevar-a-fuentes 6ae9ae0f22d6957d49dd2773 --tags estrategia,oferta
+llevar-a-fuentes)
+  exige 1 "llevar-a-fuentes <id del análisis> [--tags a,b]" "$@"
+  analisis_fuente="$1"
+  shift
+  tags_fuente=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --tags) tags_fuente="${2:-}" && shift 2 ;;
+    *) echo "No conozco «$1». Uso: bitacora-api llevar-a-fuentes <id del análisis> [--tags a,b]" >&2 && exit 1 ;;
+    esac
+  done
+  vaciar_cola
+  jq -cn --arg t "$tags_fuente" 'if $t == "" then {} else {tags: ($t | split(",") | map(select(. != "")))} end' |
+    escribir POST "/api/items/analisis/$(uri "$analisis_fuente")/fuente"
   ;;
 anotar-pieza)
   vaciar_cola
@@ -2489,12 +2522,14 @@ El sistema del proyecto — la tríada y las instrucciones. Primera lectura al l
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
   bitacora-api accesos                      (las direcciones de afuera, con qué se entra a cada una)
-  bitacora-api fuentes [tema] [clase]       (lo que el cliente entregó, en el orden que dice cuál MANDA:
-                                             las vivas del cliente arriba, las fechadas por fecha, las superadas al pie)
+  bitacora-api fuentes [tema] [clase]       (lo que el cliente entregó, en el orden que dice cuál MANDA: la viva del
+                                             cliente arriba, la del dueño, las otras vivas, las fechadas por fecha, las superadas al pie)
   bitacora-api fuente <slug>                (una entera, con su espejo y de cuándo es)
   bitacora-api por-sincronizar              (las vivas cuya copia quedó vieja, con su handle y su huella)
   bitacora-api refrescar [slug]             (baja las vivas por su procedencia, compara la huella y estampa el espejo;
                                              la que quedó sin acceso la dice con qué pedir — lo corre /thinking al arrancar)
+  bitacora-api llevar-a-fuentes <id> [--tags a,b]   (un análisis del dueño a Fuentes con la voz del dueño, que se lee
+                                             después de la viva del cliente; del dueño, y una sesión con el OK de Fran)
 
 El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la API lo guarda como `lineas`):
   bitacora-api abrir [destino]              (el tablero en tu navegador, sin login: enlace fresco de un solo uso;
@@ -2816,7 +2851,11 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api sincronizada <slug> <archivo> [fecha]
         sube la copia, calcula su huella y estampa el espejo — con la fecha, mueve la de la fuente
   bitacora-api refrescar [slug]             sin slug las que esperan refresco; con slug esa. Sheets y Docs por su export
-                                            público (sin credencial: compartido por enlace); las demás, por su skill
+                                            público (sin credencial: compartido por enlace); la de bitácora, volviéndola a
+                                            llevar; las demás, por su skill
+  bitacora-api llevar-a-fuentes <id> [--tags a,b]
+        el análisis del dueño entra a Fuentes con la voz `dueno`, viva, y la sigue cuando se reescribe (403 vozDelDueno
+        para otra llave; 400 fuenteDeAnalisis para otra pieza); sin --tags, las que tenía o las áreas del análisis
   bitacora-api seccion                      {"tipo":"archivo","nombre":"…","nota":"…"}
   bitacora-api editar-seccion <slug>        {"resumen":"…"} · {"tipo":"fuente"}
   bitacora-api escribir-estado <area>       {"cuerpo":{"es":"# Qué es\n…\n# El mapa\n…"},

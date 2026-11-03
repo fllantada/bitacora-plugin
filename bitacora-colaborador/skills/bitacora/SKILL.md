@@ -1883,8 +1883,8 @@ copy is current. Those four decide whether what it says still holds.
 |---|---|
 | `nombre` · `queEs` | What it is called and what it answers, in one sentence. Bilingual, like every card; `queEs` is left out when the material arrived with its name as its whole card |
 | `clase` | What kind of thing it is: `documento` · `hoja` · `canal` · `tablero` · `diseno` · `pagina` |
-| `procedencia` | Where it is read from: `google-sheets` · `google-docs` · `slack` · `jira` · `figma` · `miro` · `email` · `drive` · `mano` |
-| `producidaPor` · `lado` | Who wrote it, and which side it is on: `cliente` · `equipo` · `nuestro` · `proveedor` |
+| `procedencia` | Where it is read from: `google-sheets` · `google-docs` · `slack` · `jira` · `figma` · `miro` · `email` · `drive` · `mano` · `bitacora` (an owner's analysis taken to Sources) |
+| `producidaPor` · `lado` | Who wrote it, and which side it is on: `cliente` · `equipo` · `nuestro` · `proveedor` · `dueno` (the project owner's word: an analysis of theirs taken to Sources, which reads right after the client's live source) |
 | `fecha` | **The source's own date** (`AAAA-MM-DD`): when its author produced or sent it — not when you recorded it |
 | `vigencia` | `viva` while its author keeps editing it; `fechada` when it is a snapshot of one moment |
 | `superadaPor` | The slug of the one that replaced it: it gets marked and stays, like a glossary word |
@@ -1894,8 +1894,9 @@ copy is current. Those four decide whether what it says still holds.
 | `nota` | What you need to know to use it: the quota, the sharing permission, the sheet that matters |
 
 **Which one rules is DERIVED from the order**, so it cannot go stale: the client's live one
-rules over a dated one, among dated ones the newest rules, and a superseded one says so,
-dimmed at the foot. No field declares precedence — it comes out of vigencia, side and date.
+goes first, then the owner's, then the other live ones, the dated ones newest first, and a
+superseded one says so, dimmed at the foot. Each voice rules in its own ground: the client in
+what is wanted, the vendor in what its tool does, and the owner in what gets done. No field declares precedence — it comes out of vigencia, side and date.
 
 ```bash
 $API fuentes                    # the whole register, in that order
