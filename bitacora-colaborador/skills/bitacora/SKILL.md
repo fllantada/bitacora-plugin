@@ -742,7 +742,8 @@ idea) — then `# Task`, `# The idea`, `# Destination`, `# Context`,
 `# Pattern to follow`, `# Scope`, `# Out of scope`; the plan declares its source —something
 that opens: the Figma, the spreadsheet or the client's source, a decision recorded in the
 bitácora; a plan born from the owner's request in conversation goes without one— in
-`ficha.fuente` —«[name](link) — what it says»— with
+`ficha.fuente` —«[name](link) — what it says», two or three lines at most: what backs it and
+why the change is needed; the Result shows it under «Why»— with
 `$API ficha planes <id> '{"fuente":"[…](https://…) — …"}'`, and without it the Result
 reads «No source»; plus the plan's `queEs`, its one-line
 blurb for the lists, and its `visual` — what gets looked at in what it delivers (below).
@@ -759,8 +760,9 @@ text, each link counted by its text, and bounces a longer one. **`## Decisions a
 way` records only what departed from the plan or added something the reader would want to
 know, told for them**: each item is two short sentences, what was decided in bold and then
 what changes for whoever uses the system, in their words, with no code (the door bounces it)
-and no internal names; implementation choices go in Done, and how the session worked goes in
-Done or Frictions. The plan's Result shows a confidence index on top with what was decided, and
+and no internal names. The test: whoever uses the system notices the difference; when they
+don't —how something was named, how a conflict was solved— it's implementation and goes in
+Done, and how the session worked goes in Done or Frictions. The plan's Result shows a confidence index on top with what was decided, and
 a recorded decision asks the reader to review by hand. On a round, the report gets a `## Round N` block on top with the sections one
 level down (`### Done`, …); the door enforces the contract on that newest round. Its
 sections split in two kinds: the ones of the round tell only what this round did (Done,
@@ -791,12 +793,11 @@ path that matters and `lateral` what departs from it, and a box reads in three l
 line by hand in ink, the page's font in bold, the boxes on the paper, and colour at the
 path's entry and exit. The page of a delivered plan reads as steps in
 time — «Plan · Round 1 · … · Result» — and the Result is the reading before the merge,
-most important first: the confidence index worked out on reading — «✓ High confidence — no
-need to review it» in green, or «⚠ Review it» in amber with the signals that fail
-(differs from what was asked or no review, no source, agent decisions, alerts, out of scope),
-each with its content on the same page —, `# What changes` as why it exists, `## How it
-turned out` under «What happens on merge» with the flows the review drew and what improves,
-changes, stays or breaks, the Alert (`## To decide`) when there is one, with each point's title in view
+most important first: the confidence index worked out on reading — «High confidence» in
+green, or «Review it» with the four signals and the failing ones in ink (differs from what was
+asked or no review, no source, made decisions, alerts), each with its content on the same page
+—, `## How it turned out` under «What happens on merge» with the flows the review drew and
+what improves, changes, stays or breaks, «Why» with the source that backs the change, the Alert (`## To decide`) when there is one, with each point's title in view
 and its position and evidence folded, the cost, and the detail folded — Done with the round's request, Evidence, Decisions, Frictions, Pending with
 Out of scope, and «How the AI worked». A point of `## To decide` is a numbered item with its
 title in bold and four labelled sub-bullets — `- **What was found and where**: …`,
