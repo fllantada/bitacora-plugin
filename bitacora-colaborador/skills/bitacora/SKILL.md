@@ -1353,7 +1353,8 @@ plan's «What changes»:
 - **When it's achieved**: one or two sentences with what is seen working at the end, in the
   client's words; it says how we know —a screen, a journey, a figure—, without repeating «What
   we're after» or listing ticket states. It is what the session signing off its last plan
-  reads against what was signed.
+  reads against what was signed: something defined that it checks at closing, or its plans
+  done. What only shows in use goes in a final check plan, the last one of its map.
 
 The 400 `aperturaIncompleta` names them with what each one states, and the one that brings
 code or goes over its ceiling answers `seccionConCodigo` or `seccionLarga`, naming it. **The
