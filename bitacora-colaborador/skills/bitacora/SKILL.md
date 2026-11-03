@@ -1898,6 +1898,12 @@ goes first, then the owner's, then the other live ones, the dated ones newest fi
 superseded one says so, dimmed at the foot. Each voice rules in its own ground: the client in
 what is wanted, the vendor in what its tool does, and the owner in what gets done. No field declares precedence — it comes out of vigencia, side and date.
 
+**Each source keeps its reading**: the curated copy —what it says as of its copy, what changed
+since the previous reading, and what clashes—, sealed with the copy that was read. The list
+serves its headline with `lectura.vieja` when the copy changed afterwards, and
+`$API lectura <slug>` brings it whole: read it instead of the raw copy. An owner's analysis
+taken to Sources is read whole, with `$API item analisis <ref>`.
+
 ```bash
 $API fuentes                    # the whole register, in that order
 $API fuentes algolia            # the ones on a topic: the slug of an area or a stack piece

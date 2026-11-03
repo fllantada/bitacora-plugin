@@ -811,6 +811,31 @@ por-sincronizar)
   leer "/api/fuentes?vigencia=viva" |
     jq '[.[] | select(.esperaRefresco) | {slug, nombre, procedencia, ref, url, hash: (.espejo.hash // null), sincronizadoAt: (.espejo.sincronizadoAt // null)}]'
   ;;
+# La lectura curada de una fuente: qué dice a la fecha, qué cambió y qué choca, sellada con
+# la copia que se leyó. Pie: de qué copia es, y VIEJA cuando la copia cambió después.
+lectura)
+  exige 1 "lectura <slug>" "$@"
+  leer "/api/fuentes/$(uri "$1")" | jq -r 'if .lectura then .lectura.cuerpo + "\n\n— sobre la copia " + .lectura.sobreHuella + " del " + .lectura.fecha +
+    (if .lectura.vieja then " · VIEJA: la copia de hoy es " + (.espejo.hash // "otra") + ", y la reescribe /fuentes" else "" end)
+    else "Sin lectura todavía: la escribe /fuentes con `bitacora-api curar " + .slug + " <huella>`, sobre la copia " + (.espejo.hash // "que falta") end'
+  ;;
+# Escribe la lectura curada de una fuente sobre la copia que se leyó: la huella es la de su
+# espejo (`fuente <slug> | jq -r .espejo.hash`), y otra contesta 400 `lecturaSobreOtraCopia`.
+# El cuerpo, por stdin, lleva «Lo que dice» —su primera oración es el titular—, «Qué cambió»
+# cuando reemplaza a otra y «Lo que choca» (400 `lecturaIncompleta`, `seccionLarga`).
+#
+#   bitacora-api curar attribute-register 3f2a9c0d1e4b5a6f <<'MD'
+#   # Lo que dice
+#   …
+#   # Lo que choca
+#   Ninguna
+#   MD
+curar)
+  exige 2 "curar <slug> <huella de la copia leída>   < el cuerpo en markdown" "$@"
+  vaciar_cola
+  jq -Rsc --arg h "$2" '{cuerpo: ., sobreHuella: $h}' |
+    escribir PUT "/api/fuentes/$(uri "$1")/lectura"
+  ;;
 # Los accesos directos del proyecto: las direcciones de afuera a las que se entra todos
 # los días — el engine, el repo, el tablero de tickets, el diseño.
 accesos) leer "/api/enlaces" ;;   # con su `usuario`/`clave`, el que la pide
@@ -2528,6 +2553,8 @@ El sistema del proyecto — la tríada y las instrucciones. Primera lectura al l
   bitacora-api por-sincronizar              (las vivas cuya copia quedó vieja, con su handle y su huella)
   bitacora-api refrescar [slug]             (baja las vivas por su procedencia, compara la huella y estampa el espejo;
                                              la que quedó sin acceso la dice con qué pedir — lo corre /thinking al arrancar)
+  bitacora-api lectura <slug>               (la lectura curada: qué dice a la fecha, qué cambió y qué choca, con su copia)
+  bitacora-api curar <slug> <huella>        < el markdown de la lectura, sobre la copia de esa huella (lo hace /fuentes)
   bitacora-api llevar-a-fuentes <id> [--tags a,b]   (un análisis del dueño a Fuentes con la voz del dueño, que se lee
                                              después de la viva del cliente; del dueño, y una sesión con el OK de Fran)
 
@@ -2853,6 +2880,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api refrescar [slug]             sin slug las que esperan refresco; con slug esa. Sheets y Docs por su export
                                             público (sin credencial: compartido por enlace); la de bitácora, volviéndola a
                                             llevar; las demás, por su skill
+  bitacora-api curar <slug> <huella>        < «# Lo que dice» · «# Qué cambió» (cuando reemplaza a otra) · «# Lo que choca»
+        la lectura curada sobre la copia de esa huella; la anterior queda guardada y queda vieja cuando la copia cambia
+        (400 lecturaSobreOtraCopia · lecturaSinCopia · lecturaDeLaPieza para la fuente de un análisis · lecturaIncompleta · seccionLarga)
   bitacora-api llevar-a-fuentes <id> [--tags a,b]
         el análisis del dueño entra a Fuentes con la voz `dueno`, viva, y la sigue cuando se reescribe (403 vozDelDueno
         para otra llave; 400 fuenteDeAnalisis para otra pieza); sin --tags, las que tenía o las áreas del análisis
