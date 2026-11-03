@@ -761,9 +761,16 @@ it turned out, To decide, Pending out of scope say how the work stands TODAY).
 **`# The idea` is the proposal, written as a proposal** — "the study would live in its
 area": the present tense belongs to git. It carries the box diagram and the vertical
 sequence diagram when the plan adds a new path, and reads "None" for a rename or an
-adjustment with no new mechanism. **`## How it turned out` is its mirror on delivery**:
-the same explanation in the present tense, about what exists, with the diagrams redrawn
-where the build departed from the idea. Diagrams follow the house dialect, on top of the
+adjustment with no new mechanism. **`## How it turned out` speaks to the person, like
+`# What changes`, and is its pair on delivery**: what happens once the work is merged, in the
+words of whoever uses the system and with no code, and what runs after the merge — a
+reindex, a deploy, a manual step. The door measures it on delivery, on the round that
+arrives, with the same rule as `# What changes`: a backtick or a fence other than `d2`
+answers 400 `seccionConCodigo`, and going past its four-sentence ceiling answers 400
+`seccionLarga`. The technical mechanism lives in the code, the PR and the review. One reads
+like this: "Each trip in the search index is stored with its seasons, and the listing
+counts how many routes fall in each. The seasons reach the search with the next catalogue
+reindex, after the merge." Diagrams follow the house dialect, on top of the
 `a1`..`a4` fills and `l1`..`l4` strokes: `entrada` and `salida` mark where the path starts
 and where it lands —the only coloured boxes in a path—, `carril` groups by who —a
 container whose label reads «01 / Name», drawn as a dashed frame—, `principal` marks the
@@ -771,10 +778,16 @@ path that matters and `lateral` what departs from it, and a box reads in three l
 `"Name\nwhat it does\ntag"`. **They are drawn in the house stroke**: d2's sketch mode, the
 line by hand in ink, the page's font in bold, the boxes on the paper, and colour at the
 path's entry and exit. The page of a delivered plan reads as steps in
-time — «Plan · Round 1 · … · Result» — and the Result opens by default with the chapter
-«How the AI worked» on top and the current delivery below, folding «The idea» under «How it
-turned out» — as it folds the round's request under Done and Out of scope under Pending
-out of scope. Diagrams are written in `d2` and travel compiled, in
+time — «Plan · Round 1 · … · Result» — and the Result is the reading before the merge,
+most important first: today's state worked out on reading (ready to merge, awaiting a
+decision, blocked, signed off, no review), `# What changes` as why it exists, `## How it
+turned out` under «What happens on merge» with the flows the review drew and what improves,
+changes, stays or breaks, `## To decide` with each position in view, the cost, and the
+detail folded — Done with the round's request, Evidence, Decisions, Frictions, Pending with
+Out of scope, and «How the AI worked». A point of `## To decide` is a numbered item with its
+title in bold and four labelled sub-bullets — `- **What was found and where**: …`,
+`- **What depends on the answer**: …`, `- **What was looked at**: …`, `- **Position**: …` —:
+the Result keeps the position in view and folds the other three. Diagrams are written in `d2` and travel compiled, in
 `diagramas`: the plugin compiles them with the house drawing (`bitacora-diagramas <
 body.md`, from any project; `d2` installed is all it needs), which fails naming any block left uncompiled, and on delivery they
 add to the ones the item already has. **The door charges the same**: a diagram block
