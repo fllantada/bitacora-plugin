@@ -739,20 +739,29 @@ explained on the spot or replaced by what it does (the server rejects backticks 
 code blocks there with `seccionConCodigo` and a long one with `seccionLarga`; a `d2`
 drawing is allowed and not counted; the why belongs in Context and the mechanism in The
 idea) — then `# Task`, `# The idea`, `# Destination`, `# Context`,
-`# Pattern to follow`, `# Scope`, `# Out of scope`; plus the plan's `queEs`, its one-line
+`# Pattern to follow`, `# Scope`, `# Out of scope`; the plan declares its source —something
+that opens: the Figma, the spreadsheet or the client's source, a decision recorded in the
+bitácora; a plan born from the owner's request in conversation goes without one— in
+`ficha.fuente` —«[name](link) — what it says»— with
+`$API ficha planes <id> '{"fuente":"[…](https://…) — …"}'`, and without it the Result
+reads «No source»; plus the plan's `queEs`, its one-line
 blurb for the lists, and its `visual` — what gets looked at in what it delivers (below).
 Reaching `entregado` requires where the work went back to —`ficha.pr` for code;
 `ficha.entregable`, the address of the piece, the commit or the campaign, for a content
 job— and a `reporte` with seven sections: `## Done`, `## How it turned out`,
-`## Evidence`, `## Decisions along the way` with content, and `## Frictions`,
+`## Evidence` with content, and `## Decisions along the way`, `## Frictions`,
 `## To decide`, `## Pending out of scope`, which are always present and read "None" when
 there was nothing to report — an absent or empty section is a 400, because a blank reads
 as forgotten, not as answered. The door answers 400 naming everything missing at once,
 with what each section states. **`## Evidence` is one line**: the checks that passed,
 named, and the link to the review, where the detail lives — the door measures its visible
 text, each link counted by its text, and bounces a longer one. **`## Decisions along the
-way` puts the decision first**: each item is two sentences, what was decided in bold and
-then why. On a round, the report gets a `## Round N` block on top with the sections one
+way` records only what departed from the plan or added something the reader would want to
+know, told for them**: each item is two short sentences, what was decided in bold and then
+what changes for whoever uses the system, in their words, with no code (the door bounces it)
+and no internal names; implementation choices go in Done, and how the session worked goes in
+Done or Frictions. The plan's Result shows a confidence index on top with what was decided, and
+a recorded decision asks the reader to review by hand. On a round, the report gets a `## Round N` block on top with the sections one
 level down (`### Done`, …); the door enforces the contract on that newest round. Its
 sections split in two kinds: the ones of the round tell only what this round did (Done,
 Evidence, Decisions along the way, Frictions), and the state ones are rewritten whole (How
@@ -779,15 +788,17 @@ path that matters and `lateral` what departs from it, and a box reads in three l
 line by hand in ink, the page's font in bold, the boxes on the paper, and colour at the
 path's entry and exit. The page of a delivered plan reads as steps in
 time — «Plan · Round 1 · … · Result» — and the Result is the reading before the merge,
-most important first: today's state worked out on reading (ready to merge, awaiting a
-decision, blocked, signed off, no review), `# What changes` as why it exists, `## How it
+most important first: the confidence index worked out on reading — «✓ High confidence — no
+need to review it» in green, or «⚠ Review it» in amber with the signals that fail
+(differs from what was asked or no review, no source, agent decisions, alerts, out of scope),
+each with its content on the same page —, `# What changes` as why it exists, `## How it
 turned out` under «What happens on merge» with the flows the review drew and what improves,
-changes, stays or breaks, `## To decide` with each position in view, the cost, and the
-detail folded — Done with the round's request, Evidence, Decisions, Frictions, Pending with
+changes, stays or breaks, the Alert (`## To decide`) when there is one, with each point's title in view
+and its position and evidence folded, the cost, and the detail folded — Done with the round's request, Evidence, Decisions, Frictions, Pending with
 Out of scope, and «How the AI worked». A point of `## To decide` is a numbered item with its
 title in bold and four labelled sub-bullets — `- **What was found and where**: …`,
 `- **What depends on the answer**: …`, `- **What was looked at**: …`, `- **Position**: …` —:
-the Result keeps the position in view and folds the other three. Diagrams are written in `d2` and travel compiled, in
+the Alert keeps the title in view and folds the position and the evidence. Diagrams are written in `d2` and travel compiled, in
 `diagramas`: the plugin compiles them with the house drawing (`bitacora-diagramas <
 body.md`, from any project; `d2` installed is all it needs), which fails naming any block left uncompiled, and on delivery they
 add to the ones the item already has. **The door charges the same**: a diagram block
@@ -894,7 +905,7 @@ $API bandeja                                 # without -p: every project this ma
                                              # the client's come last, with the days they have waited
 $API -p <project> tomar <id> "worktree …"    # → en-curso; the note also lands in ficha.destino
 $API -p <project> entregar <id> <<'JSON'
-{"reporte":{"en":"## Done\n…\n\n## How it turned out\n…\n\n## Evidence\n<one line: checks green, guardian score, review verdict with its link>\n\n## Decisions along the way\n1. **<What was decided.>** <Why.>\n\n## Frictions\nNone\n\n## To decide\n…\n\n## Pending out of scope\nNone"},
+{"reporte":{"en":"## Done\n…\n\n## How it turned out\n…\n\n## Evidence\n<one line: checks green, guardian score, review verdict with its link>\n\n## Decisions along the way\nNone\n\n## Frictions\nNone\n\n## To decide\n…\n\n## Pending out of scope\nNone"},
  "diagramas":[],
  "ficha":{"pr":"https://github.com/…/pull/…","rama":"…"},
  "consumo":{"ronda":1,"preciosDe":"YYYY-MM-DD","modelos":[{"modelo":"…","entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0,"precio":{"entrada":0,"salida":0,"cacheLectura":0,"cacheEscritura":0}}]},

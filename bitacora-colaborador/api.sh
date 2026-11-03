@@ -1340,7 +1340,7 @@ ficha)
 # alcance), su queEs y su visual (ninguna · captura · chequeo: qué se mira de lo que
 # entrega); para llegar a entregado, el reporte con sus siete
 # (Hecho · Cómo quedó · Evidencia · Decisiones sobre la marcha · Fricciones · Para decidir ·
-# Pendientes fuera de alcance; Cómo quedó y las tres últimas van siempre y dicen «Ninguna»
+# Pendientes fuera de alcance; Cómo quedó, Decisiones sobre la marcha y las tres últimas van siempre y dicen «Ninguna»
 # cuando no hubo: una sección ausente o vacía rebota como olvido) y adónde volvió el trabajo en la
 # ficha: pr, o entregable cuando el encargo es contenido. Firmar a hecho cierra el chequeo
 # que declara el plan: el contestado pasa a aplicado, el abierto a descartado.
@@ -2756,7 +2756,7 @@ Escritura (el cuerpo JSON entra por stdin):
                                             (el encargo de contenido cierra con ficha.entregable —la dirección de la pieza, el commit o la campaña— en lugar de ficha.pr)
                                             (el servidor exige ficha.pr o ficha.entregable y el reporte con sus siete secciones: ## Hecho · ## Cómo quedó ·
                                              ## Evidencia · ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir · ## Pendientes fuera de alcance —
-                                             Cómo quedó y las tres últimas van siempre y dicen «Ninguna» cuando no hubo, porque ausente o vacía rebota;
+                                             Cómo quedó, Decisiones sobre la marcha y las tres últimas van siempre y dicen «Ninguna» cuando no hubo, porque ausente o vacía rebota;
                                              la review publicada en la bitácora va en ficha.review)
   bitacora-api quitar-tanda <tipo> <id> <n> [porqué]   retira la tanda n del consumo (desde 1, en el orden en que se declararon); la historia deja
                                             constancia de cuál salió y el porqué, y un número fuera de rango contesta 400 con el rango que hay
