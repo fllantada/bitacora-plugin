@@ -765,7 +765,10 @@ a recorded decision asks the reader to review by hand. On a round, the report ge
 level down (`### Done`, …); the door enforces the contract on that newest round. Its
 sections split in two kinds: the ones of the round tell only what this round did (Done,
 Evidence, Decisions along the way, Frictions), and the state ones are rewritten whole (How
-it turned out, To decide, Pending out of scope say how the work stands TODAY).
+it turned out, To decide, Pending out of scope say how the work stands TODAY). **How it
+turned out is written as if the PR had a single delivery**: what the whole merge brings, never
+naming a round; what this round did goes in Done, and the door bounces a round named there
+with 400 `seccionConRonda`.
 
 **`# The idea` is the proposal, written as a proposal** — "the study would live in its
 area": the present tense belongs to git. It carries the box diagram and the vertical
