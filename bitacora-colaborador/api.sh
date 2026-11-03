@@ -817,7 +817,9 @@ lectura)
   exige 1 "lectura <slug>" "$@"
   leer "/api/fuentes/$(uri "$1")" | jq -r 'if .lectura then .lectura.cuerpo + "\n\n— sobre la copia " + .lectura.sobreHuella + " del " + .lectura.fecha +
     (if .lectura.vieja then " · VIEJA: la copia de hoy es " + (.espejo.hash // "otra") + ", y la reescribe /fuentes" else "" end)
-    else "Sin lectura todavía: la escribe /fuentes con `bitacora-api curar " + .slug + " <huella>`, sobre la copia " + (.espejo.hash // "que falta") end'
+    else "Sin lectura todavía: la escribe /fuentes con `bitacora-api curar " + .slug + " <huella>`, sobre la copia " + (.espejo.hash // "que falta") end,
+    (if (.decisiones // []) | length > 0 then "\nLas decisiones que la zanjan:\n" + ([.decisiones[] | "- " + (.punto // .titulo) + ": " +
+      (if .estado == "abierta" then "espera a quien decide (" + .url + ")" else (.veredicto // .estado) end)] | join("\n")) else empty end)'
   ;;
 # Escribe la lectura curada de una fuente sobre la copia que se leyó: la huella es la de su
 # espejo (`fuente <slug> | jq -r .espejo.hash`), y otra contesta 400 `lecturaSobreOtraCopia`.
@@ -2774,7 +2776,9 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "cierraEn":"…","cuerpo":"…","flujos":["…"]}
         sin "veredicto" nace abierta y lleva "decide": fran (la decide la persona) · cliente (con "pregunta" —el texto listo para mandarle—,
         "urgencia" y "para":"AAAA-MM-DD", escrita después de revisar las fuentes: `fuentes <área>` y un subagente por fuente) · sesion (la decide la sesión);
-        "tanda":"<id>" la suma a una tanda. Lo que se decide MIRANDO lleva sus "capturas", que `capturar` sube antes
+        "tanda":"<id>" la suma a una tanda. Lo que se decide MIRANDO lleva sus "capturas", que `capturar` sube antes.
+        La que zanja una contradicción entre fuentes las nombra: "fuentes":["<slug>","<slug>"] (del registro: 400 fuenteInexistente)
+        y "punto":"el lugar en disputa en una línea —el atributo, la celda, el nodo—"; cada fuente la sirve en su ficha y en el aviso
   bitacora-api corregir <id>                {"veredicto":"…"} · {"cuerpo":{…}} · {"lineaSlug":"…"}   (una decisión)
   bitacora-api reportar <tipo> <id> "<texto>"   la marca «Para reportar»: el texto con que se le cuenta al cliente la pone
                                             o lo corrige, y conserva el día en que se marcó; el tipo es el de la pieza (planes, analisis,

@@ -143,7 +143,9 @@ JSON
 
 # A decision goes in whole or not at all — the server rejects one without its frame. With
 # its verdict it is born made; without it, it is born open —a consultation— and names who
-# decides it (`decide`, see *The Consultation*):
+# decides it (`decide`, see *The Consultation*). One that settles a clash between sources
+# names them, `"fuentes":["<slug>"]` from the register (400 `fuenteInexistente`), with
+# `"punto":"the spot in dispute, in one line"`: each source then serves it.
 $API -p <project> decision <area> <<'JSON'
 {"titulo":"…","veredicto":"what was decided",
  "bloquea":"what was blocked while this stayed undecided",
