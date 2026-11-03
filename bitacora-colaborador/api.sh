@@ -2622,9 +2622,9 @@ Escritura (el cuerpo JSON entra por stdin):
         cada plan y cada gestión, también los que cerraron, y la nota en palabras de todos los días para quien lee la página; se escribe con `corregir objetivos <id>` y el
         cuerpo entero, y la página pinta sobre los dos el estado de hoy —listo en verde, en marcha en ámbar, pendiente en gris— y dibuja la
         checklist como línea de tiempo. Con planes o gestiones abiertas que lo nombran —desde que el proyecto cerró `caminos` o desde que el
-        cuerpo la trae— la puerta cobra su dibujo de etapas y cada plan o gestión por su enlace en su checklist, en 300 sin los ítems; si no,
+        cuerpo la trae— la puerta cobra su dibujo de etapas y cada plan o gestión por su enlace en su checklist y en su caja, en 300 sin los ítems; si no,
         va libre en 600
-        (400 caminoIncompleto · seccionSinDibujo · seccionLarga · planesSinNombrar, que los lista listos para pegar)
+        (400 caminoIncompleto · seccionSinDibujo · seccionLarga · planesSinNombrar · planesSinCaja, que los lista listos para pegar)
   bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"},"lleva":[{"tipo":"decision","id":"…"}]}
                                              —cada pieza marcada para reportar; 404 piezaInexistente · 400 piezaSinMarcar · piezaYaEnOtraEntrega · entregaSellada
   bitacora-api simulacion <subarea>            {"titulo":"…","hipotesis":"…","criterioExito":"…",

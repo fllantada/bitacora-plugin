@@ -1407,7 +1407,8 @@ body) while the goal is open and has open plans or manual steps that name it, on
 closes its `caminos` adaptation or once the body already brings the heading: missing or empty
 answers 400 `caminoIncompleto` with its outline, without a drawing `seccionSinDibujo`, too long
 `seccionLarga`, and an open plan or manual step the checklist does not name by its link
-`planesSinNombrar`, with the items ready to paste. **The map names every open plan and every
+`planesSinNombrar`, with the items ready to paste, and one that no box of the drawing links
+with its `link:` `planesSinCaja`, with the box ready to paste in its stage's lane. **The map names every open plan and every
 open manual step**: a step in `por-hacer` or `pedida` goes in its stage, next to the plans it
 unblocks, and a done one leaves the count like a done plan. Any other goal carries the section
 free, within 600; its opening takes only the three sections, because it is born before its
