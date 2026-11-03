@@ -183,7 +183,7 @@ $API -p <project> analisis <area> <<'JSON'
 {"titulo":"…","queEs":"what the reader will find","cuerpo":{"en":"# …"}}
 JSON
 $API -p <project> plan <area> <<'JSON'
-{"titulo":"…","cierraEn":"the PR that brings it","prioridad":"alta","modelo":"opus","esfuerzo":"high","cuerpo":{"en":"# How it gets solved\n…"}}
+{"titulo":"…","queEs":"…","cierraEn":"the PR that brings it","prioridad":"alta","visual":"ninguna","modelo":"opus","esfuerzo":"high","cuerpo":{"en":"<the eight sections of the handoff: # What changes · # Task · # The idea · # Destination · # Context · # Pattern to follow · # Scope · # Out of scope>"}}
 JSON
 $API -p <project> bug <area> <<'JSON'
 {"titulo":"…","prioridad":"critico","cuerpo":{"en":"# What happens\n…\n\n# Where\n…\n\n# How to reproduce\n1. …\n2. …"}}
@@ -899,8 +899,8 @@ pending item with a trigger is work that waits, and the type that waits is the p
 ```bash
 $API -p <project> plan <area> <<'JSON'
 {"titulo":"Decide where the axis rule lives","cierraEn":"the schema PR",
- "modelo":"opus","esfuerzo":"high",
- "cuerpo":{"en":"# What wakes this up\nPete's second localisation proposal.\n\n# The analysis so far\n…"}}
+ "queEs":"…","visual":"ninguna","modelo":"opus","esfuerzo":"high",
+ "cuerpo":{"en":"# What changes\n…\n\n# Task\n…\n\n# The idea\n…\n\n# Destination\n…\n\n# Context\nWhat wakes this up: Pete's second localisation proposal. The analysis so far: …\n\n# Pattern to follow\n…\n\n# Scope\n1. …\n\n# Out of scope\n…"}}
 JSON
 ```
 
@@ -1449,7 +1449,7 @@ JSON
 # → answers the goal's id: it is what each piece names
 
 $API -p <project> plan <area> <<'JSON'
-{"titulo":"…","cierraEn":"the PR that brings it","objetivo":"<goal id>","modelo":"opus","esfuerzo":"high","cuerpo":{"en":"# …"}}
+{"titulo":"…","queEs":"…","cierraEn":"the PR that brings it","objetivo":"<goal id>","visual":"ninguna","modelo":"opus","esfuerzo":"high","cuerpo":{"en":"<the eight sections of the handoff: # What changes · # Task · # The idea · # Destination · # Context · # Pattern to follow · # Scope · # Out of scope>"}}
 JSON
 $API -p <project> corregir planes <id> <<< '{"objetivo":"<goal id>"}'   # a piece already open joins it
 $API -p <project> corregir planes <id> <<< '{"objetivo":null}'          # and leaves it
@@ -1698,8 +1698,8 @@ $API -p <project> objetivo <<'JSON'   # when the topic takes several PRs: what t
 JSON
 $API -p <project> plan <area> <<'JSON'
 {"titulo":"…","cierraEn":"the PR that brings it","objetivo":"<goal id, when it pursues one>",
- "modelo":"opus","esfuerzo":"high",
- "cuerpo":{"en":"# How it gets solved\n…"}}
+ "queEs":"…","visual":"ninguna","modelo":"opus","esfuerzo":"high",
+ "cuerpo":{"en":"<the eight sections of the handoff: # What changes · # Task · # The idea · # Destination · # Context · # Pattern to follow · # Scope · # Out of scope>"}}
 JSON
 ```
 
