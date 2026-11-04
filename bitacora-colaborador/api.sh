@@ -74,6 +74,27 @@ proyecto_del_cwd() {
   return 1
 }
 
+# --- el MCP: los objetivos del proyecto, legibles desde Claude Code -------------
+#
+# Registra en Claude Code, para el usuario, el servidor MCP del proyecto con la llave en
+# el header: el agente de quien la tiene lee los objetivos abiertos con su trabajo. El
+# registro anterior se reemplaza, así volver a correrlo deja la llave de hoy. `alta`, que
+# rota la llave, lo vuelve a correr cuando el registro existe.
+registrar_mcp() {
+  local proyecto="$1" llave="$2" base="$3" nombre="bitacora-$1"
+  command -v claude >/dev/null 2>&1 || {
+    echo "No encuentro el CLI de Claude Code (claude) en el PATH: el MCP se registra con él." >&2
+    return 1
+  }
+  claude mcp remove --scope user "$nombre" >/dev/null 2>&1 || true
+  claude mcp add --scope user --transport http "$nombre" "$base/api/mcp" \
+    --header "Authorization: Bearer $llave" >/dev/null || {
+    echo "Claude Code no aceptó el registro de «${nombre}»." >&2
+    return 1
+  }
+  echo "Listo: Claude Code tiene el MCP «${nombre}» con tu llave. En una sesión nueva, preguntale a tu agente en qué se está trabajando en «${proyecto}»."
+}
+
 # --- el alta: canjear el código de la invitación por la llave -----------------
 #
 # Corre antes de resolver proyecto y llave: quien se da de alta todavía no tiene
@@ -104,6 +125,10 @@ if [ "${1:-}" = "alta" ]; then
   printf '%s=%s\n' "$PROYECTO_ALTA" "$TOKEN_ALTA" >>"$DESTINO"
   echo "Listo: la llave de «${PROYECTO_ALTA}» quedó guardada en $DESTINO."
   echo "Firmás como «${TITULAR_ALTA}». Probala:  bitacora-api -p $PROYECTO_ALTA tablero"
+  # La llave rotó: el MCP registrado con la anterior pasa a la de hoy.
+  if command -v claude >/dev/null 2>&1 && claude mcp get "bitacora-$PROYECTO_ALTA" >/dev/null 2>&1; then
+    registrar_mcp "$PROYECTO_ALTA" "$TOKEN_ALTA" "$BASE" || true
+  fi
   exit 0
 fi
 
@@ -307,6 +332,12 @@ if [ "${1:-}" = "renovar" ]; then
   echo "Listo: te mandamos el código a $EMAIL_RENOVACION."
   echo "Abrí el email y corré:  bitacora-api alta <código>"
   exit 0
+fi
+
+# El MCP del proyecto, registrado en Claude Code con la llave de este proyecto.
+if [ "${1:-}" = "mcp" ]; then
+  registrar_mcp "$PROYECTO" "$TOKEN" "$BASE"
+  exit $?
 fi
 
 # --- abrir: el tablero en el navegador, sin fricción de login ------------------
@@ -2995,6 +3026,11 @@ Archivos y bajas (borrar es del dueño):
 El alta y la renovación de la llave:
   bitacora-api alta <código>                 (canjea el código del email por la llave y la guarda)
   bitacora-api renovar                       (la llave vence sola: esto manda el código nuevo a tu email)
+
+El MCP del proyecto, para el agente de un compañero:
+  bitacora-api mcp                           (registra en Claude Code el MCP «bitacora-<proyecto>» con tu llave: su
+                                             herramienta objetivos_abiertos sirve los objetivos abiertos con sus planes,
+                                             bugs, gestiones y fuentes; `alta` lo vuelve a registrar al rotar la llave)
 USO
   exit 1
   ;;

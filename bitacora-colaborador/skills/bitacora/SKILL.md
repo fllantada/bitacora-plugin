@@ -65,6 +65,24 @@ bitacora-api alta <code>    # exchange it — the renewed key is stored for you
 code only ever lands in your inbox — holding the key alone is never enough to steal a
 renewal. Nothing else changes: same access, same name, fresh key.
 
+## What the owner is working on — the project's MCP, from Claude Code
+
+When you want to know what the project owner is working on and what is planned next —
+before picking something up, or to see whether anyone is already in an area — register the
+project's MCP once:
+
+```bash
+bitacora-api mcp            # registers «bitacora-<project>» in Claude Code, with your key
+```
+
+From then on, in any Claude Code session, your agent has the read-only tool
+`objetivos_abiertos`: the open goals of the project, each with its progress, its three
+sections (what it is after, why, when it is achieved), the plans, bugs and manual steps
+pursuing it —their progress, area, pull request and backing source— and the sources
+registered for its areas. Pass `area` (an area slug) to keep only the goals that touch it.
+Every text comes in its original language with its `idioma` next to it, and the agent
+translates it into yours. `bitacora-api alta` re-registers the MCP when it rotates your key.
+
 ## When invoked bare — open the board, then talk with the project
 
 `/bitacora` with nothing else is an invitation to **talk with the project**. Do this,
@@ -760,7 +778,9 @@ text, each link counted by its text, and bounces a longer one. **`## Decisions a
 way` records only what departed from the plan or added something the reader would want to
 know, told for them**: each item is two short sentences, what was decided in bold and then
 what changes for whoever uses the system, in their words, with no code (the door bounces it)
-and no internal names. The test: whoever uses the system notices the difference; when they
+and no internal names. **The bold stands on its own**, because the Result's confidence index
+shows only it: it names the thing with the minimum context for someone who didn't follow the
+work —what it is, where it shows or when it runs—, what was decided and why. The test: whoever uses the system notices the difference; when they
 don't —how something was named, how a conflict was solved— it's implementation and goes in
 Done, and how the session worked goes in Done or Frictions. The plan's Result shows a confidence index on top with what was decided, and
 a recorded decision asks the reader to review by hand. On a round, the report gets a `## Round N` block on top with the sections one
