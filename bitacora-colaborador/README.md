@@ -31,12 +31,17 @@ That's it. The `/bitacora` skill is available in every Claude Code session, and 
 
 ## Connect the MCP
 
-To ask your agent what the project owner is working on and what is planned next, register
-the project's MCP once, with your key:
+To ask your agent what the project owner is working on and what is planned next, connect
+the project's MCP. The owner sends you one command, with your key inside; paste it in your
+terminal once:
 
 ```bash
-bitacora-api mcp
+claude mcp add --scope user --transport http bitacora-<project> https://bitacora.dev-fran.com/api/mcp --header "Authorization: Bearer <key>"
 ```
+
+Inside Claude Code, `/mcp` turns the server on and off, and `claude mcp remove bitacora-<project>`
+removes it. The MCP opens the projects where the owner turned it on. With the plugin
+installed, `bitacora-api mcp` registers the same server with your key.
 
 Every Claude Code session then has the read-only tool `objetivos_abiertos`: the open goals,
 each with its progress and the plans, bugs and manual steps pursuing it, plus their sources.

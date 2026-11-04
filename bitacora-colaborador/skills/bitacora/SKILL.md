@@ -69,11 +69,16 @@ renewal. Nothing else changes: same access, same name, fresh key.
 
 When you want to know what the project owner is working on and what is planned next —
 before picking something up, or to see whether anyone is already in an area — register the
-project's MCP once:
+project's MCP. The owner sends a command with your key inside; run it once in the terminal:
 
 ```bash
-bitacora-api mcp            # registers «bitacora-<project>» in Claude Code, with your key
+claude mcp add --scope user --transport http bitacora-<project> https://bitacora.dev-fran.com/api/mcp --header "Authorization: Bearer <key>"
 ```
+
+With this plugin installed, `bitacora-api mcp` registers the same server with your key
+(«bitacora-<project>» in Claude Code). `/mcp` inside Claude Code turns it on and off, and
+`claude mcp remove bitacora-<project>` removes it. The MCP opens the projects where the owner
+turned it on.
 
 From then on, in any Claude Code session, your agent has the read-only tool
 `objetivos_abiertos`: the open goals of the project, each with its progress, its three
