@@ -208,7 +208,7 @@ $API -p <project> analisis <area> <<'JSON'
 {"titulo":"…","queEs":"what the reader will find","cuerpo":{"en":"# …"}}
 JSON
 $API -p <project> plan <area> <<'JSON'
-{"titulo":"…","queEs":"…","cierraEn":"the PR that brings it","prioridad":"alta","visual":"ninguna","modelo":"opus","esfuerzo":"high","cuerpo":{"en":"<the eight sections of the handoff: # What changes · # Task · # The idea · # Destination · # Context · # Pattern to follow · # Scope · # Out of scope>"}}
+{"titulo":"…","queEs":"…","cierraEn":"the PR that brings it","prioridad":"alta","visual":"ninguna","modelo":"opus","esfuerzo":"high","cuerpo":{"en":"<the nine sections of the handoff: # What changes · # Source · # Task · # The idea · # Destination · # Context · # Pattern to follow · # Scope · # Out of scope>"}}
 JSON
 $API -p <project> bug <area> <<'JSON'
 {"titulo":"…","prioridad":"critico","cuerpo":{"en":"# What happens\n…\n\n# Where\n…\n\n# How to reproduce\n1. …\n2. …"}}
@@ -753,7 +753,7 @@ came back, and its desk says whose hands it is in — `encargado` (the brief is 
 waiting for a session to take it), `en-curso` (a session took it; the note names its
 worktree), `entregado` (the PR is open and the report written; waiting for sign-off), then
 `hecho`. One plan is one PR. **The body and the report are a contract the server
-enforces.** Entering `encargado` requires the body to carry eight sections as markdown
+enforces.** Entering `encargado` requires the body to carry nine sections as markdown
 headings, each with content below — `# What changes` first: the plan's TL;DR in two to
 four sentences: what it is about and who uses it, what that person lives today and what
 they will live after, in their words and without code, with every name that needs the
@@ -761,14 +761,10 @@ conversation to be understood —a piece of the system, a field, «the second of
 explained on the spot or replaced by what it does (the server rejects backticks and
 code blocks there with `seccionConCodigo` and a long one with `seccionLarga`; a `d2`
 drawing is allowed and not counted; the why belongs in Context and the mechanism in The
-idea) — then `# Task`, `# The idea`, `# Destination`, `# Context`,
-`# Pattern to follow`, `# Scope`, `# Out of scope`; the plan declares its source —something
-that opens: the Figma, the spreadsheet or the client's source, a decision recorded in the
-bitácora; a plan born from the owner's request in conversation goes without one— in
-`ficha.fuente` —«[name](link) — what it says», two or three lines at most: what backs it and
-why the change is needed; the Result shows it under «Why»— with
-`$API ficha planes <id> '{"fuente":"[…](https://…) — …"}'`, and without it the Result
-reads «No source»; plus the plan's `queEs`, its one-line
+idea) — then `# Source`: where the need came from, in two or three lines with its link and without code (the request, the requirement, the client's design or spreadsheet, a decision in the book, a bug or the error of a use case that we found before the client did, or the owner's words quoted with their date), written `[name](link) — what it says and why the change is needed` and `Owner, YYYY-MM-DD: «…»` for the owner's words; the server charges it like `# What changes` (present and with content, `encargoIncompleto`; no code, `seccionConCodigo`; within the ceiling, `seccionLarga`), and a plan that finds no source is taken to the owner before it is written, because without one it is not justified and may be over-engineering — then `# Task`, `# The idea`, `# Destination`, `# Context`,
+`# Pattern to follow`, `# Scope`, `# Out of scope`; the Result shows the `# Source` section
+under «Why» and reads «No source» when it is missing (`ficha.fuente` stays stored and is read
+only as a fallback for a plan written before the section existed); plus the plan's `queEs`, its one-line
 blurb for the lists, and its `visual` — what gets looked at in what it delivers (below).
 Reaching `entregado` requires where the work went back to —`ficha.pr` for code;
 `ficha.entregable`, the address of the piece, the commit or the campaign, for a content
@@ -955,7 +951,7 @@ pending item with a trigger is work that waits, and the type that waits is the p
 $API -p <project> plan <area> <<'JSON'
 {"titulo":"Decide where the axis rule lives","cierraEn":"the schema PR",
  "queEs":"…","visual":"ninguna","modelo":"opus","esfuerzo":"high",
- "cuerpo":{"en":"# What changes\n…\n\n# Task\n…\n\n# The idea\n…\n\n# Destination\n…\n\n# Context\nWhat wakes this up: Pete's second localisation proposal. The analysis so far: …\n\n# Pattern to follow\n…\n\n# Scope\n1. …\n\n# Out of scope\n…"}}
+ "cuerpo":{"en":"# What changes\n…\n\n# Source\n…\n\n# Task\n…\n\n# The idea\n…\n\n# Destination\n…\n\n# Context\nWhat wakes this up: Pete's second localisation proposal. The analysis so far: …\n\n# Pattern to follow\n…\n\n# Scope\n1. …\n\n# Out of scope\n…"}}
 JSON
 ```
 
@@ -1506,7 +1502,7 @@ JSON
 # → answers the goal's id: it is what each piece names
 
 $API -p <project> plan <area> <<'JSON'
-{"titulo":"…","queEs":"…","cierraEn":"the PR that brings it","objetivo":"<goal id>","visual":"ninguna","modelo":"opus","esfuerzo":"high","cuerpo":{"en":"<the eight sections of the handoff: # What changes · # Task · # The idea · # Destination · # Context · # Pattern to follow · # Scope · # Out of scope>"}}
+{"titulo":"…","queEs":"…","cierraEn":"the PR that brings it","objetivo":"<goal id>","visual":"ninguna","modelo":"opus","esfuerzo":"high","cuerpo":{"en":"<the nine sections of the handoff: # What changes · # Source · # Task · # The idea · # Destination · # Context · # Pattern to follow · # Scope · # Out of scope>"}}
 JSON
 $API -p <project> corregir planes <id> <<< '{"objetivo":"<goal id>"}'   # a piece already open joins it
 $API -p <project> corregir planes <id> <<< '{"objetivo":null}'          # and leaves it
@@ -1756,7 +1752,7 @@ JSON
 $API -p <project> plan <area> <<'JSON'
 {"titulo":"…","cierraEn":"the PR that brings it","objetivo":"<goal id, when it pursues one>",
  "queEs":"…","visual":"ninguna","modelo":"opus","esfuerzo":"high",
- "cuerpo":{"en":"<the eight sections of the handoff: # What changes · # Task · # The idea · # Destination · # Context · # Pattern to follow · # Scope · # Out of scope>"}}
+ "cuerpo":{"en":"<the nine sections of the handoff: # What changes · # Source · # Task · # The idea · # Destination · # Context · # Pattern to follow · # Scope · # Out of scope>"}}
 JSON
 ```
 

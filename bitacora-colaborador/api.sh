@@ -1366,8 +1366,8 @@ ficha)
 # entrega; /thinking lo firma, o lo devuelve con la ronda siguiente en el cuerpo. Son
 # azúcar sobre `mover planes <id>`: el estado lo pone el verbo, así nadie lo tipea mal.
 # El servidor cobra el contrato en las dos puntas: desde que el plan nace —el alta, el cuerpo
-# que se reescribe sin empezar, encargarlo y tomarlo—, el cuerpo con sus ocho secciones
-# (Qué cambia · Tarea · La idea · Destino · Contexto · Patrón a seguir · Alcance · Fuera de
+# que se reescribe sin empezar, encargarlo y tomarlo—, el cuerpo con sus nueve secciones
+# (Qué cambia · Fuente · Tarea · La idea · Destino · Contexto · Patrón a seguir · Alcance · Fuera de
 # alcance), su queEs y su visual (ninguna · captura · chequeo: qué se mira de lo que
 # entrega); para llegar a entregado, el reporte con sus siete
 # (Hecho · Cómo quedó · Evidencia · Decisiones sobre la marcha · Fricciones · Para decidir ·
@@ -1637,14 +1637,14 @@ firmar)
   fi
   ;;
 devolver)
-  exige 1 "devolver <id>   < {\"cuerpo\":{\"es\":\"<el cuerpo entero, con sus ocho secciones y su ## Ronda N>\"},\"nota\":\"…\"}" "$@"
+  exige 1 "devolver <id>   < {\"cuerpo\":{\"es\":\"<el cuerpo entero, con sus nueve secciones y su ## Ronda N>\"},\"nota\":\"…\"}" "$@"
   vaciar_cola
   # Devolver es agregar la ronda: un cuerpo vacío se contesta acá con la forma, porque el
   # verbo pone el estado y el servidor recibiría un movimiento sin ronda que parece válido.
   cuerpo_devuelto="$(cat)"
   if [ -z "$(printf '%s' "$cuerpo_devuelto" | jq -r '.cuerpo // empty' 2>/dev/null)" ]; then
     echo "devolver lleva el cuerpo ENTERO del plan con la ronda nueva al final:" >&2
-    echo '  {"cuerpo":{"es":"# Qué cambia\n…\n# Tarea\n…\n# La idea\n…\n# Destino\n…\n# Contexto\n…\n# Patrón a seguir\n…\n# Alcance\n…\n# Fuera de alcance\n…\n\n## Ronda N\nqué → por qué → corrección propuesta"},"nota":"vuelve: <por qué, en una frase>"}' >&2
+    echo '  {"cuerpo":{"es":"# Qué cambia\n…\n# Fuente\n…\n# Tarea\n…\n# La idea\n…\n# Destino\n…\n# Contexto\n…\n# Patrón a seguir\n…\n# Alcance\n…\n# Fuera de alcance\n…\n\n## Ronda N\nqué → por qué → corrección propuesta"},"nota":"vuelve: <por qué, en una frase>"}' >&2
     echo "  Se lee con: bitacora-api item planes <id>   (el cuerpo actual, para agregarle la ronda)" >&2
     exit 1
   fi
@@ -1994,7 +1994,7 @@ decision)
 accion)
   exige 1 "accion <subarea>   (cerrado: el trabajo por hacer es un plan)" "$@"
   echo "El trabajo por hacer es un PLAN, que además lleva su análisis:" >&2
-  echo "  bitacora-api plan $1 <<< '{\"titulo\":\"…\",\"queEs\":\"…\",\"cierraEn\":\"…\",\"visual\":\"ninguna\",\"modelo\":\"opus\",\"esfuerzo\":\"high\",\"cuerpo\":{\"es\":\"<las ocho secciones del encargo>\"}}'" >&2
+  echo "  bitacora-api plan $1 <<< '{\"titulo\":\"…\",\"queEs\":\"…\",\"cierraEn\":\"…\",\"visual\":\"ninguna\",\"modelo\":\"opus\",\"esfuerzo\":\"high\",\"cuerpo\":{\"es\":\"<las nueve secciones del encargo>\"}}'" >&2
   exit 1
   ;;
 hecha)
@@ -2034,7 +2034,7 @@ diferir)
   exige 1 "diferir <id>   (cerrado: lo que espera su momento es un plan)" "$@"
   echo "Diferir era del modelo anterior. Lo que espera su momento es un PLAN," >&2
   echo "con su gatillo escrito en el cuerpo:" >&2
-  echo "  bitacora-api plan <subarea> <<< '{\"titulo\":\"…\",\"queEs\":\"…\",\"cierraEn\":\"…\",\"visual\":\"ninguna\",\"modelo\":\"opus\",\"esfuerzo\":\"high\",\"cuerpo\":{\"es\":\"<las ocho secciones del encargo>\"}}'" >&2
+  echo "  bitacora-api plan <subarea> <<< '{\"titulo\":\"…\",\"queEs\":\"…\",\"cierraEn\":\"…\",\"visual\":\"ninguna\",\"modelo\":\"opus\",\"esfuerzo\":\"high\",\"cuerpo\":{\"es\":\"<las nueve secciones del encargo>\"}}'" >&2
   exit 1
   ;;
 # Corregir una decisión registrada: su veredicto, su marco, sus textos — o mudarla de hilo.
@@ -2665,7 +2665,7 @@ Escritura (el cuerpo JSON entra por stdin):
         borrador entero mientras no hay firma; los rangos son contiguos desde 0, la línea y los tramos duran lo mismo, y cada
         referencia nombra lo que existe; la `firma` no viaja con el cuerpo — se firma con `firmar guiones <id>` — y firmado
         el contenido queda sellado: es lo que bloquea la producción paga
-  bitacora-api plan <subarea>                  {"titulo":"…","queEs":"…","cierraEn":"…","prioridad":"alta","visual":"ninguna","modelo":"opus","esfuerzo":"high","cuerpo":{"es":"<las ocho secciones del encargo>"},"flujos":["…"]}
+  bitacora-api plan <subarea>                  {"titulo":"…","queEs":"…","cierraEn":"…","prioridad":"alta","visual":"ninguna","modelo":"opus","esfuerzo":"high","cuerpo":{"es":"<las nueve secciones del encargo>"},"flujos":["…"]}
         "modelo": opus · sonnet · fable · haiku y "esfuerzo": low · medium · high · xhigh · max — con qué se construye, el alias y el nivel
         con que el envío abre la sesión del frente; van siempre, y sin alguno de los dos el alta contesta 400 construccionIncompleta (la que nace encargado, encargoIncompleto);
         "prioridad": alta · media · baja · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es media;
@@ -2675,7 +2675,7 @@ Escritura (el cuerpo JSON entra por stdin):
         los planes que los esperan; una gestión abierta avisa al encargar sin frenar, y un guion que no está hecho contesta 400 guionSinFirmar
         al entrar a en-curso, también en el alta directa; la caja distingue las dos esperas al pie del mapa
         nace ENTERO en cualquier escritorio, y con "estado":"encargado" nace como ENCARGO: el cuerpo es el handoff y cierraEn el criterio de terminado;
-        el servidor exige al nacer, al encargarlo y al tomarlo ocho secciones en el cuerpo —# Qué cambia (el TL;DR para la persona: de dos a cuatro oraciones, sin código) · # Tarea · # La idea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance—, el queEs, la bajada en una línea,
+        el servidor exige al nacer, al encargarlo y al tomarlo nueve secciones en el cuerpo —# Qué cambia (el TL;DR para la persona: de dos a cuatro oraciones, sin código) · # Fuente (de dónde salió la necesidad: dos o tres líneas con su enlace, sin código) · # Tarea · # La idea · # Destino · # Contexto · # Patrón a seguir · # Alcance · # Fuera de alcance—, el queEs, la bajada en una línea,
         y "visual": qué se mira de lo que entrega — ninguna (nada cambia en pantalla) · captura (algo en pantalla cambia y lo correcto ya está escrito:
         el frente que mira captura el antes y el después; donde el push despliega, es el valor por defecto) · chequeo (queda una decisión de diseño
         abierta que solo se toma mirando y cuya respuesta cambia el código, antes de salir: el cuerpo la nombra en una línea, se abre el chequeo
@@ -2793,8 +2793,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                             constancia de cuál salió y el porqué, y un número fuera de rango contesta 400 con el rango que hay
   bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada. Cierra sus chequeos y deja vigente en su flujo cada `despues` aprobado
                                             con `pasoDelFlujo`: la respuesta los nombra en `pantallas.vigentes`, en `pantallas.salteadas` el que no pasó, con su `porque`, y en `pantallas.repetidas` el que otro paso más nuevo de la misma firma dejó vigente
-  bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con sus ocho secciones y su ## Ronda N>"},"nota":"…"} → encargado
-                                            (entrar a encargado cobra las ocho secciones del cuerpo y el queEs; sin cuerpo, imprime la forma)
+  bitacora-api devolver <id>                {"cuerpo":{"es":"<entero, con sus nueve secciones y su ## Ronda N>"},"nota":"…"} → encargado
+                                            (entrar a encargado cobra las nueve secciones del cuerpo y el queEs; sin cuerpo, imprime la forma)
   bitacora-api sacar <tipo> <id>            (el que se abrió por error y el duplicado — dueño)
   bitacora-api entrada <slug>               {"tipo":"hallazgo","titulo":"…","cuerpo":"…"}
         "objetivo":"<id>" la suma al libro del objetivo que persigue —uno abierto—
