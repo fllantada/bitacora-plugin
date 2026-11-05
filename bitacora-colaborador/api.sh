@@ -740,7 +740,7 @@ instrucciones) leer_cuerpo "/api/instrucciones" "${1:-}" ;;
 # lo distingue. Es la primera lectura del proyecto — el glosario es su vocabulario, no él.
 # Sin escribir contesta 404 diciendo qué va adentro.
 dominio) leer_cuerpo "/api/dominio" "${1:-}" ;;
-# Quiénes hacen a mano las gestiones del proyecto: lee la lista como se escribe, cada nombre
+# Quiénes hacen a mano las gestiones que ya existen en el proyecto: lee la lista como se escribe, cada nombre
 # con sus capas. Una lista canalizada acá sale nombrando `escribir-responsables`.
 responsables)
   if [ -p /dev/stdin ] || [ -f /dev/stdin ]; then
@@ -1271,9 +1271,8 @@ idea | guion | plan | bug | gestion | client-report | simulacion | consulta | co
   esac
   escribir POST "/api/hilos/$(uri "$1")/$ruta_tipo"
   ;;
-# El plan pendiente que es trabajo de una persona pasa a gestión con su misma dirección: el
-# JSON de la gestión por stdin —su responsable y el cuerpo con su apertura—, y el servidor
-# conserva del plan su lugar, su slug, su objetivo y su historia.
+# Retirado el 2026-11-05: el servidor contesta 400 tipoRetirado y dice qué se escribe en su lugar
+# (el bloqueo del plan, `corregir planes <id>` con su `bloqueadoPor`).
 a-gestion)
   exige 1 "a-gestion <plan-id>   < {\"responsable\":\"<slug>\",\"cuerpo\":{\"es\":\"# Qué hace falta\\n…\\n\\n# Cómo se comprueba\\n…\"}}" "$@"
   vaciar_cola
@@ -2569,7 +2568,7 @@ El sistema del proyecto — la tríada y las instrucciones. Primera lectura al l
   bitacora-api dominio                      (de qué vive el cliente, con sus palabras, en markdown crudo; 404 si no está escrito)
   bitacora-api instrucciones                (cómo se corre el ciclo del encargo acá, en markdown crudo; 404 si no están cargadas)
         las dos imprimen el texto que su escribir-* vuelve a guardar igual · --json imprime el sobre {cuerpo, escritoEn, actualizado, url}
-  bitacora-api responsables                 (quiénes hacen a mano las gestiones, con su tinta: la lista como se escribe)
+  bitacora-api responsables                 (quiénes hacen a mano las gestiones existentes, con su tinta: la lista como se escribe)
   bitacora-api escribir-responsables        < lista.json   (la reemplaza entera — dueño; [] la saca)
         [{"slug":"merch","nombre":{"es":"Merch","en":"Merch"},"tinta":"violeta","email":"merch@…"}] · tinta: turquesa · violeta · rosa · ambar · email opcional
   bitacora-api escribir-tests <sí|no>       (si el código se sostiene con tests — dueño; contexto lo lee en proyecto.tests, sí sin declarar)
@@ -2670,7 +2669,12 @@ Escritura (el cuerpo JSON entra por stdin):
         con que el envío abre la sesión del frente; van siempre, y sin alguno de los dos el alta contesta 400 construccionIncompleta (la que nace encargado, encargoIncompleto);
         "prioridad": alta · media · baja · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es media;
         algun-dia es el plan que espera su momento en el área de su tema: cuelga al pie y la cifra del área no lo cuenta
-        "dependeDe":["<id>"] son las gestiones que espera hechas y el guion que espera firmado, del proyecto (404 dependenciaInexistente);
+        "bloqueadoPor":"<id de un análisis>" es lo que frena al plan desde afuera —una persona que tiene que hacer algo a mano, una release, una
+        decisión del cliente, otro equipo—: primero se escribe el análisis que explica el bloqueo y su contexto (`analisis <subarea>`, o `/analisis`) y después se
+        nombra, al abrir el plan o con `corregir planes <id>` {"bloqueadoPor":"<id del análisis>"}; {"bloqueadoPor":null} lo destraba; un id que
+        no es un análisis del proyecto contesta 404 analisisInexistente; `item planes <id>` lo trae como {"id","titulo","enlace"}; el mapa del
+        objetivo pinta la caja en rojo tenue con «Bloqueado» en su esquina, la línea por etapas lo dice en su renglón y la página del plan abre con una franja roja tenue que enlaza el análisis
+        "dependeDe":["<id>"] son las gestiones que ya existen y esperan hechas y el guion que espera firmado, del proyecto (404 dependenciaInexistente);
         `item planes <id>` los trae con tipo y escritorio, y la gestión con su responsable; `item gestiones|guiones <id>` trae en `destraba`
         los planes que los esperan; una gestión abierta avisa al encargar sin frenar, y un guion que no está hecho contesta 400 guionSinFirmar
         al entrar a en-curso, también en el alta directa; la caja distingue las dos esperas al pie del mapa
@@ -2684,15 +2688,12 @@ Escritura (el cuerpo JSON entra por stdin):
         "prioridad": critico · mayor · menor · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
         el crítico abierto encabeza toda lista, cruzando áreas, y algun-dia espera su momento al pie, como el del plan
         `flujos` son los recorridos que el ítem corta mientras está abierto: de ahí sale la madurez del flujo
-  bitacora-api gestion <subarea>               {"titulo":"…","responsable":"<slug>","cuerpo":{"es":"# Qué hace falta\n…\n\n# Cómo se comprueba\n…"},"mensaje":{"en":"…"},"jira":{"clave":"WP-12","titulo":"…","url":"https://…"},"objetivo":"<id>"}
-        lo que una persona hace a mano para que el trabajo siga: nace `por-hacer` en manos de su "responsable", uno de `bitacora-api responsables`
-        (404 responsableInexistente con los que hay); "mensaje" es el texto listo para mandarle, en el idioma de quien lo recibe, y "jira" su ticket
-        `mover gestiones <id>` {"estado":"pedida"} cuando el responsable la tiene; {"estado":"hecha","nota":"cómo se comprobó"} o
-        {"estado":"descartada","nota":"por qué"} la cierran, y sin nota contesta 400 cierreSinNota; cuenta en el avance del objetivo como un plan
-  bitacora-api a-gestion <plan-id>             {"responsable":"<slug>","cuerpo":{"es":"# Qué hace falta\n…\n\n# Cómo se comprueba\n…"},"mensaje":{"en":"…"},"jira":{…}}
-        el plan pendiente que es trabajo de una persona pasa a gestión con su mismo id, su lugar, su slug, su objetivo y su historia;
-        "titulo" y "queEs" reemplazan los del plan; los textos van en el idioma del plan (400 sinLaCapaDelPlan);
-        el plan que salió de pendiente, o con PR, reporte, pedidos, consumo, gestiones que espera, horas, un chequeo o hallazgos que tomó, contesta 400 planConTrabajo
+  bitacora-api gestion <subarea>               (retirada el 2026-11-05: abrirla contesta 400 tipoRetirado y el mensaje dice qué se escribe en su lugar)
+        lo que frena a un plan se escribe como su BLOQUEO: un análisis que explica qué lo frena y su contexto, nombrado en el plan con
+        `corregir planes <id>` {"bloqueadoPor":"<id del análisis>"}; las gestiones que ya existen se siguen leyendo, y `mover gestiones <id>`
+        {"estado":"hecha","nota":"cómo se comprobó"} o {"estado":"descartada","nota":"por qué"} las cierran (sin nota, 400 cierreSinNota),
+        {"estado":"pedida"} cuando el responsable la tiene; `corregir gestiones <id>` las corrige; cuentan en el avance del objetivo como un plan
+  bitacora-api a-gestion <plan-id>             (retirado el 2026-11-05: pasar un plan a gestión contesta 400 tipoRetirado; el plan que espera a una persona lleva su bloqueo)
   bitacora-api objetivo                        {"titulo":"…","queEs":"…","cuerpo":{"es":"# Qué se busca\n…\n\n# Por qué\n…\n\n# Cuándo está logrado\n…"},"areas":["<área>"],"dependeDe":["<id>"]}
         lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; sus tres secciones van sin código y en el techo de «Qué cambia»,
         con las palabras de quien lo pide: «Por qué», lo que necesita con el enlace a la pieza que lo desarrolla; «Cuándo está logrado», lo que se ve
@@ -2712,14 +2713,16 @@ Escritura (el cuerpo JSON entra por stdin):
         se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400 —, y la respuesta trae `areasPorRenovar`:
         cada área cuya foto vigente todavía no lo lleva de hito, {area,nombre,enlace,foto,comando}, con el comando `escribir-estado <área>` que
         reescribe su definición con "objetivo":"<id>" —y su «Qué cambió» mientras el proyecto no cerró `definicion`—; Harness queda afuera —su foto la pide el dueño— y el campo falta cuando ninguna espera
-        «El mapa», después de «Cuándo está logrado», ordena sus planes y sus gestiones por etapas: el dibujo de etapas y debajo, por etapa, su
+        «El mapa», después de «Cuándo está logrado», ordena sus planes y sus gestiones por etapas: el dibujo de etapas —el bloque d2 abre con `direction: down`
+        y `grid-columns: 1`, así cada etapa es una fila y el mapa crece hacia abajo— y debajo, por etapa, su
         negrita con el nombre de lo que trae —«**Etapa 1 · El catálogo de hoy**»— y su checklist «- [ ] [Título](enlace) — avanza cuando …» con
         cada plan y cada gestión, también los que cerraron, y la nota en palabras de todos los días para quien lee la página; se escribe con `corregir objetivos <id>` y el
         cuerpo entero, y la página pinta sobre los dos el estado de hoy —listo en verde, en marcha en ámbar, pendiente en gris— y dibuja la
         checklist como línea de tiempo. Con planes o gestiones abiertas que lo nombran —desde que el proyecto cerró `caminos` o desde que el
         cuerpo la trae— la puerta cobra su dibujo de etapas y cada plan o gestión por su enlace en su checklist y en su caja, en 300 sin los ítems; si no,
         va libre en 600
-        (400 caminoIncompleto · seccionSinDibujo · seccionLarga · planesSinNombrar · planesSinCaja, que los lista listos para pegar)
+        (400 caminoIncompleto · seccionSinDibujo · seccionLarga · planesSinNombrar · planesSinCaja, que los lista listos para pegar ·
+        mapaAncho cuando el dibujo compilado de «El mapa» es más ancho de lo que el papel admite con su letra legible: se reordena en etapas de una columna)
   bitacora-api client-report <subarea>         {"titulo":"…","cuerpo":{"es":"# …"},"lleva":[{"tipo":"decision","id":"…"}]}
                                              —cada pieza marcada para reportar; 404 piezaInexistente · 400 piezaSinMarcar · piezaYaEnOtraEntrega · entregaSellada
   bitacora-api simulacion <subarea>            {"titulo":"…","hipotesis":"…","criterioExito":"…",
@@ -2832,8 +2835,10 @@ Escritura (el cuerpo JSON entra por stdin):
                                               cliente; marcar deja quieto su reloj — `reportar` lo escribe por vos; con "cambia":"<id>"
                                               declara qué pieza ya contada contradice —tiene que haber salido en una entrega— y
                                               "cambia":null lo saca)
-                                            · {"dependeDe":["<id>"]} (un plan: las gestiones que espera hechas y el guion que espera firmado,
+                                            · {"dependeDe":["<id>"]} (un plan: las gestiones que ya existen y esperan hechas y el guion que espera firmado,
                                               la lista entera en su orden; {"dependeDe":[]} la saca)
+                                            · {"bloqueadoPor":"<id de un análisis>"} (un plan: el análisis que explica qué lo frena;
+                                              {"bloqueadoPor":null} lo destraba; 404 analisisInexistente)
   bitacora-api entregable <id>             (el entregable creativo con material, estados y si su revisión está habilitada; trae las
                                             restricciones del objetivo, gastoAutorizado —qué cubre el OK vigente—, gastosAutorizados y
                                             produccionAutorizada, y en El ensayo general sus pasos)

@@ -195,7 +195,7 @@ colour:
 | **Analysis** | what was understood about a topic; a **lasting** one (`"vigente":true`) explains something that endures and stays in view while it holds | its body | escrito, or descartado when it stopped holding: it is material you read |
 | **Plan** | how something gets solved — strategy AND execution; it also carries a dispatched job | its body and where it closes | pendiente · encargado · en-curso · entregado · hecho · descartado |
 | **Bug** | a defect found while doing something else | its body, with What happens · Where · How to reproduce | abierto · arreglado · descartado |
-| **Manual step** | what a person does by hand so the work can carry on —creating a key in production, Merch loading their synonyms, the client making a call—, in the hands of its person responsible (§Manual steps) | its body, with What's needed · How we check, and its `responsable`, one of the project's | por-hacer · pedida · hecha · descartada — closing it takes its `nota` |
+| **Manual step** (`gestion`) | the type retired on 2026-11-05: what a person does by hand is now written as the plan's blocker (§Manual steps). The ones that exist are read, moved and corrected | the door answers 400 `tipoRetirado` | por-hacer · pedida · hecha · descartada — closing it takes its `nota` |
 | **Client-Report** | what goes to the client, from the draft on | its body | preparacion · aprobado · entregado |
 | **Decision** | a trade-off with its analysis: made, or open and waiting on whoever decides it | the whole frame, and its verdict or who decides it (`decide`) | abierta · decidida · aplicada · descartada — `resuelta`, the inherited one, reads as aplicada |
 | **Simulation** | the experiment before adopting a change: the session runs the arms, a person grades | its body, the hypothesis, the success criterion, two arms, the sample and the rubric | disenada · aprobada · corriendo · calificando · concluida · descartada |
@@ -212,9 +212,6 @@ $API -p <project> plan <area> <<'JSON'
 JSON
 $API -p <project> bug <area> <<'JSON'
 {"titulo":"…","prioridad":"critico","cuerpo":{"en":"# What happens\n…\n\n# Where\n…\n\n# How to reproduce\n1. …\n2. …"}}
-JSON
-$API -p <project> gestion <area> <<'JSON'
-{"titulo":"…","responsable":"merch","cuerpo":{"en":"# What's needed\n…\n\n# How we check\n…"}}
 JSON
 $API -p <project> client-report <area> <<'JSON'
 {"titulo":"…","ficha":{"For":"who receives it"},"cuerpo":{"en":"# …"}}
@@ -721,7 +718,30 @@ moving the plan, like the priority:
 $API -p <project> corregir planes <id> <<< '{"modelo":"sonnet","esfuerzo":"medium"}'
 ```
 
-**`dependeDe` names the manual steps a plan waits on before it starts**: the ids of manual
+**`bloqueadoPor` names the analysis that explains what holds a plan back** (the owner,
+2026-11-05: «if something blocks it, there is always an analysis that explains that blocker or
+its context»). **The situation that triggers it**: the plan cannot move because of something
+outside it —a person who has to do something by hand, a release, a client's decision, another
+team—. **The gesture**: write the analysis first (`/analisis`, or `$API -p <project> analisis
+<area>`) and then name it in the plan, when opening it with `"bloqueadoPor":"<analysis id>"` in
+its JSON, or later with `corregir planes <id>`; `{"bloqueadoPor":null}` removes it. An id that
+is not an analysis of the project gets 404 `analisisInexistente`, and a type that is not a plan
+rejects the field in its schema. The read `item planes <id>` serves it as
+`bloqueadoPor: {"id","titulo","enlace"}`. **How it looks**: on the goal's map the blocked plan's
+box is painted in a soft red with the label «Bloqueado» on its corner, which leads to the
+analysis; in the goal's line by stages its row goes soft red with «Blocked by <analysis title>»
+linked; and the plan's page opens with a soft red strip that links the analysis.
+
+```bash
+$API -p <project> analisis algolia <<'JSON'     # first, the analysis that explains the blocker
+{"titulo":"Merch has to load the region synonyms","queEs":"what search by region waits on, and from whom","cuerpo":{"en":"# …"}}
+JSON
+$API -p <project> corregir planes <id> <<< '{"bloqueadoPor":"<analysis id>"}'   # then the plan names it
+$API -p <project> corregir planes <id> <<< '{"bloqueadoPor":null}'               # and removes it
+$API -p <project> item planes <id> | jq '.bloqueadoPor'                          # {"id","titulo","enlace"}
+```
+
+**`dependeDe` names the manual steps that already exist and a plan waits on before it starts**: the ids of manual
 steps of the project, when opening it or with `corregir planes <id>`, the whole list in its
 order, and `[]` removes it; an id that is not a manual step of the project gets 404
 `dependenciaInexistente`. The plan's read serves them resolved in `dependeDe`, each
@@ -1306,69 +1326,35 @@ decision belongs to the person and enters through the web, same as the consultat
 already decided is never rewritten, and the one that asked for more context is the
 deliberate exception, because recapturing it is how the request is answered.
 
-## Manual steps — what a person does by hand
+## Manual steps — the type that was retired
 
-**What a person has to do outside the code so the work can carry on is written as a manual
-step** (`gestion`): creating a key in production, Merch loading their synonyms, the client
-making a call. A plan carries the whole contract the coding session reads; a manual step
-carries its person responsible, what's needed and how we check it was done, with all the
-explanation it takes, in both languages. **Its door takes, when you open it**, like the bug's,
-two sections as headings of the body —**What's needed** (what the person responsible has to
-do, said so it can be done: what, where and with which data) and **How we check** (what you
-look at to know it is done: the command, the screen, the figure)— and its **`responsable`**:
-the slug of one of the project's people responsible (§The people responsible). The 400
-`aperturaIncompleta` names the missing section, and a person responsible who is not on the
-list answers 404 `responsableInexistente` with the ones there are. The rest of the body is
-free: the why, the context, the team's position.
+(the owner, 2026-10-19: «they are not coding, they don't need a plan… many times they need a HITL»; retired on 2026-11-05)
 
-Two optional fields go with it: **`mensaje`**, the text you leave ready for the owner to send
-to the person responsible —in the language of whoever receives it—, and **`jira`**, the ticket
-that follows it outside, `{"clave","titulo","url"}`. Its page shows who does it in their
-colour —«Your turn» to whoever has their email—, the ticket, and the message with the button
-that copies it. **And it names the goal it pursues in its `objetivo` field, like a plan, and
-counts in its progress** (§The Goal).
+**The manual step (`gestion`) was the piece for what a person does by hand so the work can carry
+on** —creating a key in production, Merch loading their synonyms, the client making a call—, in
+the hands of a person responsible. **It was retired as a type on 2026-11-05**: opening one
+(`$API -p <project> gestion <area> …`) and turning a plan into one (`a-gestion <plan id>`) get
+400 `tipoRetirado`, and the message says what is written instead. **What holds a plan back is
+written as its BLOCKER**: an analysis that explains what holds it and its context, named in the
+plan's `bloqueadoPor` (§Plans, `bloqueadoPor`).
+
+**The manual steps that already exist stay alive**: they are read (`item gestiones <id>`,
+`abiertos gestiones`), moved and corrected, and the goal's map paints them in their person
+responsible's colour with their name on the corner; the map's door keeps asking for the open
+one to be named.
 
 ```bash
-$API -p <project> responsables | jq -r '.[].slug'   # who it can be assigned to
-$API -p <project> gestion algolia <<'JSON'
-{"titulo":"Merch loads the region synonyms","responsable":"merch","objetivo":"<goal id>",
- "queEs":"what search by region expects from Merch",
- "mensaje":{"en":"Hi Merch, could you load the region synonyms in Algolia? The list is in the sheet."},
- "jira":{"clave":"WP-212","titulo":"Region synonyms","url":"https://…/browse/WP-212"},
- "cuerpo":{"en":"# What's needed\nLoad into Algolia the synonyms of each region in the sheet…\n\n# How we check\nSearching «Dolomites» returns the Südtirol trips."}}
-JSON
 $API -p <project> mover gestiones <id> <<< '{"estado":"pedida","nota":"message sent on Slack"}'   # the person responsible has it
 $API -p <project> mover gestiones <id> <<< '{"estado":"hecha","nota":"searching Dolomites returns the Südtirol trips"}'
 $API -p <project> mover gestiones <id> <<< '{"estado":"descartada","nota":"why it is no longer needed"}'
-$API -p <project> corregir gestiones <id> <<< '{"responsable":"fran"}'   # into other hands, with the same check
+$API -p <project> corregir gestiones <id> <<< '{"responsable":"fran"}'   # into other hands of the project's list
 $API -p <project> abiertos gestiones          # what is waiting on hands, across areas
 ```
 
-**A plan that turns out to be a person's work becomes a manual step with `a-gestion`**, and
-keeps its address: the same id, its place, its slug, `tambienEn`, its goal, its publication,
-its translation and its history, with one more step «converted from a plan», and it takes its
-number among the manual steps of its place. Whatever linked to it —the map's box, a document—
-opens the manual step. The JSON is the manual step's: its `responsable` and the body with its
-opening, plus `titulo`, `queEs`, `mensaje` and `jira` when needed; a title and a summary that
-arrive replace the plan's. The texts go in the plan's language, which the manual step keeps:
-one that arrives only in another layer answers 400 `sinLaCapaDelPlan`. It takes the `pendiente`
-plan nobody started: one that has left `pendiente`, or with a PR, a report, requests, usage, the
-manual steps it waits on, hours in the bank, a visual check reviewing it or review findings it
-took, answers 400 `planConTrabajo` with what it found, and stays a plan.
-
-```bash
-$API -p <project> a-gestion <plan id> <<'JSON'
-{"responsable":"merch","mensaje":{"en":"Hi Merch, could you load the region synonyms in Algolia?"},
- "cuerpo":{"en":"# What's needed\nLoad into Algolia the synonyms of each region in the sheet…\n\n# How we check\nSearching «Dolomites» returns the Südtirol trips."}}
-JSON
-```
-
-**Its desks**: `por-hacer` is the step written down; `pedida`, the one the person responsible
-already has —moved there when the message is sent—; and it closes **`hecha`**, with the note of
-how it was checked, or **`descartada`**, with its why. Both take their `nota` (400
-`cierreSinNota`), and a manual step is born open (400 `naceAbierta`). The done one leaves the
-view and enters the book with its note. **The owner closes it from its page too**, with
-**Done** and **Drop**, each with its line.
+The body of an existing manual step carries two sections, «What's needed» and «How we check»,
+and its `responsable` is one of the project's. Their desks are `por-hacer` and `pedida`, and one closes **`hecha`**, with the note of how it was
+checked, or **`descartada`**, with its why; both take their `nota` (400 `cierreSinNota`). The
+owner closes it from its page too, with **Done** and **Drop**.
 
 ## The Goal — what several pieces pursue together
 
@@ -1382,11 +1368,12 @@ done, with its bar— and under the body its path: what holds it back, the
 timeline of its stages with each piece at its current desk, and **«Material»** with the rest
 that names it, from any area (§The Goal).
 
-**What a person does by hand so the goal can carry on goes in as a manual step** (§Manual
-steps): the plan is for what a session builds, and the manual step —creating a key in
-production, Merch loading their data, the client making a call— names the goal in its
-`objetivo` field, is listed with what pursues it and counts in its progress just like a plan:
-the requested one is under way and the done one, ready.
+**What holds back a plan of the goal is written as its blocker** (§Plans, `bloqueadoPor`): a
+person who has to do something by hand, a key in production, the client's call. The analysis
+that explains what holds it and its context is written first, and the plan names it in its
+`bloqueadoPor` field. The manual step, the type that covered that case, was retired on
+2026-11-05: the ones that exist still count in the progress like a plan —the requested one is
+under way and the done one, ready— and the map still paints them.
 
 **A goal is written for whoever reads it, and that can be the client once it is shared**:
 each part in the words of whoever asks for it, while what ordered the work —the tickets, the
@@ -1417,8 +1404,10 @@ is one more section of its body, after «When it's achieved» and at the same he
 the order of its plans by stage, which is judgement, with what is done and what is moving
 painted on it, so it is the whole goal at a glance. A body written with the earlier name,
 `# What's next` or `# Lo que sigue`, is read, charged and painted as «The map». Its shape
-is a `d2` drawing of stages —one lane per stage, one box per plan saying what it changes
-and carrying `link:` to its plan, arrows are dependencies—, then per stage a bold line with the stage and its
+is a `d2` drawing of stages —it opens with `direction: down` and, on the next line,
+`grid-columns: 1`, so each stage is a row and the map grows downward as stages are added; one
+lane per stage, one box per plan saying what it changes and carrying `link:` to its plan, arrows
+are dependencies—, then per stage a bold line with the stage and its
 checklist, one item per plan that names the goal, `- [ ] [Plan title](link) — moves when …`,
 the closed ones included, and one or two sentences on why that order, within 300 visible
 characters without the drawing or the checklist items. **Each stage's name says what it
@@ -1446,8 +1435,11 @@ and the house fills it with the pale of that person's colour and an ink outline,
 narrator's box on its top corner —the hand-drawn frame in the full colour— holding their name,
 or «Your turn» to whoever has their email; one no longer on the list reads by its slug, in
 grey. Plans keep their state's colour, so what a person does by hand stands out at a glance,
-and a done step is painted done, with its ✓, and keeps the name on its corner. **A plan waiting
-on an open manual step says so at the foot of its box** (§Plans, `dependeDe`): a monospace line
+and a done step is painted done, with its ✓, and keeps the name on its corner. **A blocked plan is painted in a soft red**: its box carries the label «Bloqueado» on its
+corner, which leads to the analysis that explains the blocker, its row in the line by stages goes
+soft red with «Blocked by <analysis title>» linked, and its page opens with a soft red strip that
+links the same analysis; `{"bloqueadoPor":null}` takes the red away. **A plan waiting
+on an open manual step that already exists says so at the foot of its box** (§Plans, `dependeDe`): a monospace line
 in the colour of that step's person —«WAITS ON A MANUAL STEP OF YOURS» to whoever has it,
 «WAITS ON A MANUAL STEP BY MERCH» to everyone else—, naming the reader's own when one is
 theirs, and the first open one otherwise; it goes once the step is done. The arrow from the
@@ -1460,7 +1452,9 @@ closes its `caminos` adaptation or once the body already brings the heading: mis
 answers 400 `caminoIncompleto` with its outline, without a drawing `seccionSinDibujo`, too long
 `seccionLarga`, and an open plan or manual step the checklist does not name by its link
 `planesSinNombrar`, with the items ready to paste, and one that no box of the drawing links
-with its `link:` `planesSinCaja`, with the box ready to paste in its stage's lane. **The map names every open plan and every
+with its `link:` `planesSinCaja`, with the box ready to paste in its stage's lane, and `mapaAncho` when the
+compiled drawing is wider than the paper allows with its lettering still legible: the body is
+reordered into one-column stages (`grid-columns: 1`) and sent again. **The map names every open plan and every
 open manual step**: a step in `por-hacer` or `pedida` goes in its stage, next to the plans it
 unblocks, and a done one leaves the count like a done plan. Any other goal carries the section
 free, within 600; its opening takes only the three sections, because it is born before its
