@@ -2674,6 +2674,8 @@ Escritura (el cuerpo JSON entra por stdin):
         nombra, al abrir el plan o con `corregir planes <id>` {"bloqueadoPor":"<id del análisis>"}; {"bloqueadoPor":null} lo destraba; un id que
         no es un análisis del proyecto contesta 404 analisisInexistente; `item planes <id>` lo trae como {"id","titulo","enlace"}; el mapa del
         objetivo pinta la caja en rojo tenue con «Bloqueado» en su esquina, la línea por etapas lo dice en su renglón y la página del plan abre con una franja roja tenue que enlaza el análisis
+        "entregable":{"clase":"<paso>"} hace nacer el entregable del plan, pendiente y vacío: el paso de su objetivo creativo que revisa, uno de los
+        `pasos` de su motor o, sin motor, diseno · voz · movimiento · ensayo (400 entregableSinObjetivo · pasoInexistente · pasoTomado; en un parche, entregableYaNacido)
         "dependeDe":["<id>"] son las gestiones que ya existen y esperan hechas y el guion que espera firmado, del proyecto (404 dependenciaInexistente);
         `item planes <id>` los trae con tipo y escritorio, y la gestión con su responsable; `item gestiones|guiones <id>` trae en `destraba`
         los planes que los esperan; una gestión abierta avisa al encargar sin frenar, y un guion que no está hecho contesta 400 guionSinFirmar
@@ -2698,6 +2700,10 @@ Escritura (el cuerpo JSON entra por stdin):
         lo que varias piezas persiguen juntas: es del proyecto y nace sin lugar, `abierto`; sus tres secciones van sin código y en el techo de «Qué cambia»,
         con las palabras de quien lo pide: «Por qué», lo que necesita con el enlace a la pieza que lo desarrolla; «Cuándo está logrado», lo que se ve
         funcionando al final (400 seccionConCodigo · seccionLarga, al abrirlo y en el parche que reescribe una; la que vuelve igual pasa)
+        "motor":{"nombre":"OpenMontage","pipeline":"animation","pasos":[{"clave":"scene_plan","nombre":"El plan de escenas","checkpoint":"scene_plan"}]}
+        es del objetivo creativo: los pasos que le pide a Fran en su orden, de donde salen el orden y el nombre de sus entregables, y cada `checkpoint`
+        la etapa del motor que esa aprobación deja aprobada; `idea` y `guion` nombran a sus tipos; en un parche va entero y null lo saca
+        (400 pasoRepetido · pasoSinNombre · pasoConEntregable, cuando deja afuera el paso de un entregable que existe)
         cada pieza lo nombra con "objetivo":"<id>" al abrirla o con `corregir <tipo> <id>` —{"objetivo":null} lo quita—: uno abierto, y nunca desde otro objetivo
         "dependeDe" son los objetivos que este espera, los que se logran antes: al abrirlo, o con `corregir objetivos <id>` {"dependeDe":["<id>","<id>"]},
         la lista entera en su orden, y {"dependeDe":[]} la saca; cada id es OTRO objetivo del proyecto y la lista deja el orden sin ciclos
@@ -2839,7 +2845,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                               la lista entera en su orden; {"dependeDe":[]} la saca)
                                             · {"bloqueadoPor":"<id de un análisis>"} (un plan: el análisis que explica qué lo frena;
                                               {"bloqueadoPor":null} lo destraba; 404 analisisInexistente)
-  bitacora-api entregable <id>             (el entregable creativo con material, estados y si su revisión está habilitada; trae las
+  bitacora-api entregable <id>             (el entregable creativo con material, estados y si su revisión está habilitada; trae su
+                                            paso —clave, nombre y el checkpoint del motor que su aprobación resuelve—, el motor y las
                                             restricciones del objetivo, gastoAutorizado —qué cubre el OK vigente—, gastosAutorizados y
                                             produccionAutorizada, y en El ensayo general sus pasos)
   bitacora-api aprobar-entregable <id> "<palabras>" [elemento] [--resto]
