@@ -1444,9 +1444,11 @@ aprobar-entregable)
   ;;
 feedback-entregable)
   # El feedback de Fran: en un elemento, en un segundo del master vigente (el corte sale de su
-  # rango), sobre el master entero, o como su respuesta en el hilo de un comentario. --ronda
-  # dice qué master miraba Fran cuando la sesión ya cargó otro: la puerta frena con rondaCambiada.
-  exige 3 'feedback-entregable <id> <elemento|--segundo <s>|--todo|--comentario <fN>> "<el cambio, con las palabras de Fran>" [--ronda <n>]' "$@"
+  # rango), en un segundo del medio propio de un elemento —una variante, el video o el audio de
+  # un entregable sin master— con el elemento y --segundo, sobre el master entero, o como su
+  # respuesta en el hilo de un comentario. --ronda dice qué master miraba Fran, y --version qué
+  # versión del elemento: si ya llegó otra, la puerta frena con rondaCambiada o versionCambiada.
+  exige 3 'feedback-entregable <id> <elemento|--segundo <s>|elemento --segundo <s>|--todo|--comentario <fN>> "<el cambio, con las palabras de Fran>" [--ronda <n>] [--version <n>]' "$@"
   id_entregable="$1"
   shift
   libres=0
@@ -1455,13 +1457,14 @@ feedback-entregable)
   segundo_feedback=""
   comentario_feedback=""
   ronda_feedback=""
+  version_feedback=""
   todo_feedback=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --segundo)
         [ -z "$segundo_feedback" ] || { echo "--segundo va una sola vez." >&2; exit 1; }
         segundo_feedback="${2:-}"
-        [[ "$segundo_feedback" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "El segundo es un momento del master, en segundos: --segundo 7.3" >&2; exit 1; }
+        [[ "$segundo_feedback" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "El segundo es un momento del medio que suena —el master, o el archivo del elemento—, en segundos: --segundo 7.3" >&2; exit 1; }
         shift 2
         ;;
       --comentario)
@@ -1476,12 +1479,18 @@ feedback-entregable)
         [[ "$ronda_feedback" =~ ^[1-9][0-9]*$ ]] || { echo "La ronda es el número del master que Fran miraba: --ronda 4" >&2; exit 1; }
         shift 2
         ;;
+      --version)
+        [ -z "$version_feedback" ] || { echo "--version va una sola vez." >&2; exit 1; }
+        version_feedback="${2:-}"
+        [[ "$version_feedback" =~ ^[1-9][0-9]*$ ]] || { echo "La versión es el número del elemento que Fran miraba: --version 2" >&2; exit 1; }
+        shift 2
+        ;;
       --todo)
         todo_feedback="sí"
         shift
         ;;
       --*)
-        echo "feedback-entregable conoce --segundo, --todo, --comentario y --ronda; «$1» no es suyo." >&2
+        echo "feedback-entregable conoce --segundo, --todo, --comentario, --ronda y --version; «$1» no es suyo." >&2
         exit 1
         ;;
       *)
@@ -1507,29 +1516,33 @@ feedback-entregable)
   [ -z "$todo_feedback" ] || [ -z "$elemento_feedback$segundo_feedback$comentario_feedback" ] || { echo "--todo va solo: sobre el master entero, sin elemento, segundo ni comentario." >&2; exit 1; }
   [ -z "$comentario_feedback" ] || [ -z "$elemento_feedback" ] || { echo "La respuesta en un hilo va sin elemento: --comentario <fN> \"<texto>\"." >&2; exit 1; }
   feedback_entregable="$(jq -cn --arg texto "$texto_feedback" --arg elemento "$elemento_feedback" --arg segundo "$segundo_feedback" \
-    --arg comentario "$comentario_feedback" --arg ronda "$ronda_feedback" \
+    --arg comentario "$comentario_feedback" --arg ronda "$ronda_feedback" --arg version "$version_feedback" \
     '{accion:"feedback",texto:$texto}
       + (if $elemento == "" then {} else {elemento:$elemento} end)
       + (if $segundo == "" then {} else {segundo:($segundo|tonumber)} end)
       + (if $comentario == "" then {} else {comentario:$comentario} end)
-      + (if $ronda == "" then {} else {ronda:($ronda|tonumber)} end)')"
+      + (if $ronda == "" then {} else {ronda:($ronda|tonumber)} end)
+      + (if $version == "" then {} else {version:($version|tonumber)} end)')"
   printf '%s' "$feedback_entregable" | escribir POST "/api/entregables/$(uri "$id_entregable")"
   ;;
 responder-comentario)
-  # La respuesta de quien produce en el hilo de un comentario, con el segundo del master
-  # vigente donde se mira lo corregido. Lo deja en corrección; solo Fran lo cierra.
-  exige 3 'responder-comentario <id> <fN> "<qué se corrigió>" [--segundo <s>] [--ronda <n>]' "$@"
+  # La respuesta de quien produce en el hilo de un comentario, con el segundo donde se mira lo
+  # corregido: del master vigente, o de la versión vigente del medio propio del elemento cuando
+  # el comentario vive en una variante o en un elemento sin master. Lo deja en corrección; solo
+  # Fran lo cierra.
+  exige 3 'responder-comentario <id> <fN> "<qué se corrigió>" [--segundo <s>] [--ronda <n>] [--version <n>]' "$@"
   id_entregable="$1"
   comentario_entregable="$2"
   shift 2
   texto_comentario=""
   segundo_comentario=""
   ronda_comentario=""
+  version_comentario=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --segundo)
         segundo_comentario="${2:-}"
-        [[ "$segundo_comentario" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "El segundo es un momento del master vigente, en segundos: --segundo 7.9" >&2; exit 1; }
+        [[ "$segundo_comentario" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "El segundo es un momento del medio vigente —el master, o la versión nueva del elemento—, en segundos: --segundo 7.9" >&2; exit 1; }
         shift 2
         ;;
       --ronda)
@@ -1537,8 +1550,13 @@ responder-comentario)
         [[ "$ronda_comentario" =~ ^[1-9][0-9]*$ ]] || { echo "La ronda es el número del master donde se mira lo corregido: --ronda 5" >&2; exit 1; }
         shift 2
         ;;
+      --version)
+        version_comentario="${2:-}"
+        [[ "$version_comentario" =~ ^[1-9][0-9]*$ ]] || { echo "La versión es el número del elemento donde se mira lo corregido: --version 3" >&2; exit 1; }
+        shift 2
+        ;;
       --*)
-        echo "responder-comentario conoce --segundo y --ronda; «$1» no es suyo." >&2
+        echo "responder-comentario conoce --segundo, --ronda y --version; «$1» no es suyo." >&2
         exit 1
         ;;
       *)
@@ -1550,9 +1568,11 @@ responder-comentario)
   done
   [ -n "$texto_comentario" ] || { echo "Falta el texto de la respuesta — uso: bitacora-api responder-comentario <id> <fN> \"<qué se corrigió>\" [--segundo <s>]" >&2; exit 1; }
   jq -cn --arg comentario "$comentario_entregable" --arg texto "$texto_comentario" --arg segundo "$segundo_comentario" --arg ronda "$ronda_comentario" \
+    --arg version "$version_comentario" \
     '{accion:"responder",comentario:$comentario,texto:$texto}
       + (if $segundo == "" then {} else {segundo:($segundo|tonumber)} end)
-      + (if $ronda == "" then {} else {ronda:($ronda|tonumber)} end)' |
+      + (if $ronda == "" then {} else {ronda:($ronda|tonumber)} end)
+      + (if $version == "" then {} else {version:($version|tonumber)} end)' |
     escribir POST "/api/entregables/$(uri "$id_entregable")"
   ;;
 cerrar-comentario)
@@ -2864,16 +2884,20 @@ Escritura (el cuerpo JSON entra por stdin):
                                             el cambio que pide. El OK del gasto va después del visto, y recién con él se generan los clips)
   bitacora-api feedback-entregable <id> <elemento> "<cambio>"   (reabre solo esa escena, audio o variante y conserva las demás aprobaciones)
   bitacora-api feedback-entregable <id> --segundo <s> "<cambio>"   (en ese segundo del master vigente: cae en el corte de su rango, con la ronda)
+  bitacora-api feedback-entregable <id> <elemento> --segundo <s> "<cambio>"   (en ese segundo del medio propio de una variante o de un
+                                            video o audio sin master: queda en el elemento con su versión vigente)
   bitacora-api feedback-entregable <id> --todo "<cambio>"   (sobre el master entero, sin segundo)
   bitacora-api feedback-entregable <id> --comentario <fN> "<respuesta de Fran>"   (en el hilo de ese comentario: lo reabre sin cerrarlo)
   bitacora-api responder-comentario <id> <fN> "<qué se corrigió>" [--segundo <s>]
-                                            (la respuesta de quien produce en ese hilo, con el segundo del master vigente donde se mira;
-                                            lo deja en corrección, sin tocar medios ni versiones)
+                                            (la respuesta de quien produce en ese hilo, con el segundo donde se mira: del master vigente, o
+                                            de la versión nueva del elemento con medio propio; lo deja en corrección, sin tocar medios ni versiones)
   bitacora-api cerrar-comentario <id> <fN> "<palabras de Fran>" [--ronda <n>]   (su «ahora sí» sobre ese comentario: lo cierra; aprobar es otro gesto)
   bitacora-api borrar-comentario <id> <fN>   (solo a pedido de Fran: borra su comentario mientras nadie lo respondió;
                                             con la corrección en el hilo frena con comentarioConRespuesta, y se cierra con cerrar-comentario)
                                             (--ronda en feedback-entregable, responder-comentario, cerrar-comentario y aprobar-entregable:
                                             el master que Fran miraba; si la sesión ya cargó otro, la puerta frena con rondaCambiada)
+                                            (--version en feedback-entregable y responder-comentario: la versión del elemento con medio
+                                            propio que se miraba; si ya llegó otra, la puerta frena con versionCambiada)
   bitacora-api corregir-entregable <id> <elemento> "<respuesta>"   < {"cambios":{…}}
                                             (guarda la respuesta en el hilo y una versión nueva, con el antes para comparar; Fran la cierra con «ahora sí»)
   bitacora-api material-entregable <id>    < {"estado":"espera-revision","elementos":[…]}   (prepara material aunque su revisión venga después)
