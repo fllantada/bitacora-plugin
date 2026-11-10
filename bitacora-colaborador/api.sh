@@ -427,14 +427,73 @@ leer_cuerpo() {
 # Lo que viaja en la URL: un slug con espacios o un texto de búsqueda.
 uri() { jq -rn --arg v "$1" '$v|@uri'; }
 
-# Sube un archivo a la puerta de los adjuntos.
+# Sube un adjunto directo al almacén, en tres pasos: pide a la bitácora una dirección firmada
+# de escritura (`POST /api/adjuntos/subida`), manda el archivo a esa dirección con `curl -T` y
+# confirma la subida (`POST /api/adjuntos/confirmar`), que es lo que lo registra. Los bytes
+# viajan de esta máquina a R2, y el tope es el de una subida al almacén: el pedido lleva lo que
+# pesa el archivo, y el que pasa el tope rebota ahí, con su peso y el tope, antes de que viaje
+# un byte. Lo usan `capturar`, `adjuntar`, el espejo de una fuente y `refrescar`.
+#
+# Los campos llegan como `clave=valor` —`linea`, `seccion`, `fuente`, `nombre`, `queEs`,
+# `reemplazar`— y viajan en el JSON de los dos pedidos; el `nombre` por omisión es el del
+# archivo. No pasa por la cola, como `subir_a`.
 subir() {
-  subir_a "/api/adjuntos" "$@"
+  local archivo="$1" bytes campos respuesta codigo salida direccion tipo par
+  shift
+  { [ -f "$archivo" ] && [ -r "$archivo" ]; } || { echo "No se puede leer $archivo (buscado desde $PWD); revisá la ruta." >&2; return 1; }
+  # `wc -c` cuenta igual en macOS y en Linux, donde `stat` pide banderas distintas.
+  bytes="$(wc -c <"$archivo" | tr -d '[:space:]')"
+  campos="$(jq -cn --arg n "${archivo##*/}" --argjson b "$bytes" '{nombre: $n, bytes: $b}')"
+  for par in "$@"; do
+    case "$par" in
+    *=*) campos="$(jq -c --arg k "${par%%=*}" --arg v "${par#*=}" '. + {($k): $v}' <<<"$campos")" ;;
+    *) echo "«$par» no es un campo de la subida: va como clave=valor (linea=<slug>, queEs=\"…\", reemplazar=1)." >&2 && return 1 ;;
+    esac
+  done
+
+  # 1. Pedir: la bitácora valida el lugar, el nombre y el peso, y firma la dirección.
+  respuesta="$(pedir POST "$TOKEN" "/api/adjuntos/subida" "$campos")"
+  codigo="${respuesta##*$'\n'}"
+  salida="${respuesta%$'\n'*}"
+  case "$codigo" in
+  2*) ;;
+  000) echo "Sin respuesta del servidor ($BASE) al pedir la subida de $archivo." >&2 && return 1 ;;
+  *) echo "El servidor no aceptó $archivo ($codigo): $salida" >&2 && return 1 ;;
+  esac
+  direccion="$(jq -r '.direccion' <<<"$salida")"
+  tipo="$(jq -r '.tipo' <<<"$salida")"
+
+  # 2. Subir: directo a R2, con el tipo que la dirección firmó. La dirección es la
+  # autorización, así que la llave de la bitácora se queda acá. La subida larga corre sin
+  # techo de tiempo y se corta cuando se estanca.
+  respuesta="$(curl -sS --connect-timeout 20 --speed-limit 1024 --speed-time 60 \
+    -T "$archivo" -H "Content-Type: $tipo" -w $'\n%{http_code}' "$direccion" \
+    2>/dev/null || printf '\n000')"
+  codigo="${respuesta##*$'\n'}"
+  case "$codigo" in
+  2*) ;;
+  000) echo "La subida de $archivo al almacén se cortó o no tuvo respuesta: volvé a correr el comando." >&2 && return 1 ;;
+  *) echo "El almacén no aceptó $archivo ($codigo): ${respuesta%$'\n'*}" >&2 && return 1 ;;
+  esac
+
+  # 3. Confirmar: la bitácora comprueba el archivo en el almacén y lo registra. El registro
+  # es por ruta, así que la confirmación sin respuesta se repite una vez —dos confirmaciones
+  # dejan un solo registro— y la respuesta del servidor la frena: el `000` llega también
+  # cuando el servidor registró y la respuesta se perdió en el camino.
+  respuesta="$(pedir POST "$TOKEN" "/api/adjuntos/confirmar" "$campos")"
+  [ "${respuesta##*$'\n'}" = 000 ] && respuesta="$(pedir POST "$TOKEN" "/api/adjuntos/confirmar" "$campos")"
+  codigo="${respuesta##*$'\n'}"
+  salida="${respuesta%$'\n'*}"
+  case "$codigo" in
+  2*) printf '%s\n' "$salida" ;;
+  000) echo "Sin respuesta del servidor ($BASE) al confirmar $archivo, dos veces: el archivo está en el almacén y queda por saber si se registró. El mismo comando, corrido de nuevo, contesta 409 adjuntoTomado cuando el registro entró, y si no, lo sube y lo registra; con reemplazar=1 (capturar --reemplazar) lo sube y lo registra en los dos casos." >&2 && return 1 ;;
+  *) echo "El servidor no registró $archivo ($codigo): $salida" >&2 && return 1 ;;
+  esac
 }
 
-# Sube un archivo a una puerta que lo recibe como multipart: la de los adjuntos o la de la
-# captura de un paso. No pasa por la cola: un binario no entra en una línea de JSONL, y
-# reintentar una subida a ciegas es peor que volver a escribir el comando.
+# Sube un archivo a una puerta que lo recibe como multipart: la de la captura de un paso. No
+# pasa por la cola: un binario no entra en una línea de JSONL, y reintentar una subida a ciegas
+# es peor que volver a escribir el comando.
 #
 # La subida que el servidor rechaza imprime lo que el servidor DIJO, igual que `leer`: el 400
 # de la puerta trae la razón adentro, y el rechazo de la plataforma por tamaño trae el suyo.
@@ -1152,12 +1211,16 @@ bajar)
   destino_bajar="${2:-.}"
   [ -d "$destino_bajar" ] && destino_bajar="${destino_bajar%/}/$nombre_bajar"
   parcial_bajar="$destino_bajar.parcial"
-  codigo="$(curl -sS --max-time 120 -H "Authorization: Bearer $TOKEN" -o "$parcial_bajar" \
-    -w '%{http_code}' "$BASE$camino_bajar" 2>/dev/null || true)"
-  codigo="${codigo:-000}"
+  # La bajada larga corre sin techo de tiempo y se corta cuando se estanca, como la subida:
+  # el archivo que sube entero baja entero. La que se corta a mitad de camino termina en
+  # `000`, y su archivo parcial se borra.
+  codigo="$(curl -sS --connect-timeout 20 --speed-limit 1024 --speed-time 60 \
+    -H "Authorization: Bearer $TOKEN" -o "$parcial_bajar" \
+    -w '%{http_code}' "$BASE$camino_bajar" 2>/dev/null || printf '\n000')"
+  codigo="${codigo##*$'\n'}"
   case "$codigo" in
   2*) mv "$parcial_bajar" "$destino_bajar" && echo "$destino_bajar" ;;
-  000) rm -f "$parcial_bajar"; echo "Sin respuesta del servidor ($BASE)." >&2; exit 1 ;;
+  000) rm -f "$parcial_bajar"; echo "La bajada de $camino_bajar se cortó o no tuvo respuesta del servidor ($BASE): volvé a correr el comando." >&2; exit 1 ;;
   *)
     echo "El servidor no dio $camino_bajar ($codigo): $(cat "$parcial_bajar" 2>/dev/null)" >&2
     rm -f "$parcial_bajar"
@@ -2552,7 +2615,7 @@ mudar-documento)
   escribir PATCH "/api/documentos?$1=$(uri "$2")&slug=$(uri "$3")"
   ;;
 adjuntar)
-  exige 2 "adjuntar <archivo> linea=<slug> [queEs=\"…\"]" "$@"
+  exige 2 "adjuntar <archivo> linea=<slug> [queEs=\"…\"] [reemplazar=1]   (sube directo al almacén: pide la dirección, sube y confirma)" "$@"
   subir "$@"
   ;;
 borrar)
@@ -2645,7 +2708,9 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
   bitacora-api capturar [--reemplazar] <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una: la nombra el paso de un chequeo, y el texto de un punto la muestra con ![pie](/adjunto/<ruta>);
-                                            un nombre ya tomado en la sub-área contesta 409, y --reemplazar sube la misma captura rehecha)
+                                            un nombre ya tomado en la sub-área contesta 409, y --reemplazar sube la misma captura rehecha;
+                                            cada archivo sube directo al almacén —pide la dirección, sube y confirma—, y el que pasa
+                                            el tope del almacén rebota antes de viajar, con su peso y el tope)
   bitacora-api bajar <ruta> [destino]       (baja un adjunto con la llave del proyecto: la ruta o la url que contestaron adjuntos, capturar o pedido)
   bitacora-api pedidos [--rol qa] [--estado …]  (los pedidos entre sesiones del proyecto, cruzando planes: la bandeja del frente que los toma; sin estado, los vivos)
   bitacora-api pedido <plan-id> <n>         (uno, con su vuelta: la nota, los adjuntos por su dirección, el chequeo)
@@ -3058,6 +3123,8 @@ Poner una pieza afuera — se lee sin cuenta, con su contraseña, y nada más qu
 
 Archivos y bajas (borrar es del dueño):
   bitacora-api adjuntar <archivo> linea=<slug> [queEs="…"] [reemplazar=1]
+                                             (sube directo al almacén como capturar —pide la dirección, sube y confirma— y contesta la ruta;
+                                             el que pasa el tope del almacén rebota antes de viajar, con su peso y el tope)
   bitacora-api borrar /api/lineas/<slug>     (se niega si todavía cuelga algo)
   bitacora-api borrar /api/areas/<slug>      (se niega si alguna sub-área vive ahí)
   bitacora-api borrar /api/enlaces/<slug>    (saca un acceso de la columna)

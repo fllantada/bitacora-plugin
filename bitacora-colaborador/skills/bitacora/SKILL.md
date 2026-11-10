@@ -1192,7 +1192,7 @@ judgeable.
 | `dispositivo` | `escritorio` or `celular`: which device the captures come from, because it decides HOW the page compares them. **Always there with `pasoDelFlujo`**, since the run keeps one screen per device — side by side for phone captures, and for desktop ones stacked in the same place, with a Before and an After button to pick which one shows. The page infers it from the image when absent (landscape means desktop); **declare it when a desktop capture is full-page**, taller than wide, which would otherwise read as a phone |
 
 **Captures go up first and the step names them by their path.** Each one enters through the
-attachments door —one request per file, so a long check has no size ceiling— and `capturar`
+attachments door —one upload per file, so a long check has no size ceiling— and `capturar`
 returns each path: **no path is ever written by hand**, and the check's door verifies that
 every one named exists as a file of the check's place and is an image. So the captures and
 the check name the same place: the `hilo` of the plan the check reviews, which `item planes
@@ -1592,8 +1592,18 @@ jpeg, webp, gif or avif extension; `medio`, one with mp4, mov, webm or m4v, or m
 aac, ogg or flac; and `marca`, free text; the kind of piece is the run that produced it, in
 `flujos`, which replaces the goal's list: it carries the runs the goal already had plus the
 piece's. Each path is the one `capturar` returned, or the `rutaOrigen` that `adjuntos <place>`
-lists, without `/adjunto/`. The server checks that each attachment exists and carries the
-extension of its key —400 `piezaInvalida` names each key and its path—, a key set to `null`
+lists, without `/adjunto/`. **`capturar` uploads the file straight to storage, whole**: it asks
+the logbook for a signed write address, sends the file there and confirms the upload, which is
+what registers it, so the final video goes up at full quality. The request carries the file's
+size, and one over storage's ceiling is refused there, before any byte travels, with a 400
+giving its size and the ceiling. An upload that breaks off leaves the file unregistered:
+running the same command again uploads and registers it. A confirmation that gets no answer
+from the server is repeated once on its own —the same confirmation, which leaves a single
+record even when it arrives twice—, and the server's first answer stops it. If the repeat gets
+no answer either, the file is in storage and whether it was registered is unknown: running the
+same command again answers 409 `adjuntoTomado` when the record went in, and otherwise uploads
+and registers it; `capturar --reemplazar` uploads and registers it either way. The server
+checks that each attachment exists and carries the extension of its key —400 `piezaInvalida` names each key and its path—, a key set to `null`
 leaves the ficha, and the achieved goal's page shows the piece under its «Achieved» band.
 **Achieved without a cover, the response brings `portadaFalta`** when one of its `areas`
 already has a gallery —another achieved goal tagging it declares its own—:
