@@ -2739,6 +2739,10 @@ Escritura (el cuerpo JSON entra por stdin):
         se cierra con `mover objetivos <id>` {"estado":"logrado","nota":"qué se logró"} — sin nota, 400 —, y la respuesta trae `areasPorRenovar`:
         cada área cuya foto vigente todavía no lo lleva de hito, {area,nombre,enlace,foto,comando}, con el comando `escribir-estado <área>` que
         reescribe su definición con "objetivo":"<id>" —y su «Qué cambió» mientras el proyecto no cerró `definicion`—; Harness queda afuera —su foto la pide el dueño— y el campo falta cuando ninguna espera
+        el objetivo que produjo una pieza la declara en el mismo `mover` —o con `corregir objetivos <id>`—: {"ficha":{"portada":"<ruta de imagen>",
+        "medio":"<ruta de video o de audio>","marca":"…"},"flujos":["<recorrido que la produjo>"]}, cada ruta la `rutaOrigen` de `adjuntos`, sin /adjunto/
+        (400 piezaInvalida cuando el adjunto falta o su extensión es de otra clase; null saca la clave); lograrlo sin portada trae `portadaFalta`
+        {areas:[{area,nombre}],comando} con las áreas suyas donde otro objetivo logrado ya declara la suya, y el campo falta cuando ninguna la pide
         «El mapa», después de «Cuándo está logrado», ordena sus planes y sus gestiones por etapas: el dibujo de etapas —el bloque d2 abre con `direction: down`
         y `grid-columns: 1`, así cada etapa es una fila y el mapa crece hacia abajo— y debajo, por etapa, su
         negrita con el nombre de lo que trae —«**Etapa 1 · El catálogo de hoy**»— y su checklist «- [ ] [Título](enlace) — avanza cuando …» con

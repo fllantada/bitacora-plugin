@@ -1586,6 +1586,31 @@ $API -p <project> corregir objetivos <id> <<< '{"areas":[]}'                    
 $API -p <project> item objetivos <id> | jq '.areas'
 ```
 
+**A goal that produced a piece —an ad, a reel, an image— declares it in the same `mover` that
+achieves it**: its `ficha` names `portada`, the path of a project attachment with a png, jpg,
+jpeg, webp, gif or avif extension; `medio`, one with mp4, mov, webm or m4v, or mp3, wav, m4a,
+aac, ogg or flac; and `marca`, free text; the kind of piece is the run that produced it, in
+`flujos`, which replaces the goal's list: it carries the runs the goal already had plus the
+piece's. Each path is the one `capturar` returned, or the `rutaOrigen` that `adjuntos <place>`
+lists, without `/adjunto/`. The server checks that each attachment exists and carries the
+extension of its key —400 `piezaInvalida` names each key and its path—, a key set to `null`
+leaves the ficha, and the achieved goal's page shows the piece under its «Achieved» band.
+**Achieved without a cover, the response brings `portadaFalta`** when one of its `areas`
+already has a gallery —another achieved goal tagging it declares its own—:
+`{"areas":[{"area","nombre"}],"comando":"…"}`, with the `corregir` that declares the piece. The
+session runs it on the spot, naming the cover and the medium of what it delivered; the field is
+missing when no area asks for it.
+
+```bash
+$API -p <project> adjuntos <place> | jq -r '.[].rutaOrigen'   # the paths of the piece's cover and medium
+$API -p <project> mover objetivos <id> <<'JSON' | jq '{areasPorRenovar, portadaFalta}'
+{"estado":"logrado","nota":"what was achieved",
+ "ficha":{"portada":"pieces/web-ad-hook-a.jpg","medio":"pieces/web-ad-hook-a-review.mp4","marca":"<brand>"},
+ "flujos":["<run that produced it>"]}
+JSON
+$API -p <project> corregir objetivos <id> <<< '{"ficha":{"portada":"pieces/intro-greeting.jpg"}}'   # the cover portadaFalta asked for
+```
+
 **The dependency orders and warns**: the plans of a goal that waits are commissioned all the
 same, and what changes is what its page and its read tell. The awaited goal **holds it back**
 while it is open or dropped —a dropped one shows as dropped and holds it back until someone
