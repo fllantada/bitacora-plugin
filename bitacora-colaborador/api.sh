@@ -1443,7 +1443,11 @@ ficha)
 # (Hecho · Cómo quedó · Evidencia · Decisiones sobre la marcha · Fricciones · Para decidir ·
 # Pendientes fuera de alcance; Cómo quedó, Decisiones sobre la marcha y las tres últimas van siempre y dicen «Ninguna»
 # cuando no hubo: una sección ausente o vacía rebota como olvido) y adónde volvió el trabajo en la
-# ficha: pr, o entregable cuando el encargo es contenido. Firmar a hecho cierra el chequeo
+# ficha: pr, o entregable cuando el encargo es contenido. El plan con `contrato: "produccion"`
+# es el encargo de una pieza de contenido: ocho secciones (Qué cambia · Fuente · Tarea · El
+# brief · La marca · Restricciones · Lo aprobado · Destino), sin visual, y su reporte de siete
+# (Hecho · Cómo quedó · Dónde vive · Gasto · Decisiones sobre la marcha · Fricciones · Para
+# decidir) con ficha.entregable. Firmar a hecho cierra el chequeo
 # que declara el plan: el contestado pasa a aplicado, el abierto a descartado.
 # Un 400 nombra todo lo que falta de una vez, con lo que cada sección afirma.
 # La nota va también a `ficha.destino`: las listas —en-curso, bandeja— sirven la ficha y
@@ -2054,6 +2058,56 @@ pedido)
         escribir PATCH "/api/items/planes/$(uri "$plan_pedido")/pedidos/$(uri "$2")"
       ;;
     *) echo "el pedido pasa a tomado, listo o descartado, o se anota con nota: «$3» no es un escritorio del pedido." >&2; exit 1 ;;
+    esac
+  fi
+  ;;
+# ─────────────────────────────────────────────────────────────────────────────
+# LA PAUSA — el encargo que espera a la persona. Es el pedido del plan dirigido a `fran`.
+#
+# La sesión que produce (/producing) frena cuando su ley le pide a la persona una
+# aprobación, una decisión o el OK de un gasto: deja su trabajo guardado como manda su ley,
+# abre la pausa con lo que presenta, y termina el turno. La sesión que habla con Fran
+# (/creator) se lo muestra tal cual y cierra la pausa con su respuesta, con sus palabras.
+#
+#   1. Quien produce: `pausa <plan> < {"que":"<la pregunta>","presenta":{"es":"<markdown>"},
+#      "material":["<ruta que devolvió capturar>"],"punto":"<etapa · ruta del punto guardado>",
+#      "de":"<su frente>"}` contesta el `numero` y el `enlace`.
+#   2. Quien habla con Fran: `pausa <plan> <n>` la trae entera; `pausa <plan> <n> responder
+#      "<las palabras de Fran>"` la cierra. `pausas` lista las que esperan, cruzando planes.
+#   3. Quien produce, al retomar: `pausa <plan> <n>` trae la respuesta en `nota`.
+#
+# El plan con una pausa viva se lee «espera tu respuesta» en el inicio y en su página, y
+# pide la mano en el recorrido creativo de su objetivo, con la acción «Responder la pausa».
+# ─────────────────────────────────────────────────────────────────────────────
+pausas)
+  leer "/api/pedidos?rol=fran&estado=$(uri "${1:-}")"
+  ;;
+pausa)
+  exige 1 "pausa <plan-id>   < {\"que\":\"<la pregunta para Fran>\",\"presenta\":{\"es\":\"<lo que se le presenta, en markdown>\"},\"material\":[\"<ruta>\"],\"punto\":\"<etapa · ruta del punto guardado>\",\"de\":\"<frente>\"}   (la abre)
+  pausa <plan-id> <n>                        (la lee, con la respuesta cuando ya está)
+  pausa <plan-id> <n> responder \"<las palabras de Fran>\"   (la cierra con su respuesta)
+  pausa <plan-id> <n> descartar [nota]       (de quien la abrió, cuando dejó de hacerle falta)" "$@"
+  plan_pausa="$1"
+  if [ -z "${2:-}" ]; then
+    vaciar_cola
+    jq -c '. + {rol:"fran"}' |
+      escribir POST "/api/items/planes/$(uri "$plan_pausa")/pedidos"
+  elif [ -z "${3:-}" ]; then
+    leer "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
+  else
+    case "$3" in
+    responder)
+      [ -n "${4:-}" ] || { echo "uso: bitacora-api pausa <plan-id> <n> responder \"<las palabras de Fran>\"" >&2; exit 1; }
+      vaciar_cola
+      jq -cn --arg n "$4" '{estado:"listo",nota:$n}' |
+        escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
+      ;;
+    descartar)
+      vaciar_cola
+      jq -cn --arg n "${4:-}" '{estado:"descartado"} + (if $n == "" then {} else {nota:$n} end)' |
+        escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
+      ;;
+    *) echo "la pausa se responde o se descarta: «$3» no es un gesto suyo — uso: bitacora-api pausa <plan-id> <n> responder \"<las palabras de Fran>\"" >&2; exit 1 ;;
     esac
   fi
   ;;
@@ -2722,6 +2776,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api bajar <ruta> [destino]       (baja un adjunto con la llave del proyecto: la ruta o la url que contestaron adjuntos, capturar o pedido)
   bitacora-api pedidos [--rol qa] [--estado …]  (los pedidos entre sesiones del proyecto, cruzando planes: la bandeja del frente que los toma; sin estado, los vivos)
   bitacora-api pedido <plan-id> <n>         (uno, con su vuelta: la nota, los adjuntos por su dirección, el chequeo)
+  bitacora-api pausas                       (los encargos que esperan a Fran: las pausas vivas, cruzando planes) · bitacora-api pausa <plan-id> <n>   (una, entera)
   bitacora-api visto <id>                   (lo que la persona dijo de cada paso del chequeo)
   bitacora-api resolver ideas <id> <n>      < {"resolucion":"…"}  (la firma de la persona sobre la propuesta n de una idea: con todas
                                              firmadas, la idea puede pasar a hecho con su nota — es la puerta del paso 0 creativo)
@@ -2786,6 +2841,11 @@ Escritura (el cuerpo JSON entra por stdin):
         el frente que mira captura el antes y el después; donde el push despliega, es el valor por defecto) · chequeo (queda una decisión de diseño
         abierta que solo se toma mirando y cuya respuesta cambia el código, antes de salir: el cuerpo la nombra en una línea, se abre el chequeo
         visual declarando este plan y la firma lo cierra)
+        "contrato":"produccion" hace del plan un ENCARGO DE PRODUCCIÓN, el que /creator le escribe a la sesión que produce una pieza de contenido
+        (/producing): mismo ciclo y otras secciones —# Qué cambia · # Fuente · # Tarea · # El brief · # La marca · # Restricciones · # Lo aprobado · # Destino,
+        con «Ninguna» en Restricciones y en Lo aprobado cuando no hay—, sin "visual" (lo que se mira de una pieza son sus pausas), con "modelo" y "esfuerzo";
+        se entrega con ficha.entregable y el reporte ## Hecho · ## Cómo quedó · ## Dónde vive · ## Gasto · ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir;
+        se corrige con `corregir planes <id>` mientras el plan no empezó (después, 400 contratoFijo), y `item planes <id>` lo trae en `contrato`
   bitacora-api bug <subarea>                   {"titulo":"…","prioridad":"critico","cuerpo":{"es":"# Qué se observa\n…\n\n# Dónde\n…\n\n# Cómo se reproduce\n…"},"flujos":["…"]}
         "prioridad": critico · mayor · menor · algun-dia — en qué orden se toma entre los de su escritorio; sin declararla es mayor,
         el crítico abierto encabeza toda lista, cruzando áreas, y algun-dia espera su momento al pie, como el del plan
@@ -2893,6 +2953,15 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api pedido <plan-id> <n> listo   {"nota":"…","adjuntos":["<ruta que devolvió capturar>"],"chequeo":"<id del chequeo abierto>"}
                                             (lo que volvió; se contesta con una línea y el enlace a quien lo pidió)
   bitacora-api pedido <plan-id> <n> descartado [nota]   (de quien lo pidió, cuando dejó de hacerle falta)
+  La pausa (el encargo que espera a la persona: el pedido del plan dirigido a `fran`):
+  bitacora-api pausa <plan-id>              {"que":"<la pregunta para Fran>","presenta":{"es":"<lo que se le presenta, en markdown, tal cual>"},"material":["<ruta que devolvió capturar>"],"punto":"<etapa · ruta del punto guardado>","de":"<frente>"}
+                                            → contesta numero y enlace; la abre la sesión que produce (/producing) cuando su ley le pide a la persona una
+                                              aprobación, una decisión o el OK de un gasto, y le avisa a la que piensa con UNA línea y el enlace
+  bitacora-api pausa <plan-id> <n>          (la lee entera: lo que presenta, su material por su dirección, el punto guardado y, respondida, la respuesta en `nota`)
+  bitacora-api pausa <plan-id> <n> responder "<las palabras de Fran>"   (la cierra: lo hace la sesión que habla con Fran; sin las palabras, 400 pausaSinRespuesta)
+  bitacora-api pausa <plan-id> <n> descartar [nota]   (de quien la abrió, cuando dejó de hacerle falta)
+  bitacora-api pausas                       (las que esperan a Fran, cruzando planes; el plan con una viva se lee «espera tu respuesta» en el inicio
+                                             y en su página, y en el recorrido creativo de su objetivo es la pieza que pide la mano: «Responder la pausa»)
   El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
   bitacora-api tomar <id> [nota]            → en-curso; la nota (y ficha.destino) es el worktree o la copia que lo tiene
   bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…","review":"…"},"consumo":{…},"nota":"…"} → entregado
@@ -2902,6 +2971,8 @@ Escritura (el cuerpo JSON entra por stdin):
                                              ## Evidencia · ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir · ## Pendientes fuera de alcance —
                                              Cómo quedó, Decisiones sobre la marcha y las tres últimas van siempre y dicen «Ninguna» cuando no hubo, porque ausente o vacía rebota;
                                              la review publicada en la bitácora va en ficha.review)
+                                            (el plan con "contrato":"produccion" entrega con ficha.entregable y su reporte de siete: ## Hecho · ## Cómo quedó ·
+                                             ## Dónde vive · ## Gasto · ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir)
   bitacora-api quitar-tanda <tipo> <id> <n> [porqué]   retira la tanda n del consumo (desde 1, en el orden en que se declararon); la historia deja
                                             constancia de cuál salió y el porqué, y un número fuera de rango contesta 400 con el rango que hay
   bitacora-api firmar <id> [nota]           → hecho; la nota es la PR mergeada. Cierra sus chequeos y deja vigente en su flujo cada `despues` aprobado
