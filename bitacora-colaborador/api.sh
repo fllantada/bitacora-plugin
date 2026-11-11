@@ -1258,13 +1258,13 @@ pdf)
 # que se navega dicen igual.
 # ─────────────────────────────────────────────────────────────────────────────
 tipo)
-  exige 1 "tipo <analisis|ideas|guiones|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|objetivos> [estado]" "$@"
+  exige 1 "tipo <analisis|briefs|ideas|guiones|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|objetivos> [estado]" "$@"
   leer "/api/items/$(uri "$1")${2:+?estado=$(uri "${2:-}")}"
   ;;
 abiertos)
   # Con la palabra de prioridad deja solo esas: `abiertos bugs critico` son los críticos sin cerrar,
   # y `abiertos planes algun-dia` lo que espera su momento en todas las áreas.
-  exige 1 "abiertos <analisis|ideas|guiones|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|objetivos> [prioridad]" "$@"
+  exige 1 "abiertos <analisis|briefs|ideas|guiones|planes|bugs|gestiones|client-reports|decisiones|simulaciones|consultas|consultas-cliente|chequeos|objetivos> [prioridad]" "$@"
   leer "/api/items/$(uri "$1")?abiertos${2:+&prioridad=$(uri "${2:-}")}"
   ;;
 de-la-subarea | del-hilo)
@@ -1308,7 +1308,7 @@ analisis)
     escribir POST "/api/hilos/$(uri "$1")/analisis"
   fi
   ;;
-idea | guion | plan | bug | gestion | client-report | simulacion | consulta | consulta-cliente | chequeo)
+brief | idea | guion | plan | bug | gestion | client-report | simulacion | consulta | consulta-cliente | chequeo)
   exige 1 "$comando <subarea>   < JSON" "$@"
   # Un id donde va la sub-área es la lectura confundida con el alta: se nombra la lectura.
   if [ -t 0 ] && [[ "$1" =~ ^[0-9a-f]{24}$ ]]; then
@@ -1321,6 +1321,7 @@ idea | guion | plan | bug | gestion | client-report | simulacion | consulta | co
   esac
   vaciar_cola
   case "$comando" in
+    brief) ruta_tipo=briefs ;;
     idea) ruta_tipo=ideas ;;
     guion) ruta_tipo=guiones ;;
     plan) ruta_tipo=planes ;;
@@ -1407,6 +1408,13 @@ resolver)
   exige 3 "resolver ideas <id> <n-de-propuesta>   < {\"resolucion\":\"…\"}" "$@"
   vaciar_cola
   escribir PATCH "/api/items/$(uri "$1")/$(uri "$2")/propuestas/$(uri "$3")"
+  ;;
+# Un campo del brief, contestado o corregido: el valor nuevo con quién lo dice; la fecha la
+# estampa el servidor y lo que el campo decía queda en su historia.
+campo-del-brief)
+  exige 2 "campo-del-brief <id> <campo>   < {\"valor\":\"…\",\"quien\":\"<tenant> · <sesión>\"}" "$@"
+  vaciar_cola
+  escribir PATCH "/api/items/briefs/$(uri "$1")/campos/$(uri "$2")"
   ;;
 # La firma del guion tiene su puerta (`firmar guiones`, abajo, en el `firmar` unificado): el
 # veredicto de la persona con los hooks que sí se producen, con el autor y la fecha que
@@ -2704,7 +2712,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api abiertos <tipo> [prioridad]  (los que quedaron sin cerrar; el análisis y la decisión no tienen;
                                              el bug crítico va primero, y `abiertos bugs critico` deja solo esos;
                                              `abiertos planes algun-dia` y `abiertos bugs algun-dia`, lo que espera su momento en todas las áreas)
-        tipo = analisis | ideas | guiones | planes | bugs | gestiones | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos | objetivos
+        tipo = analisis | briefs | ideas | guiones | planes | bugs | gestiones | client-reports | decisiones | simulaciones | consultas | consultas-cliente | chequeos | objetivos
   bitacora-api simulaciones [estado]        (los experimentos del proyecto; `calificando` son los que esperan a la persona)
   bitacora-api chequeos [estado]            (lo que se aprueba MIRANDO; `abierto` espera los ojos de la persona)
   bitacora-api capturar [--reemplazar] <subarea> <archivo...> (sube las capturas y devuelve la ruta de cada una: la nombra el paso de un chequeo, y el texto de un punto la muestra con ![pie](/adjunto/<ruta>);
@@ -2717,6 +2725,9 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api visto <id>                   (lo que la persona dijo de cada paso del chequeo)
   bitacora-api resolver ideas <id> <n>      < {"resolucion":"…"}  (la firma de la persona sobre la propuesta n de una idea: con todas
                                              firmadas, la idea puede pasar a hecho con su nota — es la puerta del paso 0 creativo)
+  bitacora-api campo-del-brief <id> <campo> < {"valor":"…","quien":"<tenant> · <sesión>"}  (contesta o corrige un campo del brief:
+                                             el valor en una de sus tres formas, con quién lo dice; lo que decía queda guardado,
+                                             y la respuesta trae a quién espera el brief y lo que sigue abierto)
   bitacora-api firmar guiones <id>          < {"veredicto":"…","hooks":["a","perdida"]}  (la firma del guion, del dueño: una llave de
                                              colaborador contesta 403 `firmaDelDueno`; el veredicto con las variantes
                                              de hook que sí se producen; autor y fecha los pone el servidor, y el guion queda hecho y sellado)
@@ -2740,6 +2751,10 @@ Escritura (el cuerpo JSON entra por stdin):
         lugar o darle tambienEn contesta 400 sinLugar, porque vive sin lugar —;
         "vigente":true es el que explica algo que dura y le sirve a quien abra el área dentro de unos meses: sigue a la vista hasta que se descarta;
         sin la marca es material de trabajo: el que lleva semanas sin tocarse sale de la lista viva a «Lo anterior», y reescribirlo lo trae arriba
+  bitacora-api brief <subarea>                 {"titulo":"…","queEs":"…","ficha":{"de":"<tenant> · <sesión>","marca":"<marca>","origen":"<enlace>"},"brief":{"objetivo":"…","publico":{"abierto":"proyecto","pregunta":"…"},"mensaje":"…","angulos":{"otraPieza":"por qué"},"accion":"…","piezas":"…","nuncaDice":"…","material":"…","paraCuando":"…"}}
+        el pedido de una pieza a la productora (`-p productora brief pedidos`): los nueve campos van siempre, cada uno con su
+        contenido, {"abierto":"proyecto|productora|fran","pregunta":"…"} o {"otraPieza":"…"}; nace abierto, se lee «esperando
+        al proyecto» mientras le queda un campo abierto del proyecto, y pasa a procesado con su nota cuando no le queda ninguno
   bitacora-api idea <subarea>                  {"titulo":"…","queEs":"…","idea":{"subtitulo":"la escena en una frase","momento":[{"texto":"…","imagen":"<ruta de adjunto>"}],"pilares":[{"nombre":"Parar","texto":"…"}],"hooks":[{"letra":"A","frase":"…","mecanismo":"…","evidencia":"…"}],"estructura":[{"tramo":"0–5 s · Hook","que":"…","tecnica":"…"}],"propuestas":[{"decision":"…","propuesta":"…","tipo":"propuesta"}],"audiencia":"…","canal":"…","formato":"…","recursos":[{"k":"…","v":"…"}],"restricciones":[{"k":"…","v":"…"}]},"objetivo":"<id>"}
         el paso 0 del proceso creativo: la idea pre-armada por la sesión, que la persona firma propuesta por propuesta
         ANTES de pensar el cómo; la `resolucion` no viaja con el cuerpo — se firma con `resolver ideas <id> <n>` — y
