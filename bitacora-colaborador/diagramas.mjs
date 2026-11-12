@@ -33,10 +33,10 @@ import { fileURLToPath } from "node:url";
 /**
  * El ancho que el papel le deja a un diagrama.
  *
- * El papel ancho de un documento crece con la pantalla hasta su tope (`globals.css`,
- * `--papel-tope-ancho`), y el dibujo usa el ancho entero entre los dos márgenes del papel.
- * Esta es la medida que entra entera en el papel de un escritorio: un dibujo más ancho se
- * lee achicado en una pantalla más chica.
+ * El papel crece con la pantalla hasta su tope (`globals.css`, `--papel-tope`), y el dibujo
+ * se centra a su tamaño natural entre los dos márgenes del papel. Esta es la medida con que se
+ * escribe un dibujo para el papel de un escritorio: hasta ella se lee a su tamaño o apenas
+ * achicado, y uno más ancho se lee achicado en una pantalla más chica.
  */
 export const PAPEL = 1144;
 
