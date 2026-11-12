@@ -34,11 +34,12 @@ import { fileURLToPath } from "node:url";
  * El ancho que el papel le deja a un diagrama.
  *
  * El papel crece con la pantalla hasta su tope (`globals.css`, `--papel-tope`), y el dibujo
- * se centra a su tamaño natural entre los dos márgenes del papel. Esta es la medida con que se
- * escribe un dibujo para el papel de un escritorio: hasta ella se lee a su tamaño o apenas
- * achicado, y uno más ancho se lee achicado en una pantalla más chica.
+ * se centra a su tamaño natural entre los dos márgenes del papel. Esta medida es el ancho de
+ * la figura en ese tope: `--papel-tope` menos los dos `--papel-x` y el borde del papel, medida
+ * en la página. Es la medida con que se escribe un dibujo para el papel de un escritorio:
+ * hasta ella se lee a su tamaño, y uno más ancho se achica para entrar.
  */
-export const PAPEL = 1144;
+export const PAPEL = 1078;
 
 /**
  * El hash con el que un diagrama se aparea con su bloque en el cuerpo: el mismo que el
