@@ -33,8 +33,10 @@ import { fileURLToPath } from "node:url";
 /**
  * El ancho que el papel le deja a un diagrama.
  *
- * El papel ancho de un documento llega a 1280px con 68 de aire a cada lado
- * (`globals.css`, `.md.ancho`), así que esto es lo que queda entre los dos márgenes.
+ * El papel ancho de un documento crece con la pantalla hasta su tope (`globals.css`,
+ * `--papel-tope-ancho`), y el dibujo usa el ancho entero entre los dos márgenes del papel.
+ * Esta es la medida que entra entera en el papel de un escritorio: un dibujo más ancho se
+ * lee achicado en una pantalla más chica.
  */
 export const PAPEL = 1144;
 
