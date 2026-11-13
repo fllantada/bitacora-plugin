@@ -2121,6 +2121,27 @@ pausa)
     esac
   fi
   ;;
+# ─────────────────────────────────────────────────────────────────────────────
+# Los gastos de un encargo de producción: lo que se pagó para producir la pieza, uno por uno.
+# Quien produce anota cada gasto en el momento, con lo que su ley cuenta como pago; la
+# bitácora suma la pieza y el objetivo contra los topes del objetivo (`presupuesto`), y
+# el gasto que deja un tope pasado vuelve con su `aviso`: lo que pasa un tope se pide
+# antes, con una pausa de gasto (`pausa <plan>` con "clase":"gasto").
+# ─────────────────────────────────────────────────────────────────────────────
+gastos)
+  exige 1 "gastos <plan-id>   (los gastos del encargo y la cuenta de su pieza y de su objetivo)" "$@"
+  leer "/api/items/planes/$(uri "$1")/gastos"
+  ;;
+gasto)
+  exige 1 "gasto <plan-id>   < {\"que\":\"<qué se compró>\",\"proveedor\":\"<a quién>\",\"costo\":<dólares>}   (lo anota; contesta la cuenta y, si pasó un tope, el aviso)" "$@"
+  vaciar_cola
+  escribir POST "/api/items/planes/$(uri "$1")/gastos"
+  ;;
+quitar-gasto)
+  exige 2 "quitar-gasto <plan-id> <n> [porqué]   (retira el gasto n, el que se anotó mal)" "$@"
+  vaciar_cola
+  printf '{}' | escribir DELETE "/api/items/planes/$(uri "$1")/gastos/$(uri "$2")?porque=$(uri "${3:-}")"
+  ;;
 # Sin stdin: un DELETE no lleva cuerpo, y esperarlo colgaría la terminal en un Ctrl-D.
 sacar)
   exige 2 "sacar <tipo> <id>" "$@"
@@ -2786,7 +2807,8 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api bajar <ruta> [destino]       (baja un adjunto con la llave del proyecto: la ruta o la url que contestaron adjuntos, capturar o pedido)
   bitacora-api pedidos [--rol qa] [--estado …]  (los pedidos entre sesiones del proyecto, cruzando planes: la bandeja del frente que los toma; sin estado, los vivos)
   bitacora-api pedido <plan-id> <n>         (uno, con su vuelta: la nota, los adjuntos por su dirección, el chequeo)
-  bitacora-api pausas                       (los encargos que esperan a Fran: las pausas vivas, cruzando planes) · bitacora-api pausa <plan-id> <n>   (una, entera)
+  bitacora-api pausas                       (las pausas vivas, cruzando planes, cada una con a quién `espera`: fran o creator) · bitacora-api pausa <plan-id> <n>   (una, entera)
+  bitacora-api gastos <plan-id>             (los gastos de un encargo de producción y la cuenta de su presupuesto)
   bitacora-api visto <id>                   (lo que la persona dijo de cada paso del chequeo)
   bitacora-api resolver ideas <id> <n>      < {"resolucion":"…"}  (la firma de la persona sobre la propuesta n de una idea: con todas
                                              firmadas, la idea puede pasar a hecho con su nota — es la puerta del paso 0 creativo)
@@ -2879,6 +2901,8 @@ Escritura (el cuerpo JSON entra por stdin):
         "participacion":{"modo":"autonomo"} o {"modo":"etapas","etapas":["guion","audiovisual"]} es del objetivo creativo: cómo participa Fran —autónomo
         por omisión, CREATOR responde las paradas; por etapas, la pausa de una etapa elegida (hook · idea · guion · imagenes · audio · audiovisual) lo
         espera a él—; en un parche va entera y null vuelve a la autónoma (400 participacionSinCreativo en un objetivo de otro modo)
+        "presupuesto":{"porPieza":1.5,"total":5} son los topes del objetivo creativo en dólares —lo libre de cada pieza y del conjunto—; su lectura trae,
+        para el dueño, la cuenta de cada pieza en `cuenta`, y lo que pasa un tope se pide con una pausa de gasto; en un parche va entero y null lo saca (400 presupuestoSinCreativo)
         cada pieza lo nombra con "objetivo":"<id>" al abrirla o con `corregir <tipo> <id>` —{"objetivo":null} lo quita—: uno abierto, y nunca desde otro objetivo
         "dependeDe" son los objetivos que este espera, los que se logran antes: al abrirlo, o con `corregir objetivos <id>` {"dependeDe":["<id>","<id>"]},
         la lista entera en su orden, y {"dependeDe":[]} la saca; cada id es OTRO objetivo del proyecto y la lista deja el orden sin ciclos
@@ -2977,6 +3001,15 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api pausa <plan-id> <n> responder "<las palabras de Fran>" [--cambios]   (la cierra con la respuesta de Fran; sin las palabras, 400 pausaSinRespuesta)
   bitacora-api pausa <plan-id> <n> delegar "<la respuesta de CREATOR>" [--cambios]  (la cierra CREATOR por delegación; la que espera a Fran contesta 400 pausaEsperaAFran)
   bitacora-api pausa <plan-id> <n> descartar [nota]   (de quien la abrió, cuando dejó de hacerle falta)
+  La pausa de gasto (lo que pasaría un tope del presupuesto, pedido antes de pagarlo; espera siempre a Fran):
+  bitacora-api pausa <plan-id>              {"que":"<la pregunta>","clase":"gasto","gasto":{"que":"<qué se compra>","proveedor":"<a quién>","costo":<dólares>,"porque":"<por qué la pieza lo necesita>"},"de":"<frente>"}
+                                            (400 gastoIncompleto sin su `gasto`; se cierra con `responder` —autoriza— o `responder … --cambios` —devuelve—: sin veredicto, 400 gastoSinVeredicto;
+                                             su lectura trae la cuenta del presupuesto, y lo autorizado sube el tope de la pieza y el del objetivo en lo mismo)
+  Los gastos del encargo de producción:
+  bitacora-api gastos <plan-id>             (la lista y la cuenta: lo gastado, lo autorizado, el tope y lo que queda de la pieza y del objetivo; los costos son del dueño, otro rol 403)
+  bitacora-api gasto <plan-id>              {"que":"<qué se compró>","proveedor":"<a quién>","costo":<dólares>}   (en un plan de otro contrato, 400 gastoSinProduccion;
+                                             el que deja un tope pasado queda anotado y vuelve con `aviso`: presupuestoSuperado)
+  bitacora-api quitar-gasto <plan-id> <n> [porqué]   (retira el que se anotó mal; un número que no está, 400 gastoInexistente)
   bitacora-api pausas                       (las vivas, cruzando planes, cada una con a quién `espera`; la que espera a Fran abre su plan con el material en grande
                                              y la caja para contestar, lo pone en «Te espera» y pide la mano en el recorrido creativo; la que espera a CREATOR la responde él)
   El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
