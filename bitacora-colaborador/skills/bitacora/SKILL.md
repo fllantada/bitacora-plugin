@@ -1869,7 +1869,12 @@ live area answers 404 `areaInexistente` with the ones there are, and a retired a
 $API flujos --area busqueda     # the flows that live in that area and the ones with a step passing through it
 $API editar-flujo flujo-pagina-catalogo <<< '{"area":"engine"}'   # the flow's home
 $API editar-flujo flujo-pagina-catalogo <<< '{"pasos":[{"id":"p1","que":"…"},{"id":"p2","que":"…","area":"busqueda"}]}'
+$API editar-flujo flujo-pagina-catalogo '{"area":"engine"}'   # the JSON also enters as an argument
 ```
+
+**The flow's reading comes back as it goes out**: the `pasos` that `$API flujo <slug>` serves
+are edited and sent back as they are, and an optional text field set to `null` is taken as
+absent.
 
 `$API flujo <slug>` brings its home (`casa`) and the live areas it touches (`areas`, home
 first), each with its name and link; the flow's page says in its header where it lives and

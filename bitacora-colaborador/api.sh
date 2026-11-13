@@ -599,7 +599,13 @@ escribir() {
     return 1
     ;;
   *)
-    echo "El servidor dijo que no ($codigo): $salida" >&2
+    # El 400 que junta varias reglas trae `detalles`: una regla por línea, con su clave.
+    if jq -e '(.detalles // []) | length > 0' >/dev/null 2>&1 <<<"$salida"; then
+      echo "El servidor dijo que no ($codigo): faltan arreglar estas reglas, todas a la vez:" >&2
+      jq -r '.detalles[] | "  - [\(.clave)] \(.mensaje | gsub("\n"; "\n    "))"' <<<"$salida" >&2
+    else
+      echo "El servidor dijo que no ($codigo): $salida" >&2
+    fi
     return 1
     ;;
   esac
@@ -2244,8 +2250,11 @@ editar-subarea | editar-hilo | editar-linea)
 fusionar)
   exige 1 "fusionar <sub-área> <área-o-sub-área>   (o {\"en\":\"…\"} por stdin)" "$@"
   vaciar_cola
-  if [ "$#" -ge 2 ]; then jq -cn --arg en "$2" '{en:$en}'; else cat; fi |
+  if [ "$#" -ge 2 ]; then
+    jq -cn --arg en "$2" '{en:$en}' | escribir POST "/api/lineas/$(uri "$1")/fusionar"
+  else
     escribir POST "/api/lineas/$(uri "$1")/fusionar"
+  fi
   ;;
 # ascender <sub-área> [<área>] — la sub-área que es un mundo aparte pasa a ser un ÁREA, con
 # ella como su lugar: sus piezas, su cronología y su libro quedan en el mismo slug.
@@ -2267,9 +2276,14 @@ abrir-flujo)
 # Los pasos viajan con el `id` que trae `flujo <slug>`, y el que nace, sin él: el id es lo que
 # deja la pantalla de cada paso con él. El recorrido que cambió mientras se escribía contesta 409.
 editar-flujo)
-  exige 1 "editar-flujo <slug>   < {\"estado\":\"construido\"} · {\"area\":\"<su casa>\"} · {\"sumarStack\":[\"algolia\"]} · {\"pasos\":[{\"id\":\"p1\",\"que\":\"…\",\"area\":\"<otra área>\"},{\"que\":\"el paso nuevo\"}]}" "$@"
+  exige 1 "editar-flujo <slug> [<json>]   < {\"estado\":\"construido\"} · {\"area\":\"<su casa>\"} · {\"sumarStack\":[\"algolia\"]} · {\"pasos\":[{\"id\":\"p1\",\"que\":\"…\",\"area\":\"<otra área>\"},{\"que\":\"el paso nuevo\"}]}" "$@"
   vaciar_cola
-  escribir PATCH "/api/flujos/$(uri "$1")"
+  # El JSON entra como segundo argumento o por stdin; el `pasos` que `flujo <slug>` sirvió se devuelve tal cual.
+  if [ "$#" -ge 2 ]; then
+    printf '%s' "$2" | escribir PATCH "/api/flujos/$(uri "$1")"
+  else
+    escribir PATCH "/api/flujos/$(uri "$1")"
+  fi
   ;;
 # La pantalla vigente de un paso: sube la captura a la puerta del paso, que la guarda con un
 # nombre nuevo en la carpeta del flujo y la deja vigente en ese dispositivo. `--plan` nombra el
@@ -3127,7 +3141,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api editar-subarea <slug>        {"estado":"resuelta"} · {"brief":"…"} · {"area":"infra"} · {"piso":true}   (= editar-hilo)
   bitacora-api abrir-flujo                  {"nombre":"…","queEs":"…","categoria":"runtime","area":"<su casa>",
                                              "pasos":[{"etapa":"…","actor":"…","que":"…","pieza":"algolia","area":"<otra área>","detalle":"…"}]}
-  bitacora-api editar-flujo <slug>          {"estado":"construido"} · {"area":"<su casa>"} · {"sumarStack":[…]} · {"sumarGlosario":[…]}
+  bitacora-api editar-flujo <slug> [<json>]  {"estado":"construido"} · {"area":"<su casa>"} · {"sumarStack":[…]} · {"sumarGlosario":[…]}
                                             · {"pasos":[…]} reemplaza el recorrido entero (un paso no se parchea solo):
                                             cada paso viaja con el `id` que trae `flujo <slug>`, y el nuevo sin él;
                                             el recorrido que cambió mientras se escribía contesta 409 flujoCambiado
