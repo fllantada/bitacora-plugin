@@ -2071,13 +2071,17 @@ pedido)
 #
 #   1. Quien produce: `pausa <plan> < {"que":"<la pregunta>","presenta":{"es":"<markdown>"},
 #      "material":["<ruta que devolvió capturar>"],"punto":"<etapa · ruta del punto guardado>",
-#      "de":"<su frente>"}` contesta el `numero` y el `enlace`.
-#   2. Quien habla con Fran: `pausa <plan> <n>` la trae entera; `pausa <plan> <n> responder
-#      "<las palabras de Fran>"` la cierra. `pausas` lista las que esperan, cruzando planes.
+#      "etapa":"<hook|idea|guion|imagenes|audio|audiovisual>","de":"<su frente>"}` contesta el
+#      `numero` y el `enlace`.
+#   2. Quien habla con Fran: `pausa <plan> <n>` la trae entera, con `espera` (fran o creator);
+#      `pausa <plan> <n> responder "<las palabras de Fran>"` la cierra con las de Fran, y
+#      `pausa <plan> <n> delegar "<la respuesta>"` con la de CREATOR por delegación; las dos
+#      con `--cambios` cuando la respuesta pide cambios. `pausas` lista las vivas, cruzando planes.
 #   3. Quien produce, al retomar: `pausa <plan> <n>` trae la respuesta en `nota`.
 #
-# El plan con una pausa viva se lee «espera tu respuesta» en el inicio y en su página, y
-# pide la mano en el recorrido creativo de su objetivo, con la acción «Responder la pausa».
+# La pausa que espera a Fran —una etapa que eligió, o un plan fuera del objetivo creativo— abre
+# la página del plan con su material en grande y la caja para contestar, y lo pone en «Te
+# espera»; la que espera a CREATOR deja el plan en manos de la sesión.
 # ─────────────────────────────────────────────────────────────────────────────
 pausas)
   leer "/api/pedidos?rol=fran&estado=$(uri "${1:-}")"
@@ -2085,7 +2089,8 @@ pausas)
 pausa)
   exige 1 "pausa <plan-id>   < {\"que\":\"<la pregunta para Fran>\",\"presenta\":{\"es\":\"<lo que se le presenta, en markdown>\"},\"material\":[\"<ruta>\"],\"punto\":\"<etapa · ruta del punto guardado>\",\"de\":\"<frente>\"}   (la abre)
   pausa <plan-id> <n>                        (la lee, con la respuesta cuando ya está)
-  pausa <plan-id> <n> responder \"<las palabras de Fran>\"   (la cierra con su respuesta)
+  pausa <plan-id> <n> responder \"<las palabras de Fran>\" [--cambios]   (la cierra con la respuesta de Fran)
+  pausa <plan-id> <n> delegar \"<la respuesta de CREATOR>\" [--cambios]   (la cierra CREATOR por delegación; la que espera a Fran contesta 400 pausaEsperaAFran)
   pausa <plan-id> <n> descartar [nota]       (de quien la abrió, cuando dejó de hacerle falta)" "$@"
   plan_pausa="$1"
   if [ -z "${2:-}" ]; then
@@ -2096,10 +2101,15 @@ pausa)
     leer "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
   else
     case "$3" in
-    responder)
-      [ -n "${4:-}" ] || { echo "uso: bitacora-api pausa <plan-id> <n> responder \"<las palabras de Fran>\"" >&2; exit 1; }
+    responder | delegar)
+      [ -n "${4:-}" ] || { echo "uso: bitacora-api pausa <plan-id> <n> $3 \"<$([ "$3" = responder ] && echo 'las palabras de Fran' || echo 'la respuesta de CREATOR')>\" [--cambios]" >&2; exit 1; }
+      case "${5:-}" in
+      "" | --cambios) ;;
+      *) echo "la respuesta conoce --cambios; «$5» no es suyo." >&2; exit 1 ;;
+      esac
       vaciar_cola
-      jq -cn --arg n "$4" '{estado:"listo",nota:$n}' |
+      jq -cn --arg n "$4" --arg r "$([ "$3" = responder ] && echo fran || echo creator)" --arg v "$([ "${5:-}" = --cambios ] && echo cambios || echo ok)" \
+        '{estado:"listo",nota:$n,respondio:$r,veredicto:$v}' |
         escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
       ;;
     descartar)
@@ -2107,7 +2117,7 @@ pausa)
       jq -cn --arg n "${4:-}" '{estado:"descartado"} + (if $n == "" then {} else {nota:$n} end)' |
         escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
       ;;
-    *) echo "la pausa se responde o se descarta: «$3» no es un gesto suyo — uso: bitacora-api pausa <plan-id> <n> responder \"<las palabras de Fran>\"" >&2; exit 1 ;;
+    *) echo "la pausa se responde, se delega o se descarta: «$3» no es un gesto suyo — uso: bitacora-api pausa <plan-id> <n> responder \"<las palabras de Fran>\" | delegar \"<la respuesta de CREATOR>\"" >&2; exit 1 ;;
     esac
   fi
   ;;
@@ -2866,6 +2876,9 @@ Escritura (el cuerpo JSON entra por stdin):
         es del objetivo creativo: los pasos que le pide a Fran en su orden, de donde salen el orden y el nombre de sus entregables, y cada `checkpoint`
         la etapa del motor que esa aprobación deja aprobada; `idea` y `guion` nombran a sus tipos; en un parche va entero y null lo saca
         (400 pasoRepetido · pasoSinNombre · pasoConEntregable, cuando deja afuera el paso de un entregable que existe)
+        "participacion":{"modo":"autonomo"} o {"modo":"etapas","etapas":["guion","audiovisual"]} es del objetivo creativo: cómo participa Fran —autónomo
+        por omisión, CREATOR responde las paradas; por etapas, la pausa de una etapa elegida (hook · idea · guion · imagenes · audio · audiovisual) lo
+        espera a él—; en un parche va entera y null vuelve a la autónoma (400 participacionSinCreativo en un objetivo de otro modo)
         cada pieza lo nombra con "objetivo":"<id>" al abrirla o con `corregir <tipo> <id>` —{"objetivo":null} lo quita—: uno abierto, y nunca desde otro objetivo
         "dependeDe" son los objetivos que este espera, los que se logran antes: al abrirlo, o con `corregir objetivos <id>` {"dependeDe":["<id>","<id>"]},
         la lista entera en su orden, y {"dependeDe":[]} la saca; cada id es OTRO objetivo del proyecto y la lista deja el orden sin ciclos
@@ -2956,14 +2969,16 @@ Escritura (el cuerpo JSON entra por stdin):
                                             (lo que volvió; se contesta con una línea y el enlace a quien lo pidió)
   bitacora-api pedido <plan-id> <n> descartado [nota]   (de quien lo pidió, cuando dejó de hacerle falta)
   La pausa (el encargo que espera a la persona: el pedido del plan dirigido a `fran`):
-  bitacora-api pausa <plan-id>              {"que":"<la pregunta para Fran>","presenta":{"es":"<lo que se le presenta, en markdown, tal cual>"},"material":["<ruta que devolvió capturar>"],"punto":"<etapa · ruta del punto guardado>","de":"<frente>"}
+  bitacora-api pausa <plan-id>              {"que":"<la pregunta para Fran>","presenta":{"es":"<lo que se le presenta, en markdown, tal cual>"},"material":["<ruta que devolvió capturar>"],"punto":"<etapa · ruta del punto guardado>","etapa":"<hook|idea|guion|imagenes|audio|audiovisual>","de":"<frente>"}
                                             → contesta numero y enlace; la abre la sesión que produce (/producing) cuando su ley le pide a la persona una
                                               aprobación, una decisión o el OK de un gasto, y le avisa a la que piensa con UNA línea y el enlace
-  bitacora-api pausa <plan-id> <n>          (la lee entera: lo que presenta, su material por su dirección, el punto guardado y, respondida, la respuesta en `nota`)
-  bitacora-api pausa <plan-id> <n> responder "<las palabras de Fran>"   (la cierra: lo hace la sesión que habla con Fran; sin las palabras, 400 pausaSinRespuesta)
+  bitacora-api pausa <plan-id> <n>          (la lee entera: lo que presenta, su material por su dirección, el punto guardado, su `etapa`, viva a quién `espera` —fran o creator—
+                                             y, respondida, la respuesta en `nota` con quién la dio en `respondio` y su `veredicto`)
+  bitacora-api pausa <plan-id> <n> responder "<las palabras de Fran>" [--cambios]   (la cierra con la respuesta de Fran; sin las palabras, 400 pausaSinRespuesta)
+  bitacora-api pausa <plan-id> <n> delegar "<la respuesta de CREATOR>" [--cambios]  (la cierra CREATOR por delegación; la que espera a Fran contesta 400 pausaEsperaAFran)
   bitacora-api pausa <plan-id> <n> descartar [nota]   (de quien la abrió, cuando dejó de hacerle falta)
-  bitacora-api pausas                       (las que esperan a Fran, cruzando planes; el plan con una viva se lee «espera tu respuesta» en el inicio
-                                             y en su página, y en el recorrido creativo de su objetivo es la pieza que pide la mano: «Responder la pausa»)
+  bitacora-api pausas                       (las vivas, cruzando planes, cada una con a quién `espera`; la que espera a Fran abre su plan con el material en grande
+                                             y la caja para contestar, lo pone en «Te espera» y pide la mano en el recorrido creativo; la que espera a CREATOR la responde él)
   El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
   bitacora-api tomar <id> [nota]            → en-curso; la nota (y ficha.destino) es el worktree o la copia que lo tiene
   bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…","review":"…"},"consumo":{…},"nota":"…"} → entregado
