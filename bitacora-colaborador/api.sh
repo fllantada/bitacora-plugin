@@ -2830,7 +2830,9 @@ Escritura (el cuerpo JSON entra por stdin):
         no es un análisis del proyecto contesta 404 analisisInexistente; `item planes <id>` lo trae como {"id","titulo","enlace"}; el mapa del
         objetivo pinta la caja en rojo tenue con «Bloqueado» en su esquina, la línea por etapas lo dice en su renglón y la página del plan abre con una franja roja tenue que enlaza el análisis
         "entregable":{"clase":"<paso>"} hace nacer el entregable del plan, pendiente y vacío: el paso de su objetivo creativo que revisa, uno de los
-        `pasos` de su motor o, sin motor, diseno · voz · movimiento · ensayo (400 entregableSinObjetivo · pasoInexistente · pasoTomado; en un parche, entregableYaNacido)
+        `pasos` de su motor o, sin motor, diseno · voz · movimiento · ensayo (400 entregableSinObjetivo · pasoInexistente · pasoTomado; en un parche, entregableYaNacido);
+        {"clase":"pieza"} es la review de un encargo de producción —una por encargo, fuera del orden del motor—: se comenta y se aprueba con el plan
+        entregado (409 piezaSinEntregar), la aprobación lo deja hecho, y en un plan de otro contrato contesta 400 piezaSinEncargo
         "dependeDe":["<id>"] son las gestiones que ya existen y esperan hechas y el guion que espera firmado, del proyecto (404 dependenciaInexistente);
         `item planes <id>` los trae con tipo y escritorio, y la gestión con su responsable; `item gestiones|guiones <id>` trae en `destraba`
         los planes que los esperan; una gestión abierta avisa al encargar sin frenar, y un guion que no está hecho contesta 400 guionSinFirmar
