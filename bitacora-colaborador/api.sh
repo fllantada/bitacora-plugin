@@ -2070,7 +2070,7 @@ pedido)
 # ─────────────────────────────────────────────────────────────────────────────
 # LA PAUSA — el encargo que espera a la persona. Es el pedido del plan dirigido a `fran`.
 #
-# La sesión que produce (/producing) frena cuando su ley le pide a la persona una
+# La sesión que produce (/producing, skill de la productora) frena cuando su ley le pide a la persona una
 # aprobación, una decisión o el OK de un gasto: deja su trabajo guardado como manda su ley,
 # abre la pausa con lo que presenta, y termina el turno. La sesión que habla con Fran
 # (/creator) se lo muestra tal cual y cierra la pausa con su respuesta, con sus palabras.
@@ -2890,7 +2890,7 @@ Escritura (el cuerpo JSON entra por stdin):
         abierta que solo se toma mirando y cuya respuesta cambia el código, antes de salir: el cuerpo la nombra en una línea, se abre el chequeo
         visual declarando este plan y la firma lo cierra)
         "contrato":"produccion" hace del plan un ENCARGO DE PRODUCCIÓN, el que /creator le escribe a la sesión que produce una pieza de contenido
-        (/producing): mismo ciclo y otras secciones —# Qué cambia · # Fuente · # Tarea · # El brief · # La marca · # Restricciones · # Lo aprobado · # Destino,
+        (/producing; las dos, skills de la productora): mismo ciclo y otras secciones —# Qué cambia · # Fuente · # Tarea · # El brief · # La marca · # Restricciones · # Lo aprobado · # Destino,
         con «Ninguna» en Restricciones y en Lo aprobado cuando no hay—, sin "visual" (lo que se mira de una pieza son sus pausas), con "modelo" y "esfuerzo";
         se entrega con ficha.entregable y el reporte ## Hecho · ## Cómo quedó · ## Dónde vive · ## Gasto · ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir;
         se corrige con `corregir planes <id>` mientras el plan no empezó (después, 400 contratoFijo), y `item planes <id>` lo trae en `contrato`
