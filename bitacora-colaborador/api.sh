@@ -507,13 +507,18 @@ dir_del_plugin() {
 
 # El nombre con que sube un archivo de un anuncio: su id saneado y cortado, con una huella corta
 # del id entero —dos ids que comparten el comienzo dan dos nombres—, el sufijo de lo que es cuando
-# el campo es `medio` (`-original` para una imagen, `-audio` para un audio, `-video` para el resto),
-# y la extensión del archivo en minúscula.
+# el campo es `medio` (`-original` para una imagen, `-audio` para un audio, `-video` para el resto) o
+# `-miniatura` cuando la `vistaPrevia` es un archivo `…-miniatura.<ext>` de `anuncios-meta.mjs` (con
+# ese nombre el refresco reconoce las miniaturas y rehace las vistas previas enteras de antes), y la
+# extensión del archivo en minúscula.
 nombre_de_archivo() {
   local base
   base="$(printf '%s' "$1" | tr -c 'A-Za-z0-9_-' '-' | cut -c1-80)-$(printf '%s' "$1" | shasum -a 1 | cut -c1-10)"
   local extension
   extension="$(printf '%s' "${3##*.}" | tr '[:upper:]' '[:lower:]')"
+  if [ "$2" = vistaPrevia ]; then
+    case "${3%.*}" in *-miniatura) base="$base-miniatura" ;; esac
+  fi
   if [ "$2" = medio ]; then
     case "$extension" in
     jpg | jpeg | png | webp | gif) base="$base-original" ;;
@@ -3580,9 +3585,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api anuncios-meta <slug>         el stock de anuncios de la fuente meta, con la cuenta de su `ref` (act_…):
         lista cada anuncio por la Marketing API, los junta por creativo —el anuncio es el creativo, y cada anuncio de Meta
         un uso suyo con su campaña, sus mercados, su objetivo, su estado y las cifras de toda su vida, con las vistas de
-        tres segundos y los cuartos del video—, sube la miniatura de cada vista previa nueva (hecha con ffmpeg; en un
-        anuncio de imagen, la vista previa bajada sube además como su medio; sin ffmpeg, la vista previa entera, con el
-        aviso) y el video que encuentra en el repo con el nombre que se subió a Meta, y guarda el stock, con lo subido a mano intacto (PUT /api/fuentes/<slug>/anuncios; 400
+        tres segundos y los cuartos del video—, sube la miniatura de cada vista previa nueva y rehace la vista previa entera
+        de antes (hecha con ffmpeg; en un anuncio de imagen, la vista previa bajada sube además como su medio; sin
+        ffmpeg, la vista previa entera, con el aviso; el medio y las miniaturas que ya están se conservan) y el video que encuentra en el repo con el nombre que se subió a Meta, y guarda el stock, con lo subido a mano intacto (PUT /api/fuentes/<slug>/anuncios; 400
         stockFueraDeMeta · stockFueraDeLaBiblioteca · archivoAjeno). La fuente se anota una vez con anotar-fuente, procedencia meta y clase anuncios
   bitacora-api anuncios <slug>              el stock, del más nuevo al más viejo (GET /api/fuentes/<slug>/anuncios):
         {slug, sincronizadoAt, anuncios:[{id, origen, formato, creado, vistaPrevia, medio, nombre, texto, marca, enlace,
