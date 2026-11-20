@@ -507,12 +507,16 @@ dir_del_plugin() {
 
 # El nombre con que sube un archivo de un anuncio: su id saneado y cortado, con una huella corta
 # del id entero —dos ids que comparten el comienzo dan dos nombres—, `-video` cuando el campo es
-# `medio`, y la extensión del archivo en minúscula.
+# `medio` (`-audio` si el archivo es un audio), y la extensión del archivo en minúscula.
 nombre_de_archivo() {
   local base
   base="$(printf '%s' "$1" | tr -c 'A-Za-z0-9_-' '-' | cut -c1-80)-$(printf '%s' "$1" | shasum -a 1 | cut -c1-10)"
-  [ "$2" = medio ] && base="$base-video"
-  printf '%s.%s' "$base" "$(printf '%s' "${3##*.}" | tr '[:upper:]' '[:lower:]')"
+  local extension
+  extension="$(printf '%s' "${3##*.}" | tr '[:upper:]' '[:lower:]')"
+  if [ "$2" = medio ]; then
+    case "$extension" in mp3 | wav | m4a) base="$base-audio" ;; *) base="$base-video" ;; esac
+  fi
+  printf '%s.%s' "$base" "$extension"
 }
 
 # Toma el stock de anuncios de una fuente `meta` y lo guarda como su copia. Lee el stock
@@ -2470,17 +2474,28 @@ anuncios)
   leer "/api/fuentes/$(uri "$1")/anuncios"
   ;;
 # Suma a una biblioteca un anuncio que sube la sesión —un reel, una historia, un video terminado
-# con sus variantes y pedacitos, el anuncio de un competidor en la biblioteca de referencia—, o
-# reemplaza el que tiene su mismo `id`. Los archivos van con banderas y se suben colgados de la
-# fuente; del video de `--medio` sale `archivos` siempre, y la portada, la duración y la
-# proporción con ffmpeg y ffprobe, cuando el JSON los calla. El JSON entra por stdin.
+# con sus variantes y pedacitos, una imagen o una voz del inventario de un personaje, el anuncio
+# de un competidor en la biblioteca de referencia—, o reemplaza el que tiene su mismo `id`. Los
+# archivos van con banderas y se suben colgados de la fuente; `--medio` toma el archivo y su
+# extensión dice qué es, y `archivos` sale siempre:
+#   · video (mp4, mov, webm, m4v): sube como `medio`; con ffmpeg y ffprobe salen la portada, la
+#     duración y la proporción, cuando el JSON los calla.
+#   · imagen (jpg, jpeg, png, webp): sube como su propia `vistaPrevia` y queda sin `medio`; la
+#     proporción sale con ffprobe.
+#   · audio (mp3, wav, m4a): sube como `medio`; la duración sale con ffprobe, sin portada ni
+#     proporción.
+# Los campos de asset (`tipo`, `estado`, `motor`, `etiquetas`) viajan en el JSON tal cual, que
+# entra por stdin.
 #
 #   bitacora-api sumar-anuncio videos-de-moli --medio piezas/013-miedo/013-rosario-miedo-4x5.mp4 <<'JSON'
 #   {"id":"013-rosario-miedo-4x5","formato":"video","creado":"2026-11-13T14:00:00-03:00",
-#    "personaje":"Moli","de":"013-miedo","parte":"variante"}
+#    "personaje":"Moli","de":"013-miedo","parte":"variante","tipo":"pieza-final","estado":"aprobado"}
+#   JSON
+#   bitacora-api sumar-anuncio videos-de-devie --medio voces/devie-saludo.mp3 <<'JSON'
+#   {"id":"devie-saludo","formato":"audio","creado":"2026-11-13T14:00:00-03:00","tipo":"voz","estado":"aprobado"}
 #   JSON
 sumar-anuncio)
-  exige 1 "sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video>]   < {\"id\":\"…\",\"formato\":\"imagen|video|carrusel|reel|historia\",\"creado\":\"<instante ISO>\",…}" "$@"
+  exige 1 "sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video|imagen|audio>]   < {\"id\":\"…\",\"formato\":\"imagen|video|carrusel|reel|historia|audio\",\"creado\":\"<instante ISO>\",…}" "$@"
   slug_anuncio="$1"
   shift
   [ -t 0 ] && { echo "Falta el JSON del anuncio por stdin (heredoc)." >&2; exit 1; }
@@ -2492,30 +2507,52 @@ sumar-anuncio)
   while [ $# -gt 0 ]; do
     case "$1" in
     --vista-previa) vista_anuncio="${2:?Falta la imagen de --vista-previa}" && shift 2 ;;
-    --medio) medio_anuncio="${2:?Falta el video de --medio}" && shift 2 ;;
-    *) echo "«$1» no es una bandera de sumar-anuncio: --vista-previa <imagen> · --medio <video>" >&2 && exit 1 ;;
+    --medio) medio_anuncio="${2:?Falta el archivo de --medio}" && shift 2 ;;
+    *) echo "«$1» no es una bandera de sumar-anuncio: --vista-previa <imagen> · --medio <video|imagen|audio>" >&2 && exit 1 ;;
     esac
   done
   carpeta_anuncio="$(mktemp -d)"
   if [ -n "$medio_anuncio" ]; then
     [ -f "$medio_anuncio" ] || { echo "No existe $medio_anuncio" >&2; exit 1; }
-    # Del video salen su nombre, su portada, su duración y su proporción, cuando el JSON los calla:
-    # el nombre, que es el cruce con Meta, siempre; lo demás, con ffmpeg y ffprobe.
+    # La clase del archivo sale de su extensión; sin una conocida, del `formato` del JSON.
+    extension_anuncio="$(printf '%s' "${medio_anuncio##*.}" | tr '[:upper:]' '[:lower:]')"
+    case "$extension_anuncio" in
+    jpg | jpeg | png | webp) clase_anuncio=imagen ;;
+    mp3 | wav | m4a) clase_anuncio=audio ;;
+    mp4 | mov | webm | m4v) clase_anuncio=video ;;
+    *) case "$(jq -r '.formato // ""' <<<"$cuerpo_anuncio")" in
+      imagen) clase_anuncio=imagen ;;
+      audio) clase_anuncio=audio ;;
+      *) clase_anuncio=video ;;
+      esac ;;
+    esac
+    # Del archivo sale su nombre, que es el cruce con Meta, siempre; lo demás, con ffmpeg y ffprobe,
+    # cuando el JSON lo calla.
     cuerpo_anuncio="$(jq -c --arg n "$(basename "${medio_anuncio%.*}")" 'if .archivos == null then .archivos = [$n] else . end' <<<"$cuerpo_anuncio")"
-    command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1 ||
-      echo "→ el video sube sin su portada, su duración ni su proporción: los saca ffmpeg (brew install ffmpeg), o van en el JSON y en --vista-previa" >&2
-    if [ -z "$vista_anuncio" ] && command -v ffmpeg >/dev/null 2>&1; then
-      vista_anuncio="$carpeta_anuncio/portada.jpg"
-      ffmpeg -v error -ss 1 -i "$medio_anuncio" -frames:v 1 -vf scale=640:-2 -y "$vista_anuncio" 2>/dev/null ||
-        ffmpeg -v error -i "$medio_anuncio" -frames:v 1 -vf scale=640:-2 -y "$vista_anuncio" 2>/dev/null || vista_anuncio=""
-    fi
+    case "$clase_anuncio" in
+    video)
+      command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1 ||
+        echo "→ el video sube sin su portada, su duración ni su proporción: los saca ffmpeg (brew install ffmpeg), o van en el JSON y en --vista-previa" >&2
+      if [ -z "$vista_anuncio" ] && command -v ffmpeg >/dev/null 2>&1; then
+        vista_anuncio="$carpeta_anuncio/portada.jpg"
+        ffmpeg -v error -ss 1 -i "$medio_anuncio" -frames:v 1 -vf scale=640:-2 -y "$vista_anuncio" 2>/dev/null ||
+          ffmpeg -v error -i "$medio_anuncio" -frames:v 1 -vf scale=640:-2 -y "$vista_anuncio" 2>/dev/null || vista_anuncio=""
+      fi
+      ;;
+    imagen)
+      # La imagen es su propia vista previa; una `--vista-previa` explícita manda.
+      [ -n "$vista_anuncio" ] || vista_anuncio="$medio_anuncio"
+      medio_anuncio=""
+      ;;
+    esac
     if command -v ffprobe >/dev/null 2>&1; then
-      ficha_video="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height:format=duration -of json "$medio_anuncio" 2>/dev/null || echo '{}')"
-      cuerpo_anuncio="$(jq -c --argjson f "$ficha_video" '
+      archivo_ficha="${medio_anuncio:-$vista_anuncio}"
+      ficha_video="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height:format=duration -of json "$archivo_ficha" 2>/dev/null || echo '{}')"
+      cuerpo_anuncio="$(jq -c --arg clase "$clase_anuncio" --argjson f "$ficha_video" '
         def mcd(a; b): if b == 0 then a else mcd(b; a % b) end;
         ($f.streams[0] // {}) as $v | (($f.format.duration // "") | tonumber? // null) as $d
-        | (if .duracion == null and $d != null then .duracion = ($d * 10 | round / 10) else . end)
-        | (if .proporcion == null and ($v.width // 0) > 0 then .proporcion = "\($v.width / mcd($v.width; $v.height))x\($v.height / mcd($v.width; $v.height))" else . end)' <<<"$cuerpo_anuncio")"
+        | (if $clase != "imagen" and .duracion == null and $d != null then .duracion = ($d * 10 | round / 10) else . end)
+        | (if $clase != "audio" and .proporcion == null and ($v.width // 0) > 0 then .proporcion = "\($v.width / mcd($v.width; $v.height))x\($v.height / mcd($v.width; $v.height))" else . end)' <<<"$cuerpo_anuncio")"
     fi
   fi
   for par_anuncio in "vistaPrevia:$vista_anuncio" "medio:$medio_anuncio"; do
@@ -2970,9 +3007,9 @@ El sistema del proyecto — la tríada y las instrucciones. Primera lectura al l
   bitacora-api stock                        (las bibliotecas del stock del proyecto: clase, cuántos anuncios y portada)
   bitacora-api crear-stock                  < {"slug","nombre","clase":"anuncios|assets","tags"?}   (crea una biblioteca del stock)
   bitacora-api anuncios <slug>              (lee ese stock, del más nuevo al más viejo, con el día de su copia)
-  bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video>]   < {"id","formato","creado",…}
+  bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video|imagen|audio>]   < {"id","formato","creado",…}
                                             (suma a una biblioteca del stock un reel, una historia, un video con sus variantes
-                                             y pedacitos o el anuncio de un competidor; el mismo id lo reemplaza)
+                                             y pedacitos, una imagen, una voz o el anuncio de un competidor; el mismo id lo reemplaza)
   bitacora-api sacar-anuncio <slug> <id>    (saca uno que subió una sesión)
   bitacora-api lectura <slug>               (la lectura curada: qué dice a la fecha, qué cambió y qué choca, con su copia)
   bitacora-api curar <slug> <huella>        < el markdown de la lectura, sobre la copia de esa huella (lo hace /fuentes)
@@ -3377,7 +3414,7 @@ Escritura (el cuerpo JSON entra por stdin):
         stockFueraDeMeta · stockFueraDeLaBiblioteca · archivoAjeno). La fuente se anota una vez con anotar-fuente, procedencia meta y clase anuncios
   bitacora-api anuncios <slug>              el stock, del más nuevo al más viejo (GET /api/fuentes/<slug>/anuncios):
         {slug, sincronizadoAt, anuncios:[{id, origen, formato, creado, vistaPrevia, medio, nombre, texto, marca, enlace,
-        personaje, duracion, proporcion, archivos, de, parte, usos:[{id, donde, conjunto, mercados, objetivo, estado,
+        personaje, duracion, proporcion, archivos, de, parte, tipo, estado, motor, etiquetas, usos:[{id, donde, conjunto, mercados, objetivo, estado,
         creado, resultado:{indicador, cantidad, costo}, impresiones, alcance, clics, gasto, moneda, vistas3s,
         cuartos, enlace}]}]} — lo que se lee para curar su lectura
   bitacora-api stock                        las bibliotecas del stock del proyecto (GET /api/stock):
@@ -3386,13 +3423,19 @@ Escritura (el cuerpo JSON entra por stdin):
         crea una biblioteca del stock (POST /api/fuentes): `clase` anuncios —los creativos terminados con sus datos de
         Meta— o assets —las partes de un personaje: sus videos, variantes y pedacitos—; completa procedencia mano, lado
         nuestro, vigencia fechada, la fecha de hoy, el proyecto como productor y el español. Se llena con sumar-anuncio
-  bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video>]   < el anuncio en JSON
+  bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video|imagen|audio>]   < el anuncio en JSON
         suma un anuncio de origen mano a una biblioteca del stock —de clase anuncios o assets: un reel, una historia, un video de
-        «Videos de <Personaje>», el de un competidor en «Anuncios de referencia»—, o reemplaza el de su mismo id:
-        {"id","formato":"imagen|video|carrusel|reel|historia","creado":"<instante ISO>","texto","marca","enlace",
-        "personaje","de":"<id de la pieza>","parte":"variante|pedacito","usos":[…]}; del video de --medio salen
-        archivos y, con ffmpeg y ffprobe, la portada, duracion y proporcion; un anuncio de Meta que pautó uno de esos
-        archivos le suma sus usos (400 stockFueraDeLaBiblioteca · archivoAjeno · anuncioDeMeta)
+        «Videos de <Personaje>», una imagen o una voz de su inventario, el de un competidor en «Anuncios de referencia»—, o
+        reemplaza el de su mismo id:
+        {"id","formato":"imagen|video|carrusel|reel|historia|audio","creado":"<instante ISO>","texto","marca","enlace",
+        "personaje","de":"<id de la pieza>","parte":"variante|pedacito",
+        "tipo":"<qué es: clip, keyframe, voz, pieza-final…>","estado":"<en qué quedó: aprobado, variante, descartado…>",
+        "motor":"<con qué se hizo>","etiquetas":["…"],"usos":[…]}; tipo y estado van en minúsculas con guiones, con el
+        vocabulario de la productora, y la galería filtra por ellos. La extensión de --medio dice qué es: un video (mp4, mov,
+        webm, m4v) sube como medio y, con ffmpeg y ffprobe, saca portada, duracion y proporcion; una imagen (jpg, jpeg, png,
+        webp) sube como su propia vista previa, sin medio, y saca la proporcion; un audio (mp3, wav, m4a) sube como medio
+        y saca la duracion. Los tres suman archivos; un anuncio de Meta que pautó uno de esos archivos le suma sus usos
+        (400 stockFueraDeLaBiblioteca · archivoAjeno · anuncioDeMeta)
   bitacora-api sacar-anuncio <slug> <id>    saca un anuncio de origen mano con sus archivos (400 anuncioDeMeta)
   bitacora-api curar <slug> <huella>        < «# Lo que dice» · «# Qué cambió» (cuando reemplaza a otra) · «# Lo que choca»
         la lectura curada sobre la copia de esa huella; la anterior queda guardada y queda vieja cuando la copia cambia
