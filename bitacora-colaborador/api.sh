@@ -506,17 +506,33 @@ dir_del_plugin() {
 }
 
 # El nombre con que sube un archivo de un anuncio: su id saneado y cortado, con una huella corta
-# del id entero —dos ids que comparten el comienzo dan dos nombres—, `-video` cuando el campo es
-# `medio` (`-audio` si el archivo es un audio), y la extensión del archivo en minúscula.
+# del id entero —dos ids que comparten el comienzo dan dos nombres—, el sufijo de lo que es cuando
+# el campo es `medio` (`-original` para una imagen, `-audio` para un audio, `-video` para el resto),
+# y la extensión del archivo en minúscula.
 nombre_de_archivo() {
   local base
   base="$(printf '%s' "$1" | tr -c 'A-Za-z0-9_-' '-' | cut -c1-80)-$(printf '%s' "$1" | shasum -a 1 | cut -c1-10)"
   local extension
   extension="$(printf '%s' "${3##*.}" | tr '[:upper:]' '[:lower:]')"
   if [ "$2" = medio ]; then
-    case "$extension" in mp3 | wav | m4a) base="$base-audio" ;; *) base="$base-video" ;; esac
+    case "$extension" in
+    jpg | jpeg | png | webp | gif) base="$base-original" ;;
+    mp3 | wav | m4a) base="$base-audio" ;;
+    *) base="$base-video" ;;
+    esac
   fi
   printf '%s.%s' "$base" "$extension"
+}
+
+# Hace con ffmpeg la miniatura de una imagen o la portada de un video: un jpg de calidad media de
+# 640 px de ancho como mucho, que deja como están las imágenes más chicas, con la imagen aplanada
+# sobre fondo blanco (el jpg guarda solo color, y lo transparente sale blanco). Con un tercer
+# argumento toma el fotograma de ese segundo. Sale con 1 cuando ffmpeg falla. `anuncios-meta.mjs`
+# usa la misma receta.
+miniatura_de() {
+  ffmpeg -v error ${3:+-ss "$3"} -i "$1" -frames:v 1 \
+    -vf "format=rgba,split[fondo][imagen];[fondo]drawbox=c=white:t=fill[blanco];[blanco][imagen]overlay=format=auto,scale='min(640,iw)':-2" \
+    -q:v 5 -y "$2" 2>/dev/null
 }
 
 # Toma el stock de anuncios de una fuente `meta` y lo guarda como su copia. Lee el stock
@@ -2478,14 +2494,22 @@ anuncios)
 # de un competidor en la biblioteca de referencia—, o reemplaza el que tiene su mismo `id`. Los
 # archivos van con banderas y se suben colgados de la fuente; `--medio` toma el archivo y su
 # extensión dice qué es, y `archivos` sale siempre:
-#   · video (mp4, mov, webm, m4v): sube como `medio`; con ffmpeg y ffprobe salen la portada, la
-#     duración y la proporción, cuando el JSON los calla.
-#   · imagen (jpg, jpeg, png, webp): sube como su propia `vistaPrevia` y queda sin `medio`; la
-#     proporción sale con ffprobe.
+#   · video (mp4, mov, webm, m4v): sube como `medio`; con ffmpeg y ffprobe salen la portada
+#     (una miniatura, como `vistaPrevia`), la duración y la proporción, cuando el
+#     JSON los calla.
+#   · imagen (jpg, jpeg, png, webp): el original sube como `medio` y ffmpeg hace su miniatura
+#     (jpg de calidad media y ancho chico, las imágenes chicas sin agrandar, lo transparente sobre
+#     fondo blanco), que sube como `vistaPrevia`
+#     y es lo que la galería muestra en la grilla; la proporción sale con ffprobe. Sin ffmpeg la
+#     imagen sube como su propia `vistaPrevia`, sin `medio`, y el comando lo avisa.
 #   · audio (mp3, wav, m4a): sube como `medio`; la duración sale con ffprobe, sin portada ni
 #     proporción.
 # Los campos de asset (`tipo`, `estado`, `motor`, `etiquetas`) viajan en el JSON tal cual, que
 # entra por stdin.
+#
+# Volver a sumar con el mismo `id` conserva el nombre de los archivos (sale del `id` y de su campo), y
+# el navegador que ya los tenía los muestra viejos hasta una hora: un archivo que cambió se suma con
+# otro `id` o se sube con otro nombre (`editar-anuncio` con `adjuntar … nombre=<otro>`).
 #
 #   bitacora-api sumar-anuncio videos-de-moli --medio piezas/013-miedo/013-rosario-miedo-4x5.mp4 <<'JSON'
 #   {"id":"013-rosario-miedo-4x5","formato":"video","creado":"2026-11-13T14:00:00-03:00",
@@ -2535,14 +2559,23 @@ sumar-anuncio)
         echo "→ el video sube sin su portada, su duración ni su proporción: los saca ffmpeg (brew install ffmpeg), o van en el JSON y en --vista-previa" >&2
       if [ -z "$vista_anuncio" ] && command -v ffmpeg >/dev/null 2>&1; then
         vista_anuncio="$carpeta_anuncio/portada.jpg"
-        ffmpeg -v error -ss 1 -i "$medio_anuncio" -frames:v 1 -vf scale=640:-2 -y "$vista_anuncio" 2>/dev/null ||
-          ffmpeg -v error -i "$medio_anuncio" -frames:v 1 -vf scale=640:-2 -y "$vista_anuncio" 2>/dev/null || vista_anuncio=""
+        miniatura_de "$medio_anuncio" "$vista_anuncio" 1 ||
+          miniatura_de "$medio_anuncio" "$vista_anuncio" || vista_anuncio=""
       fi
       ;;
     imagen)
-      # La imagen es su propia vista previa; una `--vista-previa` explícita manda.
-      [ -n "$vista_anuncio" ] || vista_anuncio="$medio_anuncio"
-      medio_anuncio=""
+      # El original sube como `medio` y su miniatura como `vistaPrevia` (la grilla muestra la miniatura
+      # y el diálogo abre el original); una `--vista-previa` explícita manda sobre la miniatura. Sin
+      # ffmpeg, o si falla, la imagen es su propia vista previa y queda sin `medio`.
+      if [ -z "$vista_anuncio" ]; then
+        if command -v ffmpeg >/dev/null 2>&1 && miniatura_de "$medio_anuncio" "$carpeta_anuncio/miniatura.jpg"; then
+          vista_anuncio="$carpeta_anuncio/miniatura.jpg"
+        else
+          echo "→ la imagen sube sin miniatura y la grilla la carga entera: la hace ffmpeg (brew install ffmpeg)" >&2
+          vista_anuncio="$medio_anuncio"
+          medio_anuncio=""
+        fi
+      fi
       ;;
     esac
     if command -v ffprobe >/dev/null 2>&1; then
@@ -2571,13 +2604,16 @@ sacar-anuncio)
   exige 2 "sacar-anuncio <slug> <id>" "$@"
   echo "{}" | escribir DELETE "/api/fuentes/$(uri "$1")/anuncios/$(uri "$2")"
   ;;
-# Cambia campos de una pieza del stock que subió una sesión, sin tocar sus archivos ni sus usos:
-# nombre, texto, tipo, estado, motor, etiquetas, detalle, de y parte. Cada campo que llega
-# reemplaza entero al que la pieza tenía: `detalle` y `etiquetas` sustituyen al objeto y a la lista
-# completos, así que sumar una etiqueta o una clave del detalle es mandar la lista o el objeto
-# entero, leído antes con `buscar-stock … --json` y fundido con jq. Un campo en null saca la
-# clave, y `de` y `parte` se ponen o se sacan juntos. El JSON entra por stdin o como tercer
-# argumento. Se usa cuando Fran dictamina un estado, se corrige un texto o se suma el detalle.
+# Cambia campos de una pieza del stock que subió una sesión, con sus usos como estaban: nombre,
+# texto, tipo, estado, motor, etiquetas, detalle, de y parte, y sus archivos `vistaPrevia` y `medio`
+# (rutas ya subidas con `adjuntar … fuente=<slug>`). Cada campo que llega reemplaza entero al que la
+# pieza tenía: `detalle` y `etiquetas` sustituyen al objeto y a la lista completos, así que sumar una
+# etiqueta o una clave del detalle es mandar la lista o el objeto entero, leído antes con
+# `buscar-stock … --json` y fundido con jq. Un campo en null saca la clave, y `de` y `parte` se ponen
+# o se sacan juntos. Una imagen sin `medio` guarda su original en `vistaPrevia`: su miniatura nueva
+# va con el original como `medio` en el mismo parche (400 originalSinMedio sin él). El JSON entra
+# por stdin o como tercer argumento. Se usa cuando Fran dictamina un estado, se corrige un texto, se
+# suma el detalle o se cambia una miniatura.
 #
 #   bitacora-api editar-anuncio videos-de-devie devie-saludo '{"estado":"aprobado"}'
 #   bitacora-api editar-anuncio videos-de-devie gesto-baile <<'JSON'
@@ -2587,6 +2623,11 @@ sacar-anuncio)
 #   bitacora-api -p cliencer buscar-stock videos-de-devie gesto-baile --json |
 #     jq -c '.[] | select(.id == "gesto-baile") | {etiquetas: ((.etiquetas // []) + ["mudo"] | unique)}' |
 #     bitacora-api -p cliencer editar-anuncio videos-de-devie gesto-baile
+#   # la miniatura de una imagen cargada sin medio: el original pasa a medio en el mismo parche
+#   ruta="$(bitacora-api -p cliencer adjuntar mini.jpg fuente=videos-de-devie nombre=02-lluvia-k1-mini.jpg | jq -r .ruta)"
+#   bitacora-api -p cliencer buscar-stock videos-de-devie 02-lluvia-k1 --json |
+#     jq -c --arg mini "$ruta" '.[] | select(.id == "02-lluvia-k1") | {vistaPrevia: $mini, medio: .vistaPrevia}' |
+#     bitacora-api -p cliencer editar-anuncio videos-de-devie 02-lluvia-k1
 editar-anuncio)
   exige 2 "editar-anuncio <slug> <id> '{\"estado\":\"aprobado\"}'   (o el JSON por stdin)" "$@"
   if [ "$#" -ge 3 ]; then campos_anuncio="$3"; else campos_anuncio="$(cat)"; fi
@@ -2610,6 +2651,24 @@ editar-anuncio)
 editar-anuncios)
   exige 1 "editar-anuncios <slug>   < {\"piezas\":[{\"id\":\"…\",\"estado\":\"aprobado\",…}]}" "$@"
   escribir PATCH "/api/fuentes/$(uri "$1")/anuncios"
+  ;;
+# Mueve piezas del stock a otra biblioteca del mismo proyecto, con sus archivos y sin copiar bytes:
+# cada pieza pasa a la biblioteca de destino con su id, sus datos y sus usos, y sus archivos siguen
+# siendo los mismos objetos del almacén. Se usa cuando una pieza quedó en la biblioteca que no es
+# (el personaje equivocado, la línea de otro año). Un id que el destino tiene con otra pieza, una
+# pieza de Meta o un archivo que otra pieza de la biblioteca sigue usando frenan el pedido entero,
+# con los ids nombrados y sin mover nada. El mismo pedido repetido después de un corte termina el
+# trabajo. Contesta `movidas`, `yaMovidas` (los ids que un pedido anterior ya movió), `huerfanas`
+# (los ids cuyo `de` quedó en la otra biblioteca) y las dos bibliotecas con su cuenta.
+#
+#   bitacora-api -p cliencer mover-anuncios videos-de-devie videos-de-moli gesto-baile gesto-saludo
+mover-anuncios)
+  exige 3 "mover-anuncios <origen> <destino> <id>…   (las piezas pasan a la biblioteca destino del mismo proyecto)" "$@"
+  origen_mover="$1"
+  destino_mover="$2"
+  shift 2
+  jq -cn --arg destino "$destino_mover" '{destino: $destino, ids: $ARGS.positional}' --args "$@" |
+    escribir POST "/api/fuentes/$(uri "$origen_mover")/anuncios/mover"
   ;;
 # Busca en una biblioteca del stock, del lado del cliente sobre lo que trae `anuncios`: los
 # términos se suman con AND, por subcadena y sin acentos ni mayúsculas, contra id, nombre, tipo,
@@ -3120,6 +3179,7 @@ El sistema del proyecto — la tríada y las instrucciones. Primera lectura al l
   bitacora-api sacar-anuncio <slug> <id>    (saca uno que subió una sesión)
   bitacora-api editar-anuncio <slug> <id>   < {"estado":"aprobado","detalle":{…},…}   (funde campos de una pieza; null saca la clave)
   bitacora-api editar-anuncios <slug>       < {"piezas":[{"id","estado",…}]}   (la misma fusión en tanda: un pedido, una escritura)
+  bitacora-api mover-anuncios <slug> <destino> <id>…   (mueve piezas, con sus archivos, a otra biblioteca del mismo proyecto)
   bitacora-api buscar-stock <biblioteca> [término…] [--tipo t] [--estado e] [--formato f] [--de id] [--json]
                                             (busca en el stock: términos con AND, sin acentos ni mayúsculas)
   bitacora-api lectura <slug>               (la lectura curada: qué dice a la fecha, qué cambió y qué choca, con su copia)
@@ -3520,8 +3580,9 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api anuncios-meta <slug>         el stock de anuncios de la fuente meta, con la cuenta de su `ref` (act_…):
         lista cada anuncio por la Marketing API, los junta por creativo —el anuncio es el creativo, y cada anuncio de Meta
         un uso suyo con su campaña, sus mercados, su objetivo, su estado y las cifras de toda su vida, con las vistas de
-        tres segundos y los cuartos del video—, sube las vistas previas nuevas y el video que encuentra en el repo con el
-        nombre que se subió a Meta, y guarda el stock, con lo subido a mano intacto (PUT /api/fuentes/<slug>/anuncios; 400
+        tres segundos y los cuartos del video—, sube la miniatura de cada vista previa nueva (hecha con ffmpeg; en un
+        anuncio de imagen, la vista previa bajada sube además como su medio; sin ffmpeg, la vista previa entera, con el
+        aviso) y el video que encuentra en el repo con el nombre que se subió a Meta, y guarda el stock, con lo subido a mano intacto (PUT /api/fuentes/<slug>/anuncios; 400
         stockFueraDeMeta · stockFueraDeLaBiblioteca · archivoAjeno). La fuente se anota una vez con anotar-fuente, procedencia meta y clase anuncios
   bitacora-api anuncios <slug>              el stock, del más nuevo al más viejo (GET /api/fuentes/<slug>/anuncios):
         {slug, sincronizadoAt, anuncios:[{id, origen, formato, creado, vistaPrevia, medio, nombre, texto, marca, enlace,
@@ -3537,14 +3598,17 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video|imagen|audio>]   < el anuncio en JSON
         suma un anuncio de origen mano a una biblioteca del stock —de clase anuncios o assets: un reel, una historia, un video de
         «Videos de <Personaje>», una imagen o una voz de su inventario, el de un competidor en «Anuncios de referencia»—, o
-        reemplaza el de su mismo id:
+        reemplaza el de su mismo id (que conserva el nombre de los archivos y hasta una hora puede verse el viejo en un
+        navegador que ya lo tenía: un archivo que cambió se suma con otro id o se sube con otro nombre):
         {"id","formato":"imagen|video|carrusel|reel|historia|audio","creado":"<instante ISO>","texto","marca","enlace",
         "personaje","de":"<id de la pieza>","parte":"variante|pedacito",
         "tipo":"<qué es: clip, keyframe, voz, pieza-final…>","estado":"<en qué quedó: aprobado, variante, descartado…>",
         "motor":"<con qué se hizo>","etiquetas":["…"],"detalle":{…lo que las herramientas leen con jq, hasta 20000 caracteres},"usos":[…]}; tipo y estado van en minúsculas con guiones, con el
         vocabulario de la productora, y la galería filtra por ellos. La extensión de --medio dice qué es: un video (mp4, mov,
-        webm, m4v) sube como medio y, con ffmpeg y ffprobe, saca portada, duracion y proporcion; una imagen (jpg, jpeg, png,
-        webp) sube como su propia vista previa, sin medio, y saca la proporcion; un audio (mp3, wav, m4a) sube como medio
+        webm, m4v) sube como medio y, con ffmpeg y ffprobe, saca portada (una miniatura), duracion y proporcion;
+        una imagen (jpg, jpeg, png, webp) sube como medio y su miniatura de ancho chico, hecha con ffmpeg sobre fondo
+        blanco, como vista previa —la grilla de la galería muestra la miniatura y el diálogo abre el original—, y saca la proporcion; sin ffmpeg
+        sube como su propia vista previa, sin medio, y lo avisa; un audio (mp3, wav, m4a) sube como medio
         y saca la duracion. Los tres suman archivos; un anuncio de Meta que pautó uno de esos archivos le suma sus usos
         (400 stockFueraDeLaBiblioteca · archivoAjeno · anuncioDeMeta · bibliotecaLlena: el stock entero de la biblioteca pasó
         su tope en bytes: se sacan piezas que ya no se usan o se parte en dos bibliotecas · 409 stockCambiado: otra escritura
@@ -3552,16 +3616,31 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api sacar-anuncio <slug> <id>    saca un anuncio de origen mano con sus archivos (400 anuncioDeMeta · 409 stockCambiado)
   bitacora-api editar-anuncio <slug> <id>   {"estado":"aprobado"} · {"detalle":{"entra":1.2,"sale":3.8},"etiquetas":["habla","mudo"],"motor":null}
         (PATCH /api/fuentes/<slug>/anuncios/<id>; el JSON va como tercer argumento o por stdin) cambia de la pieza
-        nombre, texto, tipo, estado, motor, etiquetas, detalle, de y parte: cada campo que llega reemplaza entero al que
+        vistaPrevia, medio, nombre, texto, tipo, estado, motor, etiquetas, detalle, de y parte: cada campo que llega reemplaza entero al que
         la pieza tenía, así que sumar una etiqueta o una clave del detalle es mandar la lista o el objeto completo, leído
-        antes con `buscar-stock … --json` —un campo en null saca la clave; de y parte van juntos—, y deja su id, su formato, sus archivos, su duración, su proporción y sus usos como estaban. Contesta lo
-        que el alta más la pieza fundida en `anuncio` (404 de la fuente o de la pieza · 400 stockFueraDeLaBiblioteca ·
-        anuncioDeMeta · bibliotecaLlena · 409 stockCambiado)
+        antes con `buscar-stock … --json` —un campo en null saca la clave; de y parte van juntos—, y deja su id, su formato, su duración, su proporción y sus usos como estaban.
+        `vistaPrevia` y `medio` son rutas ya subidas con `fuente=<slug>` y el archivo que la pieza deja de usar sale del
+        almacén. Una imagen sin `medio` guarda su original en `vistaPrevia`: su miniatura nueva va con el original como
+        medio en el mismo parche, {"vistaPrevia":"<ruta de la miniatura>","medio":"<su vistaPrevia de ahora>"}; el video
+        cambia su portada con {"vistaPrevia":"<ruta>"}. Contesta lo que el alta más la pieza fundida en `anuncio`
+        (404 de la fuente o de la pieza · 400 stockFueraDeLaBiblioteca · anuncioDeMeta · archivoAjeno · originalSinMedio:
+        la imagen sin medio perdería su original · bibliotecaLlena · 409 stockCambiado)
   bitacora-api editar-anuncios <slug>       {"piezas":[{"id":"gesto-baile","estado":"aprobado"},{"id":"gesto-saludo","detalle":{…}}]}
         (PATCH /api/fuentes/<slug>/anuncios) la misma fusión para varias piezas en un pedido y una sola escritura de la
         biblioteca, cuando una carga o una corrección toca varias. Cobra todo antes de escribir: los ids que faltan (404)
         y los de Meta (400 anuncioDeMeta) vienen nombrados y la tanda no escribe nada. Cada campo reemplaza entero al de la
-        pieza, `detalle` y `etiquetas` incluidos. Contesta lo que el alta más `parcheadas`: cuántas piezas fundió
+        pieza, `detalle` y `etiquetas` incluidos, y `vistaPrevia` y `medio` cambian los archivos con la regla del parche de una
+        pieza, originalSinMedio incluido. Contesta lo que el alta más `parcheadas`: cuántas piezas fundió
+  bitacora-api mover-anuncios <slug> <destino> <id>…
+        (POST /api/fuentes/<slug>/anuncios/mover) mueve las piezas a otra biblioteca del mismo proyecto, con sus archivos y
+        sin copiar bytes: se usa cuando una pieza quedó en la biblioteca equivocada. Cobra todo antes de escribir y nombra
+        los ids: la biblioteca o el id que faltan (404) y, con 400, una pieza de Meta (anuncioDeMeta), un id que el destino
+        tiene con otra pieza (anuncioYaEnElDestino), un archivo que otra pieza de la biblioteca sigue usando
+        (archivoCompartido), una ruta que el destino ya ocupa (rutaOcupada), el mismo destino (mismaBiblioteca) o el stock
+        entero pasado de su tope (bibliotecaLlena); 409 stockCambiado se repite una sola vez. El mismo pedido repetido
+        después de un corte termina el trabajo: la pieza a medio mover se completa y la ya movida se cuenta. Contesta
+        `movidas`, `yaMovidas`, `huerfanas` —los ids cuyo `de` quedó en la otra biblioteca: la pieza movida sin su madre, o
+        la que se quedó sin la suya— y `origen` y `destino`, cada uno con su cuenta
   bitacora-api buscar-stock <biblioteca> [término…] [--tipo t] [--estado e] [--formato f] [--de id] [--json]
         busca sobre lo que trae `anuncios`: los términos se suman con AND, por subcadena y sin acentos ni mayúsculas, contra
         id, nombre, tipo, estado, de, texto, motor y etiquetas; los filtros piden el valor entero. Sin términos ni filtros,
