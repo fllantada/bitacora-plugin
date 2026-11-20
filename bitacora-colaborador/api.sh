@@ -2384,7 +2384,8 @@ capturar-paso)
 #    "tags":["algolia","modelo"],"nota":"la hoja que importa es 1-attribute-register"}
 #   JSON
 #
-# `clase`: documento · hoja · canal · tablero · diseno · pagina
+# `clase`: documento · hoja · canal · tablero · diseno · pagina · anuncios (la cuenta de Meta, con
+#   procedencia meta; una biblioteca a mano nace con `crear-stock`)
 # `procedencia`: google-sheets · google-docs · slack · jira · figma · miro · email · drive · mano
 #   · bitacora (la de un análisis del dueño, que nace con `llevar-a-fuentes`)
 # `lado`: cliente · equipo · nuestro · proveedor · dueno (solo con la llave del dueño, 403 `vozDelDueno`)
@@ -2431,6 +2432,34 @@ sincronizada)
 anuncios-meta)
   exige 1 "anuncios-meta <slug>   (parado en el repo con la credencial de Meta)" "$@"
   tomar_stock "$1"
+  ;;
+# Lee las bibliotecas del stock del proyecto —lo que produce y pauta—, cada una con su clase,
+# cuántos anuncios guarda, su portada y el día de su copia.
+#
+#   bitacora-api stock | jq -r '.[] | [.slug, .clase, .anuncios] | @tsv'
+stock)
+  leer "/api/stock"
+  ;;
+# Crea una biblioteca del stock, de clase `anuncios` (los creativos terminados con sus datos de
+# Meta) o `assets` (las partes de un personaje: sus videos, variantes y pedacitos). Completa la
+# ficha —procedencia `mano`, lado `nuestro`, vigencia `fechada`, la fecha de hoy, el proyecto
+# como productor y el español— y la escribe sobre `POST /api/fuentes`; después se llena con
+# `sumar-anuncio`.
+#
+#   bitacora-api crear-stock <<'JSON'
+#   {"slug":"videos-de-devie","nombre":"Videos de Devie","clase":"assets","tags":["comercial"]}
+#   JSON
+crear-stock)
+  [ -t 0 ] && { echo "Falta el JSON de la biblioteca por stdin (heredoc): {\"slug\",\"nombre\",\"clase\":\"anuncios|assets\",\"tags\"?}" >&2; exit 1; }
+  cuerpo_stock="$(cat)"
+  jq -e '(.nombre | type == "string" and length > 0) and (.clase == "anuncios" or .clase == "assets")' >/dev/null 2>&1 <<<"$cuerpo_stock" || {
+    echo "La biblioteca va con su \"nombre\" y su \"clase\": anuncios | assets (JSON por stdin)." >&2
+    exit 1
+  }
+  vaciar_cola
+  jq -c --arg proyecto "$PROYECTO" --arg hoy "$(date +%F)" \
+    '{procedencia:"mano", lado:"nuestro", vigencia:"fechada", fecha:$hoy, producidaPor:$proyecto, escritoEn:"es"} + .' \
+    <<<"$cuerpo_stock" | escribir POST "/api/fuentes"
   ;;
 # Lee el stock de anuncios de una fuente `meta`, del más nuevo al más viejo, con el día de su
 # copia: cada anuncio con su campaña, su estado, cuándo se creó y las cifras de toda su vida.
@@ -2930,17 +2959,19 @@ El sistema del proyecto — la tríada y las instrucciones. Primera lectura al l
   bitacora-api stack [flujos]               · bitacora-api pieza <slug|alias>
   bitacora-api glosario                     · bitacora-api termino <palabra>
   bitacora-api accesos                      (las direcciones de afuera, con qué se entra a cada una)
-  bitacora-api fuentes [tema] [clase]       (lo que el cliente entregó, en el orden que dice cuál MANDA: la viva del
-                                             cliente arriba, la del dueño, las otras vivas, las fechadas por fecha, las superadas al pie)
+  bitacora-api fuentes [tema] [clase]       (el registro entero —lo que el cliente entregó y las bibliotecas del stock, cada una con su clase—,
+                                             en el orden que dice cuál MANDA: la viva del cliente arriba, la del dueño, las otras vivas, las fechadas por fecha, las superadas al pie)
   bitacora-api fuente <slug>                (una entera, con su espejo y de cuándo es)
   bitacora-api por-sincronizar              (las vivas cuya copia quedó vieja, con su handle y su huella)
   bitacora-api refrescar [slug]             (baja las vivas por su procedencia, compara la huella y estampa el espejo;
                                              la que quedó sin acceso la dice con qué pedir — lo corre /thinking al arrancar)
   bitacora-api anuncios-meta <slug>         (toma el stock de anuncios de una fuente meta: cada creativo con su vista previa
                                              y sus usos; parado en el repo con la credencial de Meta)
+  bitacora-api stock                        (las bibliotecas del stock del proyecto: clase, cuántos anuncios y portada)
+  bitacora-api crear-stock                  < {"slug","nombre","clase":"anuncios|assets","tags"?}   (crea una biblioteca del stock)
   bitacora-api anuncios <slug>              (lee ese stock, del más nuevo al más viejo, con el día de su copia)
   bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video>]   < {"id","formato","creado",…}
-                                            (suma a una biblioteca un reel, una historia, un video con sus variantes
+                                            (suma a una biblioteca del stock un reel, una historia, un video con sus variantes
                                              y pedacitos o el anuncio de un competidor; el mismo id lo reemplaza)
   bitacora-api sacar-anuncio <slug> <id>    (saca uno que subió una sesión)
   bitacora-api lectura <slug>               (la lectura curada: qué dice a la fecha, qué cambió y qué choca, con su copia)
@@ -3326,7 +3357,7 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api anotar-fuente                {"nombre":"…","queEs":"…","clase":"hoja","procedencia":"google-sheets",
                                              "producidaPor":"Fran McCann","lado":"cliente","fecha":"2026-09-08",
                                              "vigencia":"viva","url":"https://…","ref":"<doc-id>","tags":["algolia"],"nota":"…"}
-        clase = documento | hoja | canal | tablero | diseno | pagina
+        clase = documento | hoja | canal | tablero | diseno | pagina | anuncios (la cuenta de Meta; la biblioteca a mano, crear-stock)
         procedencia = google-sheets | google-docs | slack | jira | figma | miro | email | drive | mano | meta
         lado = cliente | equipo | nuestro | proveedor      vigencia = viva | fechada
         `fecha` es la DE la fuente: cuándo la produjo su autor, no cuándo la anotaste
@@ -3343,14 +3374,20 @@ Escritura (el cuerpo JSON entra por stdin):
         un uso suyo con su campaña, sus mercados, su objetivo, su estado y las cifras de toda su vida, con las vistas de
         tres segundos y los cuartos del video—, sube las vistas previas nuevas y el video que encuentra en el repo con el
         nombre que se subió a Meta, y guarda el stock, con lo subido a mano intacto (PUT /api/fuentes/<slug>/anuncios; 400
-        stockFueraDeMeta · archivoAjeno). La fuente se anota una vez con anotar-fuente y procedencia meta
+        stockFueraDeMeta · stockFueraDeLaBiblioteca · archivoAjeno). La fuente se anota una vez con anotar-fuente, procedencia meta y clase anuncios
   bitacora-api anuncios <slug>              el stock, del más nuevo al más viejo (GET /api/fuentes/<slug>/anuncios):
         {slug, sincronizadoAt, anuncios:[{id, origen, formato, creado, vistaPrevia, medio, nombre, texto, marca, enlace,
         personaje, duracion, proporcion, archivos, de, parte, usos:[{id, donde, conjunto, mercados, objetivo, estado,
         creado, resultado:{indicador, cantidad, costo}, impresiones, alcance, clics, gasto, moneda, vistas3s,
         cuartos, enlace}]}]} — lo que se lee para curar su lectura
+  bitacora-api stock                        las bibliotecas del stock del proyecto (GET /api/stock):
+        [{slug, nombre, clase: anuncios|assets, procedencia, tags, anuncios: <cuántos>, portada?, sincronizadoAt?}]
+  bitacora-api crear-stock                  {"slug":"videos-de-devie","nombre":"Videos de Devie","clase":"assets","tags":["comercial"]}
+        crea una biblioteca del stock (POST /api/fuentes): `clase` anuncios —los creativos terminados con sus datos de
+        Meta— o assets —las partes de un personaje: sus videos, variantes y pedacitos—; completa procedencia mano, lado
+        nuestro, vigencia fechada, la fecha de hoy, el proyecto como productor y el español. Se llena con sumar-anuncio
   bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video>]   < el anuncio en JSON
-        suma un anuncio de origen mano a una biblioteca —una fuente mano o meta: un reel, una historia, un video de
+        suma un anuncio de origen mano a una biblioteca del stock —de clase anuncios o assets: un reel, una historia, un video de
         «Videos de <Personaje>», el de un competidor en «Anuncios de referencia»—, o reemplaza el de su mismo id:
         {"id","formato":"imagen|video|carrusel|reel|historia","creado":"<instante ISO>","texto","marca","enlace",
         "personaje","de":"<id de la pieza>","parte":"variante|pedacito","usos":[…]}; del video de --medio salen
