@@ -2571,6 +2571,113 @@ sacar-anuncio)
   exige 2 "sacar-anuncio <slug> <id>" "$@"
   echo "{}" | escribir DELETE "/api/fuentes/$(uri "$1")/anuncios/$(uri "$2")"
   ;;
+# Cambia campos de una pieza del stock que subió una sesión, sin tocar sus archivos ni sus usos:
+# nombre, texto, tipo, estado, motor, etiquetas, detalle, de y parte. Cada campo que llega
+# reemplaza entero al que la pieza tenía: `detalle` y `etiquetas` sustituyen al objeto y a la lista
+# completos, así que sumar una etiqueta o una clave del detalle es mandar la lista o el objeto
+# entero, leído antes con `buscar-stock … --json` y fundido con jq. Un campo en null saca la
+# clave, y `de` y `parte` se ponen o se sacan juntos. El JSON entra por stdin o como tercer
+# argumento. Se usa cuando Fran dictamina un estado, se corrige un texto o se suma el detalle.
+#
+#   bitacora-api editar-anuncio videos-de-devie devie-saludo '{"estado":"aprobado"}'
+#   bitacora-api editar-anuncio videos-de-devie gesto-baile <<'JSON'
+#   {"estado":"con-recorte","detalle":{"entra":1.2,"sale":3.8},"etiquetas":["habla"],"motor":null}
+#   JSON
+#   # sumar la etiqueta «mudo» a las que la pieza ya lleva:
+#   bitacora-api -p cliencer buscar-stock videos-de-devie gesto-baile --json |
+#     jq -c '.[] | select(.id == "gesto-baile") | {etiquetas: ((.etiquetas // []) + ["mudo"] | unique)}' |
+#     bitacora-api -p cliencer editar-anuncio videos-de-devie gesto-baile
+editar-anuncio)
+  exige 2 "editar-anuncio <slug> <id> '{\"estado\":\"aprobado\"}'   (o el JSON por stdin)" "$@"
+  if [ "$#" -ge 3 ]; then campos_anuncio="$3"; else campos_anuncio="$(cat)"; fi
+  printf '%s' "$campos_anuncio" | escribir PATCH "/api/fuentes/$(uri "$1")/anuncios/$(uri "$2")"
+  ;;
+# Cambia campos de varias piezas del stock en un pedido y una sola escritura de la biblioteca,
+# con la regla de `editar-anuncio` para cada una. Se usa cuando una carga o una corrección toca
+# varias piezas: un parche por pieza reescribe la biblioteca entera cada vez. Todo se cobra antes de
+# escribir: una pieza que falta (404) o de Meta (400) frena la tanda y el error nombra sus ids. Cada
+# campo reemplaza entero al de la pieza (`detalle` y `etiquetas` incluidos): para sumar a lo que ya
+# tienen, se lee la pieza con `buscar-stock … --json` y se manda el resultado fundido.
+#
+#   bitacora-api editar-anuncios videos-de-devie <<'JSON'
+#   {"piezas":[{"id":"gesto-baile","detalle":{"entra":1.2,"sale":3.8},"etiquetas":["mudo","baile"]},
+#              {"id":"gesto-saludo","estado":"aprobado"}]}
+#   JSON
+#   # armar la tanda sumando «mudo» a las etiquetas de cada gesto:
+#   bitacora-api -p cliencer buscar-stock videos-de-devie gesto --json |
+#     jq -c '{piezas: map({id, etiquetas: ((.etiquetas // []) + ["mudo"] | unique)})}' |
+#     bitacora-api -p cliencer editar-anuncios videos-de-devie
+editar-anuncios)
+  exige 1 "editar-anuncios <slug>   < {\"piezas\":[{\"id\":\"…\",\"estado\":\"aprobado\",…}]}" "$@"
+  escribir PATCH "/api/fuentes/$(uri "$1")/anuncios"
+  ;;
+# Busca en una biblioteca del stock, del lado del cliente sobre lo que trae `anuncios`: los
+# términos se suman con AND, por subcadena y sin acentos ni mayúsculas, contra id, nombre, tipo,
+# estado, de, texto, motor y etiquetas (`corr` encuentra «Corriendo»). Los filtros piden el valor
+# entero. Sin términos ni filtros cuenta las piezas por tipo. Cada pieza sale en un renglón con el
+# ícono de su estado, su tipo, su duración, su id y la primera línea de su texto; debajo, la
+# ruta de su medio (o de su vista previa) para `bitacora-api bajar` y el resto del texto con ⚠.
+# Con --json, el arreglo de las piezas que pasan, enteras, para jq.
+#
+#   bitacora-api -p cliencer buscar-stock videos-de-devie corr aprobado
+#   bitacora-api -p cliencer buscar-stock videos-de-devie --tipo voz --estado aprobado
+#   bitacora-api -p cliencer buscar-stock videos-de-devie baile --json | jq '.[].detalle'
+buscar-stock)
+  exige 1 "buscar-stock <biblioteca> [término…] [--tipo <t>] [--estado <e>] [--formato <f>] [--de <id>] [--json]" "$@"
+  biblioteca_stock="$1"
+  shift
+  terminos_stock=()
+  tipo_stock=""
+  estado_stock=""
+  formato_stock=""
+  de_stock=""
+  como_json_stock=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+    --tipo) tipo_stock="${2:?Falta el valor de --tipo}" && shift 2 ;;
+    --estado) estado_stock="${2:?Falta el valor de --estado}" && shift 2 ;;
+    --formato) formato_stock="${2:?Falta el valor de --formato}" && shift 2 ;;
+    --de) de_stock="${2:?Falta el id de --de}" && shift 2 ;;
+    --json) como_json_stock=1 && shift ;;
+    --*) echo "«$1» no es una bandera de buscar-stock: --tipo · --estado · --formato · --de · --json" >&2 && exit 1 ;;
+    *) terminos_stock+=("$1") && shift ;;
+    esac
+  done
+  datos_stock="$(leer "/api/fuentes/$(uri "$biblioteca_stock")/anuncios")" || exit 1
+  jq -r --argjson json "$como_json_stock" --arg tipo "$tipo_stock" --arg estado "$estado_stock" \
+    --arg formato "$formato_stock" --arg de "$de_stock" --arg biblioteca "$biblioteca_stock" '
+    def norm: ascii_downcase
+      | gsub("[áàäâÁÀÄÂ]"; "a") | gsub("[éèëêÉÈËÊ]"; "e") | gsub("[íìïîÍÌÏÎ]"; "i")
+      | gsub("[óòöôÓÒÖÔ]"; "o") | gsub("[úùüûÚÙÜÛ]"; "u") | gsub("[ñÑ]"; "n")
+      | gsub("[̀-ͯ]"; "");
+    def pajar: [.id, .nombre, .tipo, .estado, .de, .texto, .motor, (.etiquetas // [])[]]
+      | map(select(. != null)) | join(" ") | norm;
+    def icono: {"aprobado":"✅","con-recorte":"✂️","apoyo":"🩹","alternativa":"🅰️","variante":"≈","descartado":"⛔",
+      "prueba":"🧪","sin-video":"🖼","referencia":"📎","archivo":"🗂"}[. // ""] // "·";
+    ($ARGS.positional | map(norm)) as $terminos
+    | .sincronizadoAt as $copia
+    | .anuncios as $todas
+    | ($terminos == [] and $tipo == "" and $estado == "" and $formato == "" and $de == "") as $sin_busqueda
+    | [$todas[]
+        | select(($tipo == "" or .tipo == $tipo) and ($estado == "" or .estado == $estado)
+            and ($formato == "" or .formato == $formato) and ($de == "" or .de == $de))
+        | select(pajar as $paja | $terminos | all(. as $t | $paja | contains($t)))] as $pasan
+    | if $json == 1 then $pasan
+      elif $sin_busqueda then
+        "\($todas | length) piezas en \($biblioteca) (copia del \($copia // "?")). Pasá términos o filtros de búsqueda.",
+        ($todas | group_by(.tipo // "sin tipo") | map({t: (.[0].tipo // "sin tipo"), n: length})
+          | sort_by([-.n, .t])[] | "  \(.t): \(.n)")
+      elif ($pasan | length) == 0 then "Sin resultados. Probá un término más corto o sin tilde."
+      else
+        ($pasan[]
+          | ((.texto // .nombre // "") | split("\n")) as $lineas
+          | ($lineas[1:] | map(select(length > 0)) | join(" ")) as $resto
+          | "\(.estado | icono) [\(.tipo // "sin tipo")\(if .duracion then " · \(.duracion)s" else "" end)] \(.id) — \($lineas[0] // "")",
+            ((.medio // .vistaPrevia) | select(. != null) | "     \(.)"),
+            (if $resto != "" then "     ⚠ \($resto)" else empty end)),
+        "\n\($pasan | length) resultado(s)."
+      end' --args -- ${terminos_stock[@]+"${terminos_stock[@]}"} <<<"$datos_stock"
+  ;;
 # Refresca las vivas: baja el original por su procedencia, compara la huella y estampa el
 # espejo. Sin slug recorre las que esperan refresco (`por-sincronizar`); con slug, esa
 # fuente aunque esté al día. Lo corre /thinking en su paso cero.
@@ -3011,6 +3118,10 @@ El sistema del proyecto — la tríada y las instrucciones. Primera lectura al l
                                             (suma a una biblioteca del stock un reel, una historia, un video con sus variantes
                                              y pedacitos, una imagen, una voz o el anuncio de un competidor; el mismo id lo reemplaza)
   bitacora-api sacar-anuncio <slug> <id>    (saca uno que subió una sesión)
+  bitacora-api editar-anuncio <slug> <id>   < {"estado":"aprobado","detalle":{…},…}   (funde campos de una pieza; null saca la clave)
+  bitacora-api editar-anuncios <slug>       < {"piezas":[{"id","estado",…}]}   (la misma fusión en tanda: un pedido, una escritura)
+  bitacora-api buscar-stock <biblioteca> [término…] [--tipo t] [--estado e] [--formato f] [--de id] [--json]
+                                            (busca en el stock: términos con AND, sin acentos ni mayúsculas)
   bitacora-api lectura <slug>               (la lectura curada: qué dice a la fecha, qué cambió y qué choca, con su copia)
   bitacora-api curar <slug> <huella>        < el markdown de la lectura, sobre la copia de esa huella (lo hace /fuentes)
   bitacora-api llevar-a-fuentes <id> [--tags a,b]   (un análisis del dueño a Fuentes con la voz del dueño, que se lee
@@ -3414,7 +3525,7 @@ Escritura (el cuerpo JSON entra por stdin):
         stockFueraDeMeta · stockFueraDeLaBiblioteca · archivoAjeno). La fuente se anota una vez con anotar-fuente, procedencia meta y clase anuncios
   bitacora-api anuncios <slug>              el stock, del más nuevo al más viejo (GET /api/fuentes/<slug>/anuncios):
         {slug, sincronizadoAt, anuncios:[{id, origen, formato, creado, vistaPrevia, medio, nombre, texto, marca, enlace,
-        personaje, duracion, proporcion, archivos, de, parte, tipo, estado, motor, etiquetas, usos:[{id, donde, conjunto, mercados, objetivo, estado,
+        personaje, duracion, proporcion, archivos, de, parte, tipo, estado, motor, etiquetas, detalle, usos:[{id, donde, conjunto, mercados, objetivo, estado,
         creado, resultado:{indicador, cantidad, costo}, impresiones, alcance, clics, gasto, moneda, vistas3s,
         cuartos, enlace}]}]} — lo que se lee para curar su lectura
   bitacora-api stock                        las bibliotecas del stock del proyecto (GET /api/stock):
@@ -3430,13 +3541,32 @@ Escritura (el cuerpo JSON entra por stdin):
         {"id","formato":"imagen|video|carrusel|reel|historia|audio","creado":"<instante ISO>","texto","marca","enlace",
         "personaje","de":"<id de la pieza>","parte":"variante|pedacito",
         "tipo":"<qué es: clip, keyframe, voz, pieza-final…>","estado":"<en qué quedó: aprobado, variante, descartado…>",
-        "motor":"<con qué se hizo>","etiquetas":["…"],"usos":[…]}; tipo y estado van en minúsculas con guiones, con el
+        "motor":"<con qué se hizo>","etiquetas":["…"],"detalle":{…lo que las herramientas leen con jq, hasta 20000 caracteres},"usos":[…]}; tipo y estado van en minúsculas con guiones, con el
         vocabulario de la productora, y la galería filtra por ellos. La extensión de --medio dice qué es: un video (mp4, mov,
         webm, m4v) sube como medio y, con ffmpeg y ffprobe, saca portada, duracion y proporcion; una imagen (jpg, jpeg, png,
         webp) sube como su propia vista previa, sin medio, y saca la proporcion; un audio (mp3, wav, m4a) sube como medio
         y saca la duracion. Los tres suman archivos; un anuncio de Meta que pautó uno de esos archivos le suma sus usos
-        (400 stockFueraDeLaBiblioteca · archivoAjeno · anuncioDeMeta)
-  bitacora-api sacar-anuncio <slug> <id>    saca un anuncio de origen mano con sus archivos (400 anuncioDeMeta)
+        (400 stockFueraDeLaBiblioteca · archivoAjeno · anuncioDeMeta · bibliotecaLlena: el stock entero de la biblioteca pasó
+        su tope en bytes: se sacan piezas que ya no se usan o se parte en dos bibliotecas · 409 stockCambiado: otra escritura
+        ganó tres veces seguidas: se repite el pedido una sola vez, y con un segundo 409 se frena y se avisa)
+  bitacora-api sacar-anuncio <slug> <id>    saca un anuncio de origen mano con sus archivos (400 anuncioDeMeta · 409 stockCambiado)
+  bitacora-api editar-anuncio <slug> <id>   {"estado":"aprobado"} · {"detalle":{"entra":1.2,"sale":3.8},"etiquetas":["habla","mudo"],"motor":null}
+        (PATCH /api/fuentes/<slug>/anuncios/<id>; el JSON va como tercer argumento o por stdin) cambia de la pieza
+        nombre, texto, tipo, estado, motor, etiquetas, detalle, de y parte: cada campo que llega reemplaza entero al que
+        la pieza tenía, así que sumar una etiqueta o una clave del detalle es mandar la lista o el objeto completo, leído
+        antes con `buscar-stock … --json` —un campo en null saca la clave; de y parte van juntos—, y deja su id, su formato, sus archivos, su duración, su proporción y sus usos como estaban. Contesta lo
+        que el alta más la pieza fundida en `anuncio` (404 de la fuente o de la pieza · 400 stockFueraDeLaBiblioteca ·
+        anuncioDeMeta · bibliotecaLlena · 409 stockCambiado)
+  bitacora-api editar-anuncios <slug>       {"piezas":[{"id":"gesto-baile","estado":"aprobado"},{"id":"gesto-saludo","detalle":{…}}]}
+        (PATCH /api/fuentes/<slug>/anuncios) la misma fusión para varias piezas en un pedido y una sola escritura de la
+        biblioteca, cuando una carga o una corrección toca varias. Cobra todo antes de escribir: los ids que faltan (404)
+        y los de Meta (400 anuncioDeMeta) vienen nombrados y la tanda no escribe nada. Cada campo reemplaza entero al de la
+        pieza, `detalle` y `etiquetas` incluidos. Contesta lo que el alta más `parcheadas`: cuántas piezas fundió
+  bitacora-api buscar-stock <biblioteca> [término…] [--tipo t] [--estado e] [--formato f] [--de id] [--json]
+        busca sobre lo que trae `anuncios`: los términos se suman con AND, por subcadena y sin acentos ni mayúsculas, contra
+        id, nombre, tipo, estado, de, texto, motor y etiquetas; los filtros piden el valor entero. Sin términos ni filtros,
+        las piezas por tipo; con resultados, un renglón por pieza —ícono del estado, tipo, duración, id y primera línea del
+        texto— con la ruta de su medio para `bajar` y el resto del texto con ⚠; con --json, las piezas que pasan, enteras
   bitacora-api curar <slug> <huella>        < «# Lo que dice» · «# Qué cambió» (cuando reemplaza a otra) · «# Lo que choca»
         la lectura curada sobre la copia de esa huella; la anterior queda guardada y queda vieja cuando la copia cambia
         (400 lecturaSobreOtraCopia · lecturaSinCopia · lecturaDeLaPieza para la fuente de un análisis · lecturaIncompleta · seccionLarga)
