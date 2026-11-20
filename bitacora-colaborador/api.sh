@@ -199,6 +199,47 @@ if [ "${1:-}" = "bandeja" ]; then
   exit 0
 fi
 
+# --- los encargos de pieza: lo que los proyectos le encargaron a la productora ---------
+#
+# Va antes de resolver el proyecto por lo mismo que la bandeja: recorre cada llave de
+# config.local y junta los planes en `encargado` con `ficha.para: "productora"` —los que un
+# proyecto dejó con `bitacora-api a-la-productora <plan-id>`—, cada uno con su proyecto, su
+# título, su enlace y `ficha.produccion` (el enlace de su plan de producción) cuando la
+# productora ya lo escribió. Con --json, el arreglo para jq. Una llave vencida o sin red se
+# dice por stderr y se sigue con las demás.
+if [ "${1:-}" = "encargos-de-pieza" ]; then
+  BASE="${BITACORA_URL:-$(valor_de url || true)}"
+  BASE="${BASE:-https://bitacora.dev-fran.com}"
+  [ -f "$CONFIG" ] || { echo "No hay config.local con llaves ($CONFIG)." >&2; exit 1; }
+  COMO_JSON_ENCARGOS=0
+  case "${2:-}" in
+  --json) COMO_JSON_ENCARGOS=1 ;;
+  "") ;;
+  *) echo "«$2» no es una opción de encargos-de-pieza — uso: bitacora-api encargos-de-pieza [--json]" >&2 && exit 1 ;;
+  esac
+  ENCARGOS_DE_PIEZA="$(
+    { grep -E '^[a-z0-9-]+=' "$CONFIG" | grep -vE '^(url|raiz)=' || true; } | while IFS='=' read -r tenant llave; do
+      respuesta="$(curl -fsS --max-time 20 -H "Authorization: Bearer $llave" \
+        "$BASE/api/items/planes?abiertos" 2>/dev/null)" || {
+        echo "· sin respuesta de «${tenant}» (llave vencida, o sin red)" >&2
+        continue
+      }
+      printf '%s' "$respuesta" | jq -c --arg p "$tenant" \
+        '.items[] | select(.estado == "encargado" and (.ficha.para // "") == "productora")
+         | {proyecto: $p, id, titulo, enlace, produccion: (.ficha.produccion // null)}'
+    done | jq -s '.'
+  )"
+  if [ "$COMO_JSON_ENCARGOS" = 1 ]; then
+    printf '%s\n' "$ENCARGOS_DE_PIEZA"
+  elif [ "$ENCARGOS_DE_PIEZA" = "[]" ]; then
+    echo "Ningún proyecto tiene planes encargados a la productora."
+  else
+    printf '%s' "$ENCARGOS_DE_PIEZA" | jq -r '.[] |
+      "\(.proyecto) · \(.titulo)\n  plan en origen: \(.enlace)  (\(.id))\n  plan de producción: \(.produccion // "sin escribir todavía")"'
+  fi
+  exit 0
+fi
+
 # --- el harness de TODAS las cuentas: un reporte por llave ------------------------------
 #
 # Va antes de resolver el proyecto por lo mismo que la bandeja: la API de harness está atada
@@ -1538,13 +1579,64 @@ ficha)
 # cuando no hubo: una sección ausente o vacía rebota como olvido) y adónde volvió el trabajo en la
 # ficha: pr, o entregable cuando el encargo es contenido. El plan con `contrato: "produccion"`
 # es el encargo de una pieza de contenido: ocho secciones (Qué cambia · Fuente · Tarea · El
-# brief · La marca · Restricciones · Lo aprobado · Destino), sin visual, y su reporte de siete
+# plan en origen · La marca · Restricciones · Lo aprobado · Destino), sin visual, y su reporte de siete
 # (Hecho · Cómo quedó · Dónde vive · Gasto · Decisiones sobre la marcha · Fricciones · Para
 # decidir) con ficha.entregable. Firmar a hecho cierra el chequeo
 # que declara el plan: el contestado pasa a aplicado, el abierto a descartado.
 # Un 400 nombra todo lo que falta de una vez, con lo que cada sección afirma.
 # La nota va también a `ficha.destino`: las listas —en-curso, bandeja— sirven la ficha y
 # no la historia, y quién tiene un plan se pregunta desde una lista.
+# El plan de la pieza de un proyecto, encargado a la productora: lo escribe la sesión de marketing en su
+# propio proyecto y, con el OK de Fran, este gesto lo pasa a `encargado` con `ficha.para: "productora"`
+# en UN solo PATCH (el servidor cobra ahí lo que el estado pide: las secciones del plan). Contesta el
+# enlace del plan y la línea para avisarle a CREATOR; CREATOR lo encuentra con `encargos-de-pieza`.
+# Con --seco lee el plan y dice lo que haría, sin escribir. Un plan que ya está encargado a la
+# productora contesta lo mismo sin repetir la escritura.
+#
+#   bitacora-api -p cliencer a-la-productora 6b0048f17ecc67005db94923 --seco
+#   bitacora-api -p cliencer a-la-productora 6b0048f17ecc67005db94923
+a-la-productora)
+  exige 1 "a-la-productora <plan-id> [--seco]" "$@"
+  plan_productora="$1"
+  seco_productora=0
+  shift
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --seco) seco_productora=1 && shift ;;
+    *) echo "«$1» no es una opción de a-la-productora — uso: bitacora-api [-p <proyecto>] a-la-productora <plan-id> [--seco]" >&2 && exit 1 ;;
+    esac
+  done
+  [ "$seco_productora" = 1 ] || vaciar_cola
+  datos_productora="$(leer "/api/items/planes/$(uri "${plan_productora}")")" || exit 1
+  titulo_productora="$(jq -r .titulo <<<"$datos_productora")"
+  enlace_productora="$(jq -r .enlace <<<"$datos_productora")"
+  estado_productora="$(jq -r .estado <<<"$datos_productora")"
+  case "$estado_productora" in
+  pendiente | encargado) ;;
+  *) echo "El plan está «${estado_productora}»: a la productora se encarga un plan pendiente o encargado." >&2 && exit 1 ;;
+  esac
+  cuerpo_productora='{"estado":"encargado","ficha":{"para":"productora"}}'
+  ya_productora=0
+  if [ "${estado_productora}" = "encargado" ] && [ "$(jq -r '.ficha.para // ""' <<<"$datos_productora")" = "productora" ]; then
+    ya_productora=1
+  fi
+  if [ "$seco_productora" = 1 ]; then
+    if [ "$ya_productora" = 1 ]; then
+      echo "Ya está encargado a la productora: ${titulo_productora} (${enlace_productora}). No escribiría nada."
+    else
+      echo "Con --seco no escribo nada. Haría, en «${PROYECTO}», sobre el plan ${titulo_productora} (hoy «${estado_productora}»):"
+      echo "  PATCH /api/items/planes/${plan_productora}  $cuerpo_productora"
+      echo "y contestaría su enlace (${enlace_productora}) y la línea para avisarle a CREATOR."
+    fi
+    exit 0
+  fi
+  if [ "$ya_productora" = 0 ]; then
+    printf '%s' "$cuerpo_productora" | escribir PATCH "/api/items/planes/$(uri "${plan_productora}")" >/dev/null || exit 1
+  fi
+  echo "Encargado a la productora: ${titulo_productora}"
+  echo "Plan en origen: ${enlace_productora}"
+  echo "Para avisarle a CREATOR: «${PROYECTO} encargó ${titulo_productora}: ${enlace_productora} — corré \`bitacora-api encargos-de-pieza\` y tomalo.»"
+  ;;
 tomar)
   exige 1 "tomar <id> [nota: el worktree o la copia que lo tiene]" "$@"
   vaciar_cola
@@ -3320,10 +3412,14 @@ Escritura (el cuerpo JSON entra por stdin):
         lugar o darle tambienEn contesta 400 sinLugar, porque vive sin lugar —;
         "vigente":true es el que explica algo que dura y le sirve a quien abra el área dentro de unos meses: sigue a la vista hasta que se descarta;
         sin la marca es material de trabajo: el que lleva semanas sin tocarse sale de la lista viva a «Lo anterior», y reescribirlo lo trae arriba
-  bitacora-api brief <subarea>                 {"titulo":"…","queEs":"…","ficha":{"de":"<tenant> · <sesión>","marca":"<marca>","origen":"<enlace>"},"brief":{"objetivo":"…","publico":{"abierto":"proyecto","pregunta":"…"},"mensaje":"…","angulos":{"otraPieza":"por qué"},"accion":"…","piezas":"…","nuncaDice":"…","material":"…","paraCuando":"…"}}
-        el pedido de una pieza a la productora (`-p productora brief pedidos`): los nueve campos van siempre, cada uno con su
-        contenido, {"abierto":"proyecto|productora|fran","pregunta":"…"} o {"otraPieza":"…"}; nace abierto, se lee «esperando
-        al proyecto» mientras le queda un campo abierto del proyecto, y pasa a procesado con su nota cuando no le queda ninguno
+  bitacora-api brief <subarea>                 (el alta está cerrada: el servidor contesta 400 `briefCerrado`. La pieza que un proyecto le pide a la
+        productora es un plan del propio proyecto, que se encarga con `bitacora-api a-la-productora <plan-id>`; los briefs que existen se
+        leen, se contestan con `campo-del-brief` y se procesan con `mover briefs <id>` como siempre)
+  bitacora-api a-la-productora <plan-id> [--seco]   (el plan de una pieza, escrito en el proyecto que la pide, pasa a `encargado` con
+        `ficha.para: "productora"` en una sola escritura, y contesta su enlace y la línea para avisarle a CREATOR; con --seco lee el plan
+        y dice lo que haría sin escribir; el 400 del servidor llega tal cual, con lo que el plan debe cumplir para quedar encargado)
+  bitacora-api encargos-de-pieza [--json]       (sin -p: los planes `encargado` con `ficha.para: "productora"` de TODOS los proyectos de la máquina,
+        cada uno con su proyecto, su título, su enlace y `ficha.produccion` —el plan de producción— cuando la productora ya lo escribió)
   bitacora-api idea <subarea>                  {"titulo":"…","queEs":"…","idea":{"subtitulo":"la escena en una frase","momento":[{"texto":"…","imagen":"<ruta de adjunto>"}],"pilares":[{"nombre":"Parar","texto":"…"}],"hooks":[{"letra":"A","frase":"…","mecanismo":"…","evidencia":"…"}],"estructura":[{"tramo":"0–5 s · Hook","que":"…","tecnica":"…"}],"propuestas":[{"decision":"…","propuesta":"…","tipo":"propuesta"}],"audiencia":"…","canal":"…","formato":"…","recursos":[{"k":"…","v":"…"}],"restricciones":[{"k":"…","v":"…"}]},"objetivo":"<id>"}
         el paso 0 del proceso creativo: la idea pre-armada por la sesión, que la persona firma propuesta por propuesta
         ANTES de pensar el cómo; la `resolucion` no viaja con el cuerpo — se firma con `resolver ideas <id> <n>` — y
@@ -3358,7 +3454,7 @@ Escritura (el cuerpo JSON entra por stdin):
         abierta que solo se toma mirando y cuya respuesta cambia el código, antes de salir: el cuerpo la nombra en una línea, se abre el chequeo
         visual declarando este plan y la firma lo cierra)
         "contrato":"produccion" hace del plan un ENCARGO DE PRODUCCIÓN, el que /creator le escribe a la sesión que produce una pieza de contenido
-        (/producing; las dos, skills de la productora): mismo ciclo y otras secciones —# Qué cambia · # Fuente · # Tarea · # El brief · # La marca · # Restricciones · # Lo aprobado · # Destino,
+        (/producing; las dos, skills de la productora): mismo ciclo y otras secciones —# Qué cambia · # Fuente · # Tarea · # El plan en origen · # La marca · # Restricciones · # Lo aprobado · # Destino,
         con «Ninguna» en Restricciones y en Lo aprobado cuando no hay—, sin "visual" (lo que se mira de una pieza son sus pausas), con "modelo" y "esfuerzo";
         se entrega con ficha.entregable y el reporte ## Hecho · ## Cómo quedó · ## Dónde vive · ## Gasto · ## Decisiones sobre la marcha · ## Fricciones · ## Para decidir;
         se corrige con `corregir planes <id>` mientras el plan no empezó (después, 400 contratoFijo), y `item planes <id>` lo trae en `contrato`
