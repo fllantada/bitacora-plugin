@@ -491,6 +491,64 @@ subir() {
   esac
 }
 
+# El directorio del plugin, resuelto desde el shim: un symlink relativo se resolvería contra
+# el cwd, así que se sigue entero.
+dir_del_plugin() {
+  local sh="${BASH_SOURCE[0]}" destino
+  while [ -L "$sh" ]; do
+    destino="$(readlink "$sh")"
+    case "$destino" in
+    /*) sh="$destino" ;;
+    *) sh="$(dirname "$sh")/$destino" ;;
+    esac
+  done
+  (cd "$(dirname "$sh")" && pwd)
+}
+
+# El nombre con que sube un archivo de un anuncio: su id saneado y cortado, con una huella corta
+# del id entero —dos ids que comparten el comienzo dan dos nombres—, `-video` cuando el campo es
+# `medio`, y la extensión del archivo en minúscula.
+nombre_de_archivo() {
+  local base
+  base="$(printf '%s' "$1" | tr -c 'A-Za-z0-9_-' '-' | cut -c1-80)-$(printf '%s' "$1" | shasum -a 1 | cut -c1-10)"
+  [ "$2" = medio ] && base="$base-video"
+  printf '%s.%s' "$base" "$(printf '%s' "${3##*.}" | tr '[:upper:]' '[:lower:]')"
+}
+
+# Toma el stock de anuncios de una fuente `meta` y lo guarda como su copia. Lee el stock
+# anterior —trae las vistas previas y los videos ya subidos—, corre `anuncios-meta.mjs` con el
+# entorno del proyecto donde está parada la sesión (el cargador del root lee su `.env`, donde vive
+# `META_SYSTEM_USER_TOKEN`) contra la cuenta de su `ref`, sube cada vista previa y cada video
+# nuevos colgados de la fuente y manda el stock a `PUT /api/fuentes/<slug>/anuncios`. La falta de
+# credencial sale con el mensaje del lector y el código 1.
+tomar_stock() {
+  local slug="$1" ficha previas carpeta cuenta cargador id archivo ruta salida
+  ficha="$(leer "/api/fuentes/$(uri "$slug")")" || return 1
+  previas="$(leer "/api/fuentes/$(uri "$slug")/anuncios")" || return 1
+  carpeta="$(mktemp -d)"
+  printf '%s' "$previas" >"$carpeta/previas.json"
+  cuenta="$(jq -r '.ref // ""' <<<"$ficha")"
+  cargador="$HOME/.claude/scripts/load-project-env.js"
+  [ -f "$cargador" ] || cargador=""
+  if ! node ${cargador:+-r "$cargador"} "$(dir_del_plugin)/anuncios-meta.mjs" \
+    --carpeta "$carpeta/stock" --previas "$carpeta/previas.json" ${cuenta:+--cuenta "$cuenta"}; then
+    rm -rf "$carpeta"
+    return 1
+  fi
+  echo '{}' >"$carpeta/rutas.json"
+  while IFS=$'\t' read -r id campo archivo; do
+    if ruta="$(subir "$archivo" "fuente=$slug" "nombre=$(nombre_de_archivo "$id" "$campo" "$archivo")" | jq -r '.ruta')"; then
+      jq --arg i "$id" --arg c "$campo" --arg r "$ruta" '.[$i][$c] = $r' "$carpeta/rutas.json" >"$carpeta/rutas.tmp" &&
+        mv "$carpeta/rutas.tmp" "$carpeta/rutas.json"
+    fi
+  done < <(jq -r '.anuncios[] | .id as $i | (.subir // {}) | to_entries[] | [$i, .key, .value] | @tsv' "$carpeta/stock/stock.json")
+  salida=0
+  jq -c --slurpfile r "$carpeta/rutas.json" '.anuncios |= map(. + ($r[0][.id] // {}) | del(.subir))' \
+    "$carpeta/stock/stock.json" | escribir PUT "/api/fuentes/$(uri "$slug")/anuncios" || salida=1
+  rm -rf "$carpeta"
+  return "$salida"
+}
+
 # Sube un archivo a una puerta que lo recibe como multipart: la de la captura de un paso. No
 # pasa por la cola: un binario no entra en una línea de JSONL, y reintentar una subida a ciegas
 # es peor que volver a escribir el comando.
@@ -554,11 +612,13 @@ PLUGIN="$(jq -r 'select(.name and .version) | "\(.name)@\(.version)"' "$(manifie
 # el pedido sale sin `X-Bitacora-Version`.
 pedir() {
   local plugin="${5-$PLUGIN}"
-  curl -sS --max-time 20 -X "$1" \
+  # El cuerpo entra por la entrada estándar de curl: un argumento tiene tope en el sistema, y
+  # un stock de anuncios grande lo pasa.
+  printf '%s' "$4" | curl -sS --max-time 20 -X "$1" \
     -H "Authorization: Bearer $2" \
     -H "Content-Type: application/json" \
     ${plugin:+-H "X-Bitacora-Version: $plugin"} \
-    -d "$4" -w $'\n%{http_code}' "$BASE$3" 2>/dev/null || printf '\n000'
+    --data-binary @- -w $'\n%{http_code}' "$BASE$3" 2>/dev/null || printf '\n000'
 }
 
 # Escribe. Si no hubo red, guarda el pedido — CON su proyecto — para el próximo intento.
@@ -593,8 +653,9 @@ escribir() {
     ;;
   000)
     mkdir -p "$CONFIG_DIR"
-    printf '%s\n' "$(jq -cn --arg p "$PROYECTO" --arg m "$metodo" --arg r "$ruta" \
-      --arg v "$PLUGIN" --argjson c "$cuerpo" '{proyecto:$p, metodo:$m, ruta:$r, plugin:$v, cuerpo:$c}')" >>"$PENDIENTES"
+    # El cuerpo entra a jq por la entrada estándar: un argumento tiene tope en el sistema.
+    printf '%s' "$cuerpo" | jq -c --arg p "$PROYECTO" --arg m "$metodo" --arg r "$ruta" \
+      --arg v "$PLUGIN" '{proyecto:$p, metodo:$m, ruta:$r, plugin:$v, cuerpo:.}' >>"$PENDIENTES"
     echo "Sin respuesta: queda en la cola ($PENDIENTES). Se sube en la próxima escritura." >&2
     return 1
     ;;
@@ -2360,6 +2421,90 @@ sincronizada)
     '{ruta:$r, hash:$h} + (if $f == "" then {} else {fecha:$f} end)' |
     escribir POST "/api/fuentes/$(uri "$fuente_slug")/espejo"
   ;;
+# Toma el stock de anuncios de una fuente `meta` —una cuenta publicitaria leída por la
+# Marketing API— y lo guarda como su copia: cada creativo de la cuenta con su vista previa y cada
+# anuncio de Meta que lo usó, con su campaña, sus mercados, su estado, cuándo salió y las cifras de
+# toda su vida; lo subido a mano queda. Corre parado en el repo que tiene la credencial
+# de Meta (`META_SYSTEM_USER_TOKEN` en su `.env`), y la cuenta sale del `ref` de la fuente.
+#
+#   bitacora-api anuncios-meta anuncios-de-meta
+anuncios-meta)
+  exige 1 "anuncios-meta <slug>   (parado en el repo con la credencial de Meta)" "$@"
+  tomar_stock "$1"
+  ;;
+# Lee el stock de anuncios de una fuente `meta`, del más nuevo al más viejo, con el día de su
+# copia: cada anuncio con su campaña, su estado, cuándo se creó y las cifras de toda su vida.
+#
+#   bitacora-api anuncios anuncios-de-meta | jq -r '.anuncios[] | [.creado[:10], .nombre, .estado, .resultado.cantidad, .impresiones, .gasto] | @tsv'
+anuncios)
+  exige 1 "anuncios <slug>" "$@"
+  leer "/api/fuentes/$(uri "$1")/anuncios"
+  ;;
+# Suma a una biblioteca un anuncio que sube la sesión —un reel, una historia, un video terminado
+# con sus variantes y pedacitos, el anuncio de un competidor en la biblioteca de referencia—, o
+# reemplaza el que tiene su mismo `id`. Los archivos van con banderas y se suben colgados de la
+# fuente; del video de `--medio` sale `archivos` siempre, y la portada, la duración y la
+# proporción con ffmpeg y ffprobe, cuando el JSON los calla. El JSON entra por stdin.
+#
+#   bitacora-api sumar-anuncio videos-de-moli --medio piezas/013-miedo/013-rosario-miedo-4x5.mp4 <<'JSON'
+#   {"id":"013-rosario-miedo-4x5","formato":"video","creado":"2026-11-13T14:00:00-03:00",
+#    "personaje":"Moli","de":"013-miedo","parte":"variante"}
+#   JSON
+sumar-anuncio)
+  exige 1 "sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video>]   < {\"id\":\"…\",\"formato\":\"imagen|video|carrusel|reel|historia\",\"creado\":\"<instante ISO>\",…}" "$@"
+  slug_anuncio="$1"
+  shift
+  [ -t 0 ] && { echo "Falta el JSON del anuncio por stdin (heredoc)." >&2; exit 1; }
+  cuerpo_anuncio="$(cat)"
+  id_anuncio="$(jq -r '.id // ""' <<<"$cuerpo_anuncio")" || { echo "El anuncio no es JSON: revisá el heredoc." >&2; exit 1; }
+  [ -n "$id_anuncio" ] || { echo "El anuncio va con su \"id\": el mismo id lo reemplaza." >&2; exit 1; }
+  vista_anuncio=""
+  medio_anuncio=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+    --vista-previa) vista_anuncio="${2:?Falta la imagen de --vista-previa}" && shift 2 ;;
+    --medio) medio_anuncio="${2:?Falta el video de --medio}" && shift 2 ;;
+    *) echo "«$1» no es una bandera de sumar-anuncio: --vista-previa <imagen> · --medio <video>" >&2 && exit 1 ;;
+    esac
+  done
+  carpeta_anuncio="$(mktemp -d)"
+  if [ -n "$medio_anuncio" ]; then
+    [ -f "$medio_anuncio" ] || { echo "No existe $medio_anuncio" >&2; exit 1; }
+    # Del video salen su nombre, su portada, su duración y su proporción, cuando el JSON los calla:
+    # el nombre, que es el cruce con Meta, siempre; lo demás, con ffmpeg y ffprobe.
+    cuerpo_anuncio="$(jq -c --arg n "$(basename "${medio_anuncio%.*}")" 'if .archivos == null then .archivos = [$n] else . end' <<<"$cuerpo_anuncio")"
+    command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1 ||
+      echo "→ el video sube sin su portada, su duración ni su proporción: los saca ffmpeg (brew install ffmpeg), o van en el JSON y en --vista-previa" >&2
+    if [ -z "$vista_anuncio" ] && command -v ffmpeg >/dev/null 2>&1; then
+      vista_anuncio="$carpeta_anuncio/portada.jpg"
+      ffmpeg -v error -ss 1 -i "$medio_anuncio" -frames:v 1 -vf scale=640:-2 -y "$vista_anuncio" 2>/dev/null ||
+        ffmpeg -v error -i "$medio_anuncio" -frames:v 1 -vf scale=640:-2 -y "$vista_anuncio" 2>/dev/null || vista_anuncio=""
+    fi
+    if command -v ffprobe >/dev/null 2>&1; then
+      ficha_video="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height:format=duration -of json "$medio_anuncio" 2>/dev/null || echo '{}')"
+      cuerpo_anuncio="$(jq -c --argjson f "$ficha_video" '
+        def mcd(a; b): if b == 0 then a else mcd(b; a % b) end;
+        ($f.streams[0] // {}) as $v | (($f.format.duration // "") | tonumber? // null) as $d
+        | (if .duracion == null and $d != null then .duracion = ($d * 10 | round / 10) else . end)
+        | (if .proporcion == null and ($v.width // 0) > 0 then .proporcion = "\($v.width / mcd($v.width; $v.height))x\($v.height / mcd($v.width; $v.height))" else . end)' <<<"$cuerpo_anuncio")"
+    fi
+  fi
+  for par_anuncio in "vistaPrevia:$vista_anuncio" "medio:$medio_anuncio"; do
+    campo_anuncio="${par_anuncio%%:*}"
+    archivo_anuncio="${par_anuncio#*:}"
+    [ -n "$archivo_anuncio" ] || continue
+    ruta_anuncio="$(subir "$archivo_anuncio" "fuente=$slug_anuncio" "nombre=$(nombre_de_archivo "$id_anuncio" "$campo_anuncio" "$archivo_anuncio")" | jq -r '.ruta')" ||
+      { rm -rf "$carpeta_anuncio"; exit 1; }
+    cuerpo_anuncio="$(jq -c --arg c "$campo_anuncio" --arg r "$ruta_anuncio" '. + {($c): $r}' <<<"$cuerpo_anuncio")"
+  done
+  rm -rf "$carpeta_anuncio"
+  printf '%s' "$cuerpo_anuncio" | escribir POST "/api/fuentes/$(uri "$slug_anuncio")/anuncios"
+  ;;
+# Saca del stock un anuncio que subió una sesión (el de Meta lo vuelve a traer su refresco).
+sacar-anuncio)
+  exige 2 "sacar-anuncio <slug> <id>" "$@"
+  echo "{}" | escribir DELETE "/api/fuentes/$(uri "$1")/anuncios/$(uri "$2")"
+  ;;
 # Refresca las vivas: baja el original por su procedencia, compara la huella y estampa el
 # espejo. Sin slug recorre las que esperan refresco (`por-sincronizar`); con slug, esa
 # fuente aunque esté al día. Lo corre /thinking en su paso cero.
@@ -2406,6 +2551,22 @@ refrescar)
     google-docs)
       export_refresco="https://docs.google.com/document/d/$ref_refresco/export?format=txt"
       nombre_refresco="$slug_refresco.txt"
+      ;;
+    meta)
+      # La copia es el stock de la cuenta: se toma con la credencial del proyecto donde está
+      # parada la sesión, y donde falta, el renglón dice desde dónde se toma.
+      if causa_meta="$(tomar_stock "$slug_refresco" 2>&1 >/dev/null)"; then
+        cambiaron=$((cambiaron + 1))
+        echo "  ↻  $slug_refresco: stock de anuncios nuevo, con las cifras de hoy"
+      elif grep -q META_SYSTEM_USER_TOKEN <<<"$causa_meta"; then
+        por_su_skill=$((por_su_skill + 1))
+        echo "  →  $slug_refresco (meta): la refresca \`bitacora-api anuncios-meta $slug_refresco\` parado en el repo con la credencial de Meta (META_SYSTEM_USER_TOKEN)"
+      else
+        sin_acceso=$((sin_acceso + 1))
+        sin_acceso_lista="$sin_acceso_lista $slug_refresco"
+        echo "  ✗  $slug_refresco (meta): $(tail -1 <<<"$causa_meta")"
+      fi
+      continue
       ;;
     bitacora)
       # La copia es el análisis mismo: volver a llevarlo estampa la huella de hoy, sin bajar nada.
@@ -2775,6 +2936,13 @@ El sistema del proyecto — la tríada y las instrucciones. Primera lectura al l
   bitacora-api por-sincronizar              (las vivas cuya copia quedó vieja, con su handle y su huella)
   bitacora-api refrescar [slug]             (baja las vivas por su procedencia, compara la huella y estampa el espejo;
                                              la que quedó sin acceso la dice con qué pedir — lo corre /thinking al arrancar)
+  bitacora-api anuncios-meta <slug>         (toma el stock de anuncios de una fuente meta: cada creativo con su vista previa
+                                             y sus usos; parado en el repo con la credencial de Meta)
+  bitacora-api anuncios <slug>              (lee ese stock, del más nuevo al más viejo, con el día de su copia)
+  bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video>]   < {"id","formato","creado",…}
+                                            (suma a una biblioteca un reel, una historia, un video con sus variantes
+                                             y pedacitos o el anuncio de un competidor; el mismo id lo reemplaza)
+  bitacora-api sacar-anuncio <slug> <id>    (saca uno que subió una sesión)
   bitacora-api lectura <slug>               (la lectura curada: qué dice a la fecha, qué cambió y qué choca, con su copia)
   bitacora-api curar <slug> <huella>        < el markdown de la lectura, sobre la copia de esa huella (lo hace /fuentes)
   bitacora-api llevar-a-fuentes <id> [--tags a,b]   (un análisis del dueño a Fuentes con la voz del dueño, que se lee
@@ -3159,7 +3327,7 @@ Escritura (el cuerpo JSON entra por stdin):
                                              "producidaPor":"Fran McCann","lado":"cliente","fecha":"2026-09-08",
                                              "vigencia":"viva","url":"https://…","ref":"<doc-id>","tags":["algolia"],"nota":"…"}
         clase = documento | hoja | canal | tablero | diseno | pagina
-        procedencia = google-sheets | google-docs | slack | jira | figma | miro | email | drive | mano
+        procedencia = google-sheets | google-docs | slack | jira | figma | miro | email | drive | mano | meta
         lado = cliente | equipo | nuestro | proveedor      vigencia = viva | fechada
         `fecha` es la DE la fuente: cuándo la produjo su autor, no cuándo la anotaste
   bitacora-api editar-fuente <slug>         {"fecha":"2026-09-09"} · {"sumarTags":["plp-taxonomia"]}
@@ -3169,7 +3337,26 @@ Escritura (el cuerpo JSON entra por stdin):
         sube la copia, calcula su huella y estampa el espejo — con la fecha, mueve la de la fuente
   bitacora-api refrescar [slug]             sin slug las que esperan refresco; con slug esa. Sheets y Docs por su export
                                             público (sin credencial: compartido por enlace); la de bitácora, volviéndola a
-                                            llevar; las demás, por su skill
+                                            llevar; la de meta, tomando su stock donde está la credencial; las demás, por su skill
+  bitacora-api anuncios-meta <slug>         el stock de anuncios de la fuente meta, con la cuenta de su `ref` (act_…):
+        lista cada anuncio por la Marketing API, los junta por creativo —el anuncio es el creativo, y cada anuncio de Meta
+        un uso suyo con su campaña, sus mercados, su objetivo, su estado y las cifras de toda su vida, con las vistas de
+        tres segundos y los cuartos del video—, sube las vistas previas nuevas y el video que encuentra en el repo con el
+        nombre que se subió a Meta, y guarda el stock, con lo subido a mano intacto (PUT /api/fuentes/<slug>/anuncios; 400
+        stockFueraDeMeta · archivoAjeno). La fuente se anota una vez con anotar-fuente y procedencia meta
+  bitacora-api anuncios <slug>              el stock, del más nuevo al más viejo (GET /api/fuentes/<slug>/anuncios):
+        {slug, sincronizadoAt, anuncios:[{id, origen, formato, creado, vistaPrevia, medio, nombre, texto, marca, enlace,
+        personaje, duracion, proporcion, archivos, de, parte, usos:[{id, donde, conjunto, mercados, objetivo, estado,
+        creado, resultado:{indicador, cantidad, costo}, impresiones, alcance, clics, gasto, moneda, vistas3s,
+        cuartos, enlace}]}]} — lo que se lee para curar su lectura
+  bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video>]   < el anuncio en JSON
+        suma un anuncio de origen mano a una biblioteca —una fuente mano o meta: un reel, una historia, un video de
+        «Videos de <Personaje>», el de un competidor en «Anuncios de referencia»—, o reemplaza el de su mismo id:
+        {"id","formato":"imagen|video|carrusel|reel|historia","creado":"<instante ISO>","texto","marca","enlace",
+        "personaje","de":"<id de la pieza>","parte":"variante|pedacito","usos":[…]}; del video de --medio salen
+        archivos y, con ffmpeg y ffprobe, la portada, duracion y proporcion; un anuncio de Meta que pautó uno de esos
+        archivos le suma sus usos (400 stockFueraDeLaBiblioteca · archivoAjeno · anuncioDeMeta)
+  bitacora-api sacar-anuncio <slug> <id>    saca un anuncio de origen mano con sus archivos (400 anuncioDeMeta)
   bitacora-api curar <slug> <huella>        < «# Lo que dice» · «# Qué cambió» (cuando reemplaza a otra) · «# Lo que choca»
         la lectura curada sobre la copia de esa huella; la anterior queda guardada y queda vieja cuando la copia cambia
         (400 lecturaSobreOtraCopia · lecturaSinCopia · lecturaDeLaPieza para la fuente de un análisis · lecturaIncompleta · seccionLarga)
