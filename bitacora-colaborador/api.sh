@@ -507,8 +507,8 @@ dir_del_plugin() {
 
 # El nombre con que sube un archivo de un anuncio: su id saneado y cortado, con una huella corta
 # del id entero —dos ids que comparten el comienzo dan dos nombres—, el sufijo de lo que es cuando
-# el campo es `medio` (`-original` para una imagen, `-audio` para un audio, `-video` para el resto) o
-# `-miniatura` cuando la `vistaPrevia` es un archivo `…-miniatura.<ext>` de `anuncios-meta.mjs` (con
+# el campo es `medio` (`-original` para una imagen, `-audio` para un audio, `-documento` para un pdf,
+# `-video` para el resto) o `-miniatura` cuando la `vistaPrevia` es un archivo `…-miniatura.<ext>` de `anuncios-meta.mjs` (con
 # ese nombre el refresco reconoce las miniaturas y rehace las vistas previas enteras de antes), y la
 # extensión del archivo en minúscula.
 nombre_de_archivo() {
@@ -523,6 +523,7 @@ nombre_de_archivo() {
     case "$extension" in
     jpg | jpeg | png | webp | gif) base="$base-original" ;;
     mp3 | wav | m4a) base="$base-audio" ;;
+    pdf) base="$base-documento" ;;
     *) base="$base-video" ;;
     esac
   fi
@@ -2509,6 +2510,9 @@ anuncios)
 #     imagen sube como su propia `vistaPrevia`, sin `medio`, y el comando lo avisa.
 #   · audio (mp3, wav, m4a): sube como `medio`; la duración sale con ffprobe, sin portada ni
 #     proporción.
+#   · documento (pdf): el PDF exacto sube como `medio` y su primera hoja es la miniatura que sube
+#     como `vistaPrevia` (`sips` en macOS o `pdftoppm` la rinden como imagen, y ffmpeg la hace
+#     miniatura); la proporción es la de la hoja, y sin conversor el documento sube sin vista previa.
 # Los campos de asset (`tipo`, `estado`, `motor`, `etiquetas`) viajan en el JSON tal cual, que
 # entra por stdin.
 #
@@ -2523,8 +2527,11 @@ anuncios)
 #   bitacora-api sumar-anuncio videos-de-devie --medio voces/devie-saludo.mp3 <<'JSON'
 #   {"id":"devie-saludo","formato":"audio","creado":"2026-11-13T14:00:00-03:00","tipo":"voz","estado":"aprobado"}
 #   JSON
+#   bitacora-api sumar-anuncio tomas-de-la-app --medio tomas/ficha-ruleta.pdf <<'JSON'
+#   {"id":"ficha-ruleta","formato":"documento","creado":"2026-11-20T10:00:00-03:00","tipo":"documento","estado":"por-revisar"}
+#   JSON
 sumar-anuncio)
-  exige 1 "sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video|imagen|audio>]   < {\"id\":\"…\",\"formato\":\"imagen|video|carrusel|reel|historia|audio\",\"creado\":\"<instante ISO>\",…}" "$@"
+  exige 1 "sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video|imagen|audio|pdf>]   < {\"id\":\"…\",\"formato\":\"imagen|video|carrusel|reel|historia|audio|documento\",\"creado\":\"<instante ISO>\",…}" "$@"
   slug_anuncio="$1"
   shift
   [ -t 0 ] && { echo "Falta el JSON del anuncio por stdin (heredoc)." >&2; exit 1; }
@@ -2537,7 +2544,7 @@ sumar-anuncio)
     case "$1" in
     --vista-previa) vista_anuncio="${2:?Falta la imagen de --vista-previa}" && shift 2 ;;
     --medio) medio_anuncio="${2:?Falta el archivo de --medio}" && shift 2 ;;
-    *) echo "«$1» no es una bandera de sumar-anuncio: --vista-previa <imagen> · --medio <video|imagen|audio>" >&2 && exit 1 ;;
+    *) echo "«$1» no es una bandera de sumar-anuncio: --vista-previa <imagen> · --medio <video|imagen|audio|pdf>" >&2 && exit 1 ;;
     esac
   done
   carpeta_anuncio="$(mktemp -d)"
@@ -2548,6 +2555,7 @@ sumar-anuncio)
     case "$extension_anuncio" in
     jpg | jpeg | png | webp) clase_anuncio=imagen ;;
     mp3 | wav | m4a) clase_anuncio=audio ;;
+    pdf) clase_anuncio=documento ;;
     mp4 | mov | webm | m4v) clase_anuncio=video ;;
     *) case "$(jq -r '.formato // ""' <<<"$cuerpo_anuncio")" in
       imagen) clase_anuncio=imagen ;;
@@ -2568,6 +2576,25 @@ sumar-anuncio)
           miniatura_de "$medio_anuncio" "$vista_anuncio" || vista_anuncio=""
       fi
       ;;
+    documento)
+      # El PDF exacto sube como `medio`; su primera hoja, hecha imagen (`sips` en macOS, `pdftoppm`
+      # donde esté), pasa por `miniatura_de` como una imagen y sube como `vistaPrevia`. Sin conversor,
+      # el documento sube sin vista previa.
+      if [ -z "$vista_anuncio" ]; then
+        hoja_anuncio="$carpeta_anuncio/hoja.png"
+        if { command -v sips >/dev/null 2>&1 && sips -s format png --resampleWidth 640 "$medio_anuncio" --out "$hoja_anuncio" >/dev/null 2>&1; } ||
+          { command -v pdftoppm >/dev/null 2>&1 && pdftoppm -png -scale-to-x 640 -scale-to-y -1 -f 1 -l 1 -singlefile "$medio_anuncio" "${hoja_anuncio%.png}" >/dev/null 2>&1; }; then
+          if command -v ffmpeg >/dev/null 2>&1 && miniatura_de "$hoja_anuncio" "$carpeta_anuncio/miniatura.jpg"; then
+            vista_anuncio="$carpeta_anuncio/miniatura.jpg"
+          else
+            echo "→ el documento sube con su primera hoja como vista previa sin achicar: la miniatura la hace ffmpeg (brew install ffmpeg)" >&2
+            vista_anuncio="$hoja_anuncio"
+          fi
+        else
+          echo "→ el documento sube sin vista previa: la primera hoja la rinde sips (macOS) o pdftoppm, o va en --vista-previa" >&2
+        fi
+      fi
+      ;;
     imagen)
       # El original sube como `medio` y su miniatura como `vistaPrevia` (la grilla muestra la miniatura
       # y el diálogo abre el original); una `--vista-previa` explícita manda sobre la miniatura. Sin
@@ -2585,11 +2612,12 @@ sumar-anuncio)
     esac
     if command -v ffprobe >/dev/null 2>&1; then
       archivo_ficha="${medio_anuncio:-$vista_anuncio}"
+      [ "$clase_anuncio" = documento ] && archivo_ficha="$vista_anuncio"
       ficha_video="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height:format=duration -of json "$archivo_ficha" 2>/dev/null || echo '{}')"
       cuerpo_anuncio="$(jq -c --arg clase "$clase_anuncio" --argjson f "$ficha_video" '
         def mcd(a; b): if b == 0 then a else mcd(b; a % b) end;
         ($f.streams[0] // {}) as $v | (($f.format.duration // "") | tonumber? // null) as $d
-        | (if $clase != "imagen" and .duracion == null and $d != null then .duracion = ($d * 10 | round / 10) else . end)
+        | (if $clase != "imagen" and $clase != "documento" and .duracion == null and $d != null then .duracion = ($d * 10 | round / 10) else . end)
         | (if $clase != "audio" and .proporcion == null and ($v.width // 0) > 0 then .proporcion = "\($v.width / mcd($v.width; $v.height))x\($v.height / mcd($v.width; $v.height))" else . end)' <<<"$cuerpo_anuncio")"
     fi
   fi
@@ -2603,6 +2631,30 @@ sumar-anuncio)
   done
   rm -rf "$carpeta_anuncio"
   printf '%s' "$cuerpo_anuncio" | escribir POST "/api/fuentes/$(uri "$slug_anuncio")/anuncios"
+  ;;
+# Suma a una biblioteca VARIAS piezas en un pedido y una sola escritura de la biblioteca —la carga
+# de muchas piezas—. Cada pieza lleva sus campos de
+# `sumar-anuncio` y sus archivos ya subidos con `adjuntar … fuente=<slug>`: las rutas van en su
+# `vistaPrevia` y su `medio`. El cuerpo es `{"piezas":[…]}` por stdin; hasta 5000 piezas, cada
+# `id` una vez. Cuando la biblioteca ya tiene alguno de los ids, el 400 `anunciosYaEstan` los lista
+# y no se escribe nada: se repite mandando solo las nuevas.
+#
+#   bitacora-api sumar-anuncios tomas-de-la-app <<'JSON'
+#   {"piezas":[
+#     {"id":"ruleta-giro","formato":"video","creado":"2026-11-20T10:00:00-03:00","tipo":"video","estado":"validada",
+#      "vistaPrevia":"fuentes/tomas-de-la-app/ruleta-giro-miniatura.jpg","medio":"fuentes/tomas-de-la-app/ruleta-giro-video.mp4"},
+#     {"id":"ficha-ruleta","formato":"documento","creado":"2026-11-20T10:00:00-03:00","tipo":"documento","estado":"por-revisar"}
+#   ]}
+#   JSON
+sumar-anuncios)
+  exige 1 "sumar-anuncios <slug>   < {\"piezas\":[{\"id\":\"…\",\"formato\":\"…\",\"creado\":\"<instante ISO>\",\"vistaPrevia\"?,\"medio\"?,…}]}" "$@"
+  [ -t 0 ] && { echo "Falta el JSON de la tanda por stdin (heredoc): {\"piezas\":[…]}" >&2; exit 1; }
+  cuerpo_tanda="$(cat)"
+  jq -e '(.piezas | type == "array" and length > 0)' >/dev/null 2>&1 <<<"$cuerpo_tanda" || {
+    echo "La tanda va como {\"piezas\":[…]} con al menos una pieza (JSON por stdin)." >&2
+    exit 1
+  }
+  printf '%s' "$cuerpo_tanda" | escribir POST "/api/fuentes/$(uri "$1")/anuncios"
   ;;
 # Saca del stock un anuncio que subió una sesión (el de Meta lo vuelve a traer su refresco).
 sacar-anuncio)
@@ -2677,7 +2729,8 @@ mover-anuncios)
   ;;
 # Busca en una biblioteca del stock, del lado del cliente sobre lo que trae `anuncios`: los
 # términos se suman con AND, por subcadena y sin acentos ni mayúsculas, contra id, nombre, tipo,
-# estado, de, texto, motor y etiquetas (`corr` encuentra «Corriendo»). Los filtros piden el valor
+# estado, de, texto, motor, etiquetas y los valores del detalle —todos sus escalares, sin las
+# claves— (`corr` encuentra «Corriendo»). Los filtros piden el valor
 # entero. Sin términos ni filtros cuenta las piezas por tipo. Cada pieza sale en un renglón con el
 # ícono de su estado, su tipo, su duración, su id y la primera línea de su texto; debajo, la
 # ruta de su medio (o de su vista previa) para `bitacora-api bajar` y el resto del texto con ⚠.
@@ -2714,10 +2767,12 @@ buscar-stock)
       | gsub("[áàäâÁÀÄÂ]"; "a") | gsub("[éèëêÉÈËÊ]"; "e") | gsub("[íìïîÍÌÏÎ]"; "i")
       | gsub("[óòöôÓÒÖÔ]"; "o") | gsub("[úùüûÚÙÜÛ]"; "u") | gsub("[ñÑ]"; "n")
       | gsub("[̀-ͯ]"; "");
-    def pajar: [.id, .nombre, .tipo, .estado, .de, .texto, .motor, (.etiquetas // [])[]]
+    def pajar: [.id, .nombre, .tipo, .estado, .de, .texto, .motor, (.etiquetas // [])[],
+        ((.detalle // {}) | [.. | scalars | select(type != "null")] | map(tostring))[]]
       | map(select(. != null)) | join(" ") | norm;
     def icono: {"aprobado":"✅","con-recorte":"✂️","apoyo":"🩹","alternativa":"🅰️","variante":"≈","descartado":"⛔",
-      "prueba":"🧪","sin-video":"🖼","referencia":"📎","archivo":"🗂"}[. // ""] // "·";
+      "prueba":"🧪","sin-video":"🖼","referencia":"📎","archivo":"🗂",
+      "validada":"✅","no-pasa":"⛔","solo-en-el-corte":"🎞 ","por-revisar":"🔍","por-validar":"🟡"}[. // ""] // "·";
     ($ARGS.positional | map(norm)) as $terminos
     | .sincronizadoAt as $copia
     | .anuncios as $todas
@@ -3178,13 +3233,14 @@ El sistema del proyecto — la tríada y las instrucciones. Primera lectura al l
   bitacora-api stock                        (las bibliotecas del stock del proyecto: clase, cuántos anuncios y portada)
   bitacora-api crear-stock                  < {"slug","nombre","clase":"anuncios|assets","tags"?}   (crea una biblioteca del stock)
   bitacora-api anuncios <slug>              (lee ese stock, del más nuevo al más viejo, con el día de su copia)
-  bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video|imagen|audio>]   < {"id","formato","creado",…}
+  bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video|imagen|audio|pdf>]   < {"id","formato","creado",…}
                                             (suma a una biblioteca del stock un reel, una historia, un video con sus variantes
                                              y pedacitos, una imagen, una voz o el anuncio de un competidor; el mismo id lo reemplaza)
   bitacora-api sacar-anuncio <slug> <id>    (saca uno que subió una sesión)
   bitacora-api editar-anuncio <slug> <id>   < {"estado":"aprobado","detalle":{…},…}   (funde campos de una pieza; null saca la clave)
   bitacora-api editar-anuncios <slug>       < {"piezas":[{"id","estado",…}]}   (la misma fusión en tanda: un pedido, una escritura)
   bitacora-api mover-anuncios <slug> <destino> <id>…   (mueve piezas, con sus archivos, a otra biblioteca del mismo proyecto)
+  bitacora-api sumar-anuncios <slug>        < {"piezas":[…]}   (varias piezas de una biblioteca en UNA escritura)
   bitacora-api buscar-stock <biblioteca> [término…] [--tipo t] [--estado e] [--formato f] [--de id] [--json]
                                             (busca en el stock: términos con AND, sin acentos ni mayúsculas)
   bitacora-api lectura <slug>               (la lectura curada: qué dice a la fecha, qué cambió y qué choca, con su copia)
@@ -3600,12 +3656,12 @@ Escritura (el cuerpo JSON entra por stdin):
         crea una biblioteca del stock (POST /api/fuentes): `clase` anuncios —los creativos terminados con sus datos de
         Meta— o assets —las partes de un personaje: sus videos, variantes y pedacitos—; completa procedencia mano, lado
         nuestro, vigencia fechada, la fecha de hoy, el proyecto como productor y el español. Se llena con sumar-anuncio
-  bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video|imagen|audio>]   < el anuncio en JSON
+  bitacora-api sumar-anuncio <slug> [--vista-previa <imagen>] [--medio <video|imagen|audio|pdf>]   < el anuncio en JSON
         suma un anuncio de origen mano a una biblioteca del stock —de clase anuncios o assets: un reel, una historia, un video de
         «Videos de <Personaje>», una imagen o una voz de su inventario, el de un competidor en «Anuncios de referencia»—, o
         reemplaza el de su mismo id (que conserva el nombre de los archivos y hasta una hora puede verse el viejo en un
         navegador que ya lo tenía: un archivo que cambió se suma con otro id o se sube con otro nombre):
-        {"id","formato":"imagen|video|carrusel|reel|historia|audio","creado":"<instante ISO>","texto","marca","enlace",
+        {"id","formato":"imagen|video|carrusel|reel|historia|audio|documento","creado":"<instante ISO>","texto","marca","enlace",
         "personaje","de":"<id de la pieza>","parte":"variante|pedacito",
         "tipo":"<qué es: clip, keyframe, voz, pieza-final…>","estado":"<en qué quedó: aprobado, variante, descartado…>",
         "motor":"<con qué se hizo>","etiquetas":["…"],"detalle":{…lo que las herramientas leen con jq, hasta 20000 caracteres},"usos":[…]}; tipo y estado van en minúsculas con guiones, con el
@@ -3614,7 +3670,8 @@ Escritura (el cuerpo JSON entra por stdin):
         una imagen (jpg, jpeg, png, webp) sube como medio y su miniatura de ancho chico, hecha con ffmpeg sobre fondo
         blanco, como vista previa —la grilla de la galería muestra la miniatura y el diálogo abre el original—, y saca la proporcion; sin ffmpeg
         sube como su propia vista previa, sin medio, y lo avisa; un audio (mp3, wav, m4a) sube como medio
-        y saca la duracion. Los tres suman archivos; un anuncio de Meta que pautó uno de esos archivos le suma sus usos
+        y saca la duracion; un documento (pdf) sube exacto como medio y su primera hoja, hecha miniatura con sips o pdftoppm y ffmpeg,
+        como vista previa. Los cuatro suman archivos; un anuncio de Meta que pautó uno de esos archivos le suma sus usos
         (400 stockFueraDeLaBiblioteca · archivoAjeno · anuncioDeMeta · bibliotecaLlena: el stock entero de la biblioteca pasó
         su tope en bytes: se sacan piezas que ya no se usan o se parte en dos bibliotecas · 409 stockCambiado: otra escritura
         ganó tres veces seguidas: se repite el pedido una sola vez, y con un segundo 409 se frena y se avisa)
@@ -3646,9 +3703,15 @@ Escritura (el cuerpo JSON entra por stdin):
         después de un corte termina el trabajo: la pieza a medio mover se completa y la ya movida se cuenta. Contesta
         `movidas`, `yaMovidas`, `huerfanas` —los ids cuyo `de` quedó en la otra biblioteca: la pieza movida sin su madre, o
         la que se quedó sin la suya— y `origen` y `destino`, cada uno con su cuenta
+  bitacora-api sumar-anuncios <slug>        < {"piezas":[{"id","formato","creado","vistaPrevia","medio",…}, …]}
+        suma varias piezas a una biblioteca en un pedido y UNA escritura —una carga de muchas piezas—: cada pieza lleva los
+        campos de sumar-anuncio y sus archivos ya subidos con `adjuntar … fuente=<slug>` (las rutas, en vistaPrevia y medio);
+        hasta 5000 piezas, cada id una vez (400 si se repite); cuando la biblioteca ya tiene alguno de los ids, 400
+        anunciosYaEstan los lista y no escribe nada: se repite con solo las nuevas · 400 archivoAjeno · bibliotecaLlena ·
+        409 stockCambiado (se repite el pedido una sola vez); contesta `sumadas` con cuántas entraron
   bitacora-api buscar-stock <biblioteca> [término…] [--tipo t] [--estado e] [--formato f] [--de id] [--json]
         busca sobre lo que trae `anuncios`: los términos se suman con AND, por subcadena y sin acentos ni mayúsculas, contra
-        id, nombre, tipo, estado, de, texto, motor y etiquetas; los filtros piden el valor entero. Sin términos ni filtros,
+        id, nombre, tipo, estado, de, texto, motor, etiquetas y los valores del detalle; los filtros piden el valor entero. Sin términos ni filtros,
         las piezas por tipo; con resultados, un renglón por pieza —ícono del estado, tipo, duración, id y primera línea del
         texto— con la ruta de su medio para `bajar` y el resto del texto con ⚠; con --json, las piezas que pasan, enteras
   bitacora-api curar <slug> <huella>        < «# Lo que dice» · «# Qué cambió» (cuando reemplaza a otra) · «# Lo que choca»
