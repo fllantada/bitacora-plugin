@@ -2261,12 +2261,42 @@ pedido)
 #   2. Quien habla con Fran: `pausa <plan> <n>` la trae entera, con `espera` (fran o creator);
 #      `pausa <plan> <n> responder "<las palabras de Fran>"` la cierra con las de Fran, y
 #      `pausa <plan> <n> delegar "<la respuesta>"` con la de CREATOR por delegación; las dos
-#      con `--cambios` cuando la respuesta pide cambios. `pausas` lista las vivas, cruzando planes.
-#   3. Quien produce, al retomar: `pausa <plan> <n>` trae la respuesta en `nota`.
+#      con `--cambios` cuando la respuesta pide cambios, y con `--opcion <clave>` cuando la pausa
+#      es de elegir —la clave de la opción elegida—. `pausas` lista las vivas, cruzando planes.
+#   3. Quien produce, al retomar: `pausa <plan> <n>` trae la respuesta en `nota` y, en la de
+#      elegir, la opción en `opcion`.
+#
+# La pausa declara su forma con `clase`: `elegir` lleva `opciones` (una tarjeta por cada una, con
+# su muestra), `confirmar` lleva `partes` (la propuesta parte por parte) y `gasto` lo que pide
+# autorizar; cualquier pausa suma `avisos` (lo que la revisión de CREATOR encontró y cómo quedó)
+# y `costo` (lo que cuesta seguir, `{"desde","hasta"}` en dólares). Se corrige mientras vive con
+# `pausa <plan> <n> corregir < {json}`. Su `enlace` es su página propia, donde Fran ve la
+# pregunta sola, lo que mira, la revisión, el costo y la caja para contestar.
 #
 # La pausa que espera a Fran —una etapa que eligió, o un plan fuera del objetivo creativo— abre
-# la página del plan con su material en grande y la caja para contestar, y lo pone en «Te
-# espera»; la que espera a CREATOR deja el plan en manos de la sesión.
+# la página del plan con una franja que lleva a su página (la de gasto, con lo que pide autorizar
+# y la caja) y lo pone en «Te espera»; la que espera a CREATOR deja el plan en manos de la sesión.
+#
+# LA CURADURÍA: en un objetivo creativo, la pausa que espera a Fran —fuera de la de gasto— nace
+# en manos de CREATOR (`espera: "creator"`, `curaduria: true`). CREATOR la lee, suma sus avisos
+# o la corrige con `corregir`, y entonces:
+#   - `pausa <plan> <n> presentar` sella `presentadaAt` y desde ahí espera a Fran: recién ahí le
+#     aparece en «Te espera» y su página le muestra la caja;
+#   - `pausa <plan> <n> devolver "<qué corregir>"` la cierra con `cambios`, `respondio: creator`
+#     y la nota, y quien produce abre otra pausa con lo corregido.
+# La pausa de MÉTODO (`"clase":"metodo"`) es la decisión de cómo producir que la ley del clon manda
+# preguntar —el motor de composición—: lleva `opciones` como la de elegir y espera siempre a
+# CREATOR, que la cierra con `delegar … --opcion <clave>`.
+#
+# LAS ANOTACIONES: la pausa con `medio` —la ruta del audio o el video de la propuesta entera, la
+# grabación del guion— ubica cada parte en su segundo con `desde`. Fran anota un segundo de
+# cualquier medio que suena en la pausa —`medio`, la muestra de audio o video de una opción o de
+# una parte, el audio o el video del material— desde su página, y CREATOR registra las que Fran
+# dicta en el chat:
+#   - `pausa <plan> <n> anotar <segundo> "<texto>" [--muestra <ruta>]` (sin `--muestra`, sobre
+#     `medio`) la suma mientras la pausa vive, y contesta la pausa con cada anotación y su `id`;
+#   - `pausa <plan> <n> desanotar <id>` la saca.
+# Quien produce las lee en `pausa <plan> <n>`, en `anotaciones`, cada una con su segundo y su medio.
 # ─────────────────────────────────────────────────────────────────────────────
 pausas)
   leer "/api/pedidos?rol=fran&estado=$(uri "${1:-}")"
@@ -2274,10 +2304,17 @@ pausas)
 pausa)
   exige 1 "pausa <plan-id>   < {\"que\":\"<la pregunta para Fran>\",\"presenta\":{\"es\":\"<lo que se le presenta, en markdown>\"},\"material\":[\"<ruta>\"],\"punto\":\"<etapa · ruta del punto guardado>\",\"de\":\"<frente>\"}   (la abre)
   pausa <plan-id> <n>                        (la lee, con la respuesta cuando ya está)
-  pausa <plan-id> <n> responder \"<las palabras de Fran>\" [--cambios]   (la cierra con la respuesta de Fran)
-  pausa <plan-id> <n> delegar \"<la respuesta de CREATOR>\" [--cambios]   (la cierra CREATOR por delegación; la que espera a Fran contesta 400 pausaEsperaAFran)
+  pausa <plan-id> <n> corregir   < {json con lo que cambia}   (corrige la pausa viva: su forma, sus opciones o partes, los avisos, el costo)
+  pausa <plan-id> <n> responder \"<las palabras de Fran>\" [--opcion <clave>] [--cambios]   (la cierra con la respuesta de Fran; la de elegir nombra la opción elegida)
+  pausa <plan-id> <n> delegar \"<la respuesta de CREATOR>\" [--opcion <clave>] [--cambios]   (la cierra CREATOR por delegación; la que espera a Fran contesta 400 pausaEsperaAFran)
+  pausa <plan-id> <n> presentar              (CREATOR presenta a Fran la pausa que curó: desde ahí lo espera a él; en una que no pide curaduría, 400 presentarSinCuraduria)
+  pausa <plan-id> <n> devolver \"<qué corregir>\"   (CREATOR la devuelve a quien produce, con cambios, mientras la cura)
+  pausa <plan-id> <n> anotar <segundo> \"<texto>\" [--muestra <ruta>]   (anota un segundo de un medio que suena en la pausa viva; sin --muestra, su medio)
+  pausa <plan-id> <n> desanotar <id>         (saca la anotación de ese id mientras la pausa vive)
   pausa <plan-id> <n> descartar [nota]       (de quien la abrió, cuando dejó de hacerle falta)" "$@"
   plan_pausa="$1"
+  numero_pausa="${2:-}"
+  gesto_pausa="${3:-}"
   if [ -z "${2:-}" ]; then
     vaciar_cola
     jq -c '. + {rol:"fran"}' |
@@ -2286,15 +2323,40 @@ pausa)
     leer "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
   else
     case "$3" in
-    responder | delegar)
-      [ -n "${4:-}" ] || { echo "uso: bitacora-api pausa <plan-id> <n> $3 \"<$([ "$3" = responder ] && echo 'las palabras de Fran' || echo 'la respuesta de CREATOR')>\" [--cambios]" >&2; exit 1; }
-      case "${5:-}" in
-      "" | --cambios) ;;
-      *) echo "la respuesta conoce --cambios; «$5» no es suyo." >&2; exit 1 ;;
-      esac
+    corregir)
       vaciar_cola
-      jq -cn --arg n "$4" --arg r "$([ "$3" = responder ] && echo fran || echo creator)" --arg v "$([ "${5:-}" = --cambios ] && echo cambios || echo ok)" \
-        '{estado:"listo",nota:$n,respondio:$r,veredicto:$v}' |
+      jq -c '.' |
+        escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
+      ;;
+    responder | delegar)
+      [ -n "${4:-}" ] || { echo "uso: bitacora-api pausa <plan-id> <n> $3 \"<$([ "$3" = responder ] && echo 'las palabras de Fran' || echo 'la respuesta de CREATOR')>\" [--opcion <clave>] [--cambios]" >&2; exit 1; }
+      texto_pausa="$4"
+      shift 4
+      veredicto_pausa=ok
+      opcion_pausa=""
+      while [ $# -gt 0 ]; do
+        case "$1" in
+        --cambios) veredicto_pausa=cambios; shift ;;
+        --opcion)
+          [ -n "${2:-}" ] || { echo "--opcion lleva la clave de la opción elegida: --opcion C" >&2; exit 1; }
+          opcion_pausa="$2"; shift 2 ;;
+        *) echo "la respuesta conoce --cambios y --opcion <clave>; «$1» no es suyo." >&2; exit 1 ;;
+        esac
+      done
+      vaciar_cola
+      jq -cn --arg n "$texto_pausa" --arg r "$([ "$gesto_pausa" = responder ] && echo fran || echo creator)" --arg v "$veredicto_pausa" --arg o "$opcion_pausa" \
+        '{estado:"listo",nota:$n,respondio:$r,veredicto:$v} + (if $o == "" then {} else {opcion:$o} end)' |
+        escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$numero_pausa")"
+      ;;
+    presentar)
+      vaciar_cola
+      jq -cn '{presentar:true}' |
+        escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
+      ;;
+    devolver)
+      [ -n "${4:-}" ] || { echo "uso: bitacora-api pausa <plan-id> <n> devolver \"<qué corregir>\"" >&2; exit 1; }
+      vaciar_cola
+      jq -cn --arg n "$4" '{estado:"listo",nota:$n,respondio:"creator",veredicto:"cambios"}' |
         escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
       ;;
     descartar)
@@ -2302,7 +2364,36 @@ pausa)
       jq -cn --arg n "${4:-}" '{estado:"descartado"} + (if $n == "" then {} else {nota:$n} end)' |
         escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
       ;;
-    *) echo "la pausa se responde, se delega o se descarta: «$3» no es un gesto suyo — uso: bitacora-api pausa <plan-id> <n> responder \"<las palabras de Fran>\" | delegar \"<la respuesta de CREATOR>\"" >&2; exit 1 ;;
+    # Lo que Fran anota sobre un segundo: el segundo va como número —con punto o coma— y el texto
+    # entre comillas; `--muestra` nombra el medio cuando es otro que `medio`.
+    anotar)
+      [ -n "${4:-}" ] && [ -n "${5:-}" ] || { echo "uso: bitacora-api pausa <plan-id> <n> anotar <segundo> \"<texto>\" [--muestra <ruta>]" >&2; exit 1; }
+      segundo_pausa="${4/,/.}"
+      texto_pausa="$5"
+      shift 5
+      muestra_pausa=""
+      while [ $# -gt 0 ]; do
+        case "$1" in
+        --muestra)
+          [ -n "${2:-}" ] || { echo "--muestra lleva la ruta del medio anotado: --muestra productora/voces/a.mp3" >&2; exit 1; }
+          muestra_pausa="$2"; shift 2 ;;
+        *) echo "anotar conoce --muestra <ruta>; «$1» no es suyo." >&2; exit 1 ;;
+        esac
+      done
+      printf '%s' "$segundo_pausa" | grep -Eq '^[0-9]+([.][0-9]+)?$' ||
+        { echo "el segundo va como número, desde 0: 4.2 o 4,2 —«${segundo_pausa}» no lo es." >&2; exit 1; }
+      vaciar_cola
+      jq -cn --argjson s "$segundo_pausa" --arg t "$texto_pausa" --arg m "$muestra_pausa" \
+        '{anotar:({segundo:$s,texto:$t} + (if $m == "" then {} else {muestra:$m} end))}' |
+        escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$numero_pausa")"
+      ;;
+    desanotar)
+      [ -n "${4:-}" ] || { echo "uso: bitacora-api pausa <plan-id> <n> desanotar <id>   (el id que trae cada anotación en \`pausa <plan-id> <n>\`)" >&2; exit 1; }
+      vaciar_cola
+      jq -cn --arg i "$4" '{desanotar:$i}' |
+        escribir PATCH "/api/items/planes/$(uri "$plan_pausa")/pedidos/$(uri "$2")"
+      ;;
+    *) echo "la pausa se corrige, se presenta, se devuelve, se responde, se delega, se anota o se descarta: «$3» no es un gesto suyo — uso: bitacora-api pausa <plan-id> <n> corregir < {json} | presentar | devolver \"<qué corregir>\" | responder \"<las palabras de Fran>\" | delegar \"<la respuesta de CREATOR>\" | anotar <segundo> \"<texto>\" [--muestra <ruta>] | desanotar <id>" >&2; exit 1 ;;
     esac
   fi
   ;;
@@ -3381,7 +3472,7 @@ El trabajo (en el taller el lugar se llama SUB-ÁREA —antes «hilo»—; la AP
   bitacora-api bajar <ruta> [destino]       (baja un adjunto con la llave del proyecto: la ruta o la url que contestaron adjuntos, capturar o pedido)
   bitacora-api pedidos [--rol qa] [--estado …]  (los pedidos entre sesiones del proyecto, cruzando planes: la bandeja del frente que los toma; sin estado, los vivos)
   bitacora-api pedido <plan-id> <n>         (uno, con su vuelta: la nota, los adjuntos por su dirección, el chequeo)
-  bitacora-api pausas                       (las pausas vivas, cruzando planes, cada una con a quién `espera`: fran o creator) · bitacora-api pausa <plan-id> <n>   (una, entera)
+  bitacora-api pausas                       (las pausas vivas, cruzando planes, cada una con a quién `espera` ahora: fran o creator, y `curaduria` mientras CREATOR la cura) · bitacora-api pausa <plan-id> <n>   (una, entera)
   bitacora-api gastos <plan-id>             (los gastos de un encargo de producción y la cuenta de su presupuesto)
   bitacora-api visto <id>                   (lo que la persona dijo de cada paso del chequeo)
   bitacora-api resolver ideas <id> <n>      < {"resolucion":"…"}  (la firma de la persona sobre la propuesta n de una idea: con todas
@@ -3574,11 +3665,46 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api pausa <plan-id>              {"que":"<la pregunta para Fran>","presenta":{"es":"<lo que se le presenta, en markdown, tal cual>"},"material":["<ruta que devolvió capturar>"],"punto":"<etapa · ruta del punto guardado>","etapa":"<hook|idea|guion|imagenes|audio|audiovisual>","de":"<frente>"}
                                             → contesta numero y enlace; la abre la sesión que produce (/producing) cuando su ley le pide a la persona una
                                               aprobación, una decisión o el OK de un gasto, y le avisa a la que piensa con UNA línea y el enlace
-  bitacora-api pausa <plan-id> <n>          (la lee entera: lo que presenta, su material por su dirección, el punto guardado, su `etapa`, viva a quién `espera` —fran o creator—
-                                             y, respondida, la respuesta en `nota` con quién la dio en `respondio` y su `veredicto`)
-  bitacora-api pausa <plan-id> <n> responder "<las palabras de Fran>" [--cambios]   (la cierra con la respuesta de Fran; sin las palabras, 400 pausaSinRespuesta)
-  bitacora-api pausa <plan-id> <n> delegar "<la respuesta de CREATOR>" [--cambios]  (la cierra CREATOR por delegación; la que espera a Fran contesta 400 pausaEsperaAFran)
+                                            El enlace es la página propia de la pausa (`/<proyecto>/pausa/<plan-id>/<n>`): Fran ve ahí la pregunta sola, lo que mira,
+                                            la revisión de CREATOR, el costo y la caja para contestar, con lo que `presenta` plegado al pie.
+  La pausa de elegir (una tarjeta por opción; 2 o más, claves únicas, una `recomendada` como mucho):
+  bitacora-api pausa <plan-id>              {"que":"<la pregunta>","clase":"elegir","etapa":"idea","de":"<frente>",
+                                             "opciones":[{"clave":"A","nombre":"<cómo se llama>","es":"<qué es, en una o dos líneas>","implica":"<qué trae y qué cuesta>","muestra":"<ruta que devolvió capturar>","recomendada":true},
+                                                         {"clave":"B","nombre":"…","es":"…"}],
+                                             "avisos":[{"encontro":"<lo que la revisión de CREATOR encontró contra el encargo>","resuelto":"<cómo quedó>"}],
+                                             "costo":{"desde":2.35,"hasta":3.15}}
+  La pausa de confirmar (la propuesta parte por parte: los planos de un gancho, las láminas de un carrusel, las portadas de cada formato):
+  bitacora-api pausa <plan-id>              {"que":"<la pregunta>","clase":"confirmar","etapa":"guion","de":"<frente>",
+                                             "partes":[{"muestra":"<ruta>","ve":"<lo que se ve, en una línea>","dice":"<lo que alguien dice>","quien":"Él","dura":1.6},
+                                                       {"muestra":"<ruta>","ve":"…","formato":"9:16 · Reels"}]}
+                                            (cada texto va como frase o por idioma, {"es":"…","en":"…"}; `avisos` y `costo` valen en cualquier pausa; opciones sin `elegir` o partes sin `confirmar`, 400 formaSinClase;
+                                             en un pedido que no es pausa, 400 formaFueraDeLaPausa)
+  bitacora-api pausa <plan-id> <n> corregir {"opciones":[…],"partes":[…],"avisos":[…],"costo":{…},"presenta":"…"}   (corrige la pausa viva con lo que cambia: el parche lleva cada campo entero)
+  bitacora-api pausa <plan-id> <n>          (la lee entera: lo que presenta, su material por su dirección, el punto guardado, su `etapa`, viva a quién `espera` ahora —fran o creator—, `curaduria` y `presentadaAt`
+                                             y, respondida, la respuesta en `nota` con quién la dio en `respondio`, su `veredicto` y, en la de elegir, la `opcion`)
+  bitacora-api pausa <plan-id> <n> responder "<las palabras de Fran>" [--opcion <clave>] [--cambios]   (la cierra con la respuesta de Fran; sin las palabras, 400 pausaSinRespuesta;
+                                             la de elegir nombra la elegida con --opcion: el `ok` sin ella, 400 eleccionSinOpcion, y una clave que no está, 400 opcionAjena)
+  bitacora-api pausa <plan-id> <n> delegar "<la respuesta de CREATOR>" [--opcion <clave>] [--cambios]  (la cierra CREATOR por delegación; la que espera a Fran contesta 400 pausaEsperaAFran)
   bitacora-api pausa <plan-id> <n> descartar [nota]   (de quien la abrió, cuando dejó de hacerle falta)
+  La curaduría (en un objetivo creativo, la pausa que espera a Fran —fuera de la de gasto— nace en manos de CREATOR, con `curaduria: true`, y le llega a Fran recién presentada):
+  bitacora-api pausa <plan-id> <n> presentar          (CREATOR la presenta a Fran después de sumar sus avisos o corregirla: sella `presentadaAt`, la primera vez; en una que no pide curaduría, 400 presentarSinCuraduria)
+  bitacora-api pausa <plan-id> <n> devolver "<qué corregir>"   (CREATOR la devuelve a quien produce: la cierra con `cambios` y la nota, y quien produce abre otra;
+                                             mientras la cura, cerrarla de otra forma —con `ok`, o con la respuesta de Fran— contesta 400 curaduriaSinAprobar)
+  La pausa de método (la decisión de cómo producir que la ley del clon manda preguntar, como el motor de composición; espera siempre a CREATOR):
+  bitacora-api pausa <plan-id>              {"que":"<la pregunta>","clase":"metodo","etapa":"audiovisual","de":"<frente>","opciones":[{"clave":"A","nombre":"<el motor>","es":"<qué es>","implica":"<qué trae y qué cuesta>"},{"clave":"B","nombre":"…","es":"…","recomendada":true}]}
+                                            (sus opciones se cobran como las de elegir; CREATOR la cierra con `delegar "<por qué>" --opcion <clave>`)
+  La pausa con su grabación (`medio`: el audio o el video de la propuesta entera; cada parte en el segundo en que empieza, con `desde`):
+  bitacora-api pausa <plan-id>              {"que":"<la pregunta>","clase":"confirmar","etapa":"guion","de":"<frente>","medio":"<ruta del audio que devolvió capturar>",
+                                             "partes":[{"desde":0,"quien":"Él","dice":"¿Tú no eres…?","ve":"él la reconoce"},{"desde":3.83,"quien":"Él","dice":"¿Me estás espiando?","ve":"…"}]}
+                                            (`medio` es una ruta del almacén de un audio o un video; `desde` sin `medio`, 400 desdeSinMedio; la página pone la grabación primero,
+                                             con cada parte como una línea del guion que suena desde su segundo)
+  bitacora-api pausa <plan-id> <n> anotar <segundo> "<texto>" [--muestra <ruta>]   (anota un segundo de un medio que suena en la pausa viva —`medio`, la muestra de audio o video
+                                             de una opción o de una parte, el audio o el video del material—; sin --muestra, sobre `medio`, y sin `medio`, 400 anotacionSinMedio;
+                                             una ruta que no suena en la pausa, 400 anotacionAjena; CREATOR registra así lo que Fran dicta en el chat)
+  bitacora-api pausa <plan-id> <n> desanotar <id>   (saca una anotación por su id, el que trae `anotaciones`; un id que no está, 400 anotacionInexistente;
+                                             corregir el medio que una anotación anota contesta 400 anotacionHuerfana con sus ids: se desanotan antes)
+                                            (la lectura trae `anotaciones` en el orden de su segundo, cada una con su `id`, su `muestra` con su dirección, su `segundo` y su `texto`;
+                                             con anotaciones, la respuesta con `cambios` vale sin palabras: su nota dice cuántas lleva)
   La pausa de gasto (lo que pasaría un tope del presupuesto, pedido antes de pagarlo; espera siempre a Fran):
   bitacora-api pausa <plan-id>              {"que":"<la pregunta>","clase":"gasto","gasto":{"que":"<qué se compra>","proveedor":"<a quién>","costo":<dólares>,"porque":"<por qué la pieza lo necesita>"},"de":"<frente>"}
                                             (400 gastoIncompleto sin su `gasto`; se cierra con `responder` —autoriza— o `responder … --cambios` —devuelve—: sin veredicto, 400 gastoSinVeredicto;
@@ -3588,8 +3714,8 @@ Escritura (el cuerpo JSON entra por stdin):
   bitacora-api gasto <plan-id>              {"que":"<qué se compró>","proveedor":"<a quién>","costo":<dólares>}   (en un plan de otro contrato, 400 gastoSinProduccion;
                                              el que deja un tope pasado queda anotado y vuelve con `aviso`: presupuestoSuperado)
   bitacora-api quitar-gasto <plan-id> <n> [porqué]   (retira el que se anotó mal; un número que no está, 400 gastoInexistente)
-  bitacora-api pausas                       (las vivas, cruzando planes, cada una con a quién `espera`; la que espera a Fran abre su plan con el material en grande
-                                             y la caja para contestar, lo pone en «Te espera» y pide la mano en el recorrido creativo; la que espera a CREATOR la responde él)
+  bitacora-api pausas                       (las vivas, cruzando planes, cada una con a quién `espera` y su `enlace`, la página de la pausa; la que espera a Fran abre
+                                             su plan con una franja que lleva a esa página, lo pone en «Te espera» y pide la mano en el recorrido creativo; la que espera a CREATOR —también la que cura, con `curaduria`— la tiene él)
   El ciclo del encargo (azúcar sobre mover planes; el estado lo pone el verbo):
   bitacora-api tomar <id> [nota]            → en-curso; la nota (y ficha.destino) es el worktree o la copia que lo tiene
   bitacora-api entregar <id>                {"reporte":{"es":"## Hecho\n…"},"ficha":{"pr":"…","rama":"…","review":"…"},"consumo":{…},"nota":"…"} → entregado
