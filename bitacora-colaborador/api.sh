@@ -506,14 +506,20 @@ subir() {
 
   # 2. Subir: directo a R2, con el tipo que la dirección firmó. La dirección es la
   # autorización, así que la llave de la bitácora se queda acá. La subida larga corre sin
-  # techo de tiempo y se corta cuando se estanca.
+  # techo de tiempo y se corta cuando se estanca. Cuando curl no llega, su código dice por
+  # qué: el certificado que no valida (60, o 35 en el saludo TLS) es una conexión
+  # interceptada, como la de los bloqueos de LaLiga a Cloudflare durante los partidos.
   respuesta="$(curl -sS --connect-timeout 20 --speed-limit 1024 --speed-time 60 \
-    -T "$archivo" -H "Content-Type: $tipo" -w $'\n%{http_code}' "$direccion" \
-    2>/dev/null || printf '\n000')"
+    -T "$archivo" -H "Content-Type: $tipo" -w $'\n%{http_code}' "$direccion" 2>/dev/null)" || {
+    case "$?" in
+    35 | 60) echo "La conexión al almacén llegó interceptada al subir $archivo: el certificado vino sin firmar. En España pasa cuando juega LaLiga, que bloquea rangos de Cloudflare durante los partidos; el código está sano, y el comando se vuelve a correr cuando termina el partido." >&2 ;;
+    *) echo "La subida de $archivo al almacén se cortó o no tuvo respuesta: volvé a correr el comando (si juega LaLiga, es su bloqueo a Cloudflare, y se reintenta al terminar el partido)." >&2 ;;
+    esac
+    return 1
+  }
   codigo="${respuesta##*$'\n'}"
   case "$codigo" in
   2*) ;;
-  000) echo "La subida de $archivo al almacén se cortó o no tuvo respuesta: volvé a correr el comando." >&2 && return 1 ;;
   *) echo "El almacén no aceptó $archivo ($codigo): ${respuesta%$'\n'*}" >&2 && return 1 ;;
   esac
 
