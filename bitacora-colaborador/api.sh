@@ -1353,9 +1353,11 @@ bajar)
   parcial_bajar="$destino_bajar.parcial"
   # La bajada larga corre sin techo de tiempo y se corta cuando se estanca, como la subida:
   # el archivo que sube entero baja entero. La que se corta a mitad de camino termina en
-  # `000`, y su archivo parcial se borra.
-  codigo="$(curl -sS --connect-timeout 20 --speed-limit 1024 --speed-time 60 \
-    -H "Authorization: Bearer $TOKEN" -o "$parcial_bajar" \
+  # `000`, y su archivo parcial se borra. El servidor decide el permiso y redirige a la
+  # dirección firmada del almacén (`X-Bitacora-Redireccion: sigue`); `curl -L` la sigue, y la
+  # llave queda en el servidor de la bitácora, porque curl manda el `Authorization` solo a él.
+  codigo="$(curl -sS -L --connect-timeout 20 --speed-limit 1024 --speed-time 60 \
+    -H "Authorization: Bearer $TOKEN" -H "X-Bitacora-Redireccion: sigue" -o "$parcial_bajar" \
     -w '%{http_code}' "$BASE$camino_bajar" 2>/dev/null || printf '\n000')"
   codigo="${codigo##*$'\n'}"
   case "$codigo" in
